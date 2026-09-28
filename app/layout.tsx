@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
-import "./globals.css";
 import { Geist } from "next/font/google";
-import { cn } from "@/lib/utils";
+import "katex/dist/katex.min.css";
+import "./globals.css";
+import { cn } from "cn";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -18,7 +20,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={cn("font-sans", geist.variable)}>
-      <body>{children}</body>
+      <body>
+        <TooltipProvider>{children}</TooltipProvider>
+      </body>
     </html>
   );
 }

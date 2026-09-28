@@ -1,6 +1,7 @@
 "use client";
 
 import { code } from "@streamdown/code";
+import { math } from "@streamdown/math";
 import { createContext, useContext } from "react";
 import { type Components, type ExtraProps, Streamdown } from "streamdown";
 import type { Source } from "@/lib/mixedbread/citations";
@@ -12,7 +13,7 @@ export type Citations = Map<string, { number: number; source: Source }>;
 const CitationsContext = createContext<Citations>(new Map());
 
 const components: Components = { a: Link };
-const plugins = { code };
+const plugins = { code, math };
 
 /** Streaming markdown that renders `[S1](#S1)` links as citations. */
 export function Markdown({
