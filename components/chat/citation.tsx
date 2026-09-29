@@ -1,7 +1,7 @@
 "use client";
 
-import { ArrowUpRightIcon } from "lucide-react";
-import { createContext, use, useState } from "react";
+import { ArrowUpRightIcon, ScanSearchIcon } from "lucide-react";
+import { createContext, use, useRef, useState } from "react";
 import { SliceGlyph } from "@/components/brand/slice";
 import {
   HoverCard,
@@ -11,6 +11,8 @@ import {
 import { useCoarsePointer } from "@/hooks/use-media";
 import { createStore, useStore } from "@/hooks/use-store";
 import { type Source, sourceTitle } from "@/lib/mixedbread/citations";
+import { PageView } from "./page-view";
+import { useOrganizations } from "./sources-provider";
 
 /** Where a source is from: the store it was found in, or its site. */
 export function originOf(source: Source): string {
@@ -54,8 +56,9 @@ export function Citation({
 
 /**
  * Anything that previews a source. With a mouse it previews on hover and
- * opens the page on click; on touch screens, which have no hover, a tap
- * shows the preview and the link inside it opens the page.
+ * opens the source on click: its site, or the page of a file shown as one.
+ * On touch screens, which have no hover, a tap shows the preview, and a
+ * link inside opens the source.
  */
 export function SourcePreview({
   source,
@@ -80,37 +83,73 @@ export function SourcePreview({
 }) {
   const coarse = useCoarsePointer();
   const [open, setOpen] = useState(false);
+  const [viewing, setViewing] = useState(false);
+  const trigger = useRef<HTMLAnchorElement>(null);
   const highlight = use(HighlightContext);
   const lit = useStore(highlight, (current) => current === source.label);
   const light = () => highlight.set(source.label);
   const dim = () => highlight.set(undefined);
+  // A page shows to those connected to its organization, with their access.
+  const organizations = useOrganizations();
+  const organization =
+    source.type === "file" && source.image
+      ? organizations.find((entry) => entry.id === source.organizationId)
+      : undefined;
+  const view =
+    organization &&
+    (() => {
+      setOpen(false);
+      setViewing(true);
+    });
 
   return (
-    <HoverCard open={open} onOpenChange={setOpen}>
-      <HoverCardTrigger
-        {...(source.type === "url" && !coarse
-          ? { href: source.url, target: "_blank", rel: "noreferrer" }
-          : { render: <button type="button" /> })}
-        onPointerEnter={light}
-        onPointerLeave={dim}
-        onFocus={light}
-        onBlur={dim}
-        onClick={coarse ? () => setOpen(true) : undefined}
-        data-lit={lit}
-        data-citation={citation}
-        aria-label={label}
-        className={className}
-      >
-        {children}
-      </HoverCardTrigger>
-      <HoverCardContent side={side} align={align} className="w-80 p-0">
-        <SourceCard source={source} number={number} />
-      </HoverCardContent>
-    </HoverCard>
+    <>
+      <HoverCard open={open} onOpenChange={setOpen}>
+        <HoverCardTrigger
+          ref={trigger}
+          {...(source.type === "url" && !coarse
+            ? { href: source.url, target: "_blank", rel: "noreferrer" }
+            : { render: <button type="button" /> })}
+          onPointerEnter={light}
+          onPointerLeave={dim}
+          onFocus={light}
+          onBlur={dim}
+          onClick={coarse ? () => setOpen(true) : view}
+          aria-haspopup={!coarse && view ? "dialog" : undefined}
+          data-lit={lit}
+          data-citation={citation}
+          aria-label={label}
+          className={className}
+        >
+          {children}
+        </HoverCardTrigger>
+        <HoverCardContent side={side} align={align} className="w-80 p-0">
+          <SourceCard source={source} number={number} onView={view} />
+        </HoverCardContent>
+      </HoverCard>
+      {organization && source.type === "file" && (
+        <PageView
+          source={source}
+          organization={organization}
+          origin={originOf(source)}
+          open={viewing}
+          onOpenChange={setViewing}
+          finalFocus={trigger}
+        />
+      )}
+    </>
   );
 }
 
-function SourceCard({ source, number }: { source: Source; number?: number }) {
+function SourceCard({
+  source,
+  number,
+  onView,
+}: {
+  source: Source;
+  number?: number;
+  onView?: () => void;
+}) {
   const quote = source.excerpt && plain(source.excerpt);
 
   return (
@@ -140,6 +179,16 @@ function SourceCard({ source, number }: { source: Source; number?: number }) {
             {source.url.replace(/^https?:\/\//, "")}
           </span>
         </a>
+      )}
+      {onView && (
+        <button
+          type="button"
+          onClick={onView}
+          className="flex cursor-pointer items-center gap-1 self-start text-xs text-muted-foreground outline-offset-2 outline-ring transition-colors hover:text-foreground focus-visible:outline-2"
+        >
+          <ScanSearchIcon className="size-3 shrink-0" />
+          View page
+        </button>
       )}
     </div>
   );

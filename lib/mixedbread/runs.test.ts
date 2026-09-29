@@ -80,7 +80,10 @@ test("citations are labelled across runs in order, and files learn their store",
     },
   ];
   const { findings, sources } = combine(
-    [{ label: "Organization 1" }, { label: "Web" }],
+    [
+      { label: "Organization 1", connection: connections[0] },
+      { label: "Web", connection: connections[0] },
+    ],
     results,
     labels(),
   );
@@ -89,12 +92,13 @@ test("citations are labelled across runs in order, and files learn their store",
     "### Organization 1\n\nLeave[S1] is 30 days.\n\n### Web\n\nIt [S2]is sunny.",
   );
   assert.deepEqual(
-    sources.map((source) => [
-      source.label,
-      source.type === "file" ? source.storeName : source.url,
-    ]),
+    sources.map((source) =>
+      source.type === "file"
+        ? [source.label, source.storeName, source.organizationId]
+        : [source.label, source.url],
+    ),
     [
-      ["S1", "HR"],
+      ["S1", "HR", "org-a"],
       ["S2", "https://example.com"],
     ],
   );
@@ -102,7 +106,7 @@ test("citations are labelled across runs in order, and files learn their store",
 
 test("a failed run says so, and a single run gets no heading", () => {
   const failed = combine(
-    [{ label: "Web" }],
+    [{ label: "Web", connection: connections[0] }],
     [{ status: "failed", message: "Mixedbread could not be reached." }],
     labels(),
   );

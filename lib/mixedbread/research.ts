@@ -64,6 +64,8 @@ export type Citation = { at: number; excerpt?: string } & (
       filename: string;
       chunkId: string;
       storeId: string;
+      /** The chunk is an image, such as a page of a visually parsed PDF. */
+      image?: true;
     }
 );
 
@@ -74,6 +76,7 @@ export type ResearchEvent =
 const resultSchema = z.object({
   chunk_id: z.string(),
   file_title: z.string().nullish(),
+  mime_type: z.string().nullish(),
   text: z.string().nullish(),
   ocr_text: z.string().nullish(),
   transcription: z.string().nullish(),
@@ -198,7 +201,7 @@ export async function* research(
 
   let text = "";
   const annotations: z.infer<typeof annotationSchema>[] = [];
-  const excerpts = new Map<string, string>();
+  const seen = new Map<string, { excerpt?: string; image: boolean }>();
   let finished = false;
   for await (const chunk of parseJsonEventStream({
     stream: response.body,
@@ -211,9 +214,11 @@ export async function* research(
       const chunks: string[] = [];
       for (const result of call.data.results ?? []) {
         chunks.push(result.chunk_id);
-        if (excerpts.has(result.chunk_id)) continue;
-        const excerpt = excerptOf(result);
-        if (excerpt) excerpts.set(result.chunk_id, excerpt);
+        if (seen.has(result.chunk_id)) continue;
+        seen.set(result.chunk_id, {
+          excerpt: excerptOf(result),
+          image: result.mime_type?.startsWith("image/") ?? false,
+        });
       }
       yield { type: "step", step: stepOf(call.data), chunks };
     }
@@ -247,8 +252,9 @@ export async function* research(
             chunkId: annotation.chunk_id,
             storeId: annotation.store_id,
           };
-    const excerpt = excerpts.get(annotation.chunk_id);
-    if (excerpt) citation.excerpt = excerpt;
+    const read = seen.get(annotation.chunk_id);
+    if (read?.excerpt) citation.excerpt = read.excerpt;
+    if (read?.image && citation.type === "file") citation.image = true;
     citations.push(citation);
   }
   yield { type: "answer", text, citations };

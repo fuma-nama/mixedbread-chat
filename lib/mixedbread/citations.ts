@@ -10,6 +10,12 @@ export type Source = { label: string; excerpt?: string } & (
       chunkId: string;
       storeId: string;
       storeName?: string;
+      /** Whose store it is, for showing its page. */
+      organizationId?: string;
+      /** A page or picture that can be shown. */
+      image?: true;
+      /** The sentence that cited it first, to find on its page. */
+      claim?: string;
     }
 );
 
@@ -29,31 +35,36 @@ export function labelCitations(
   const markers = new Map<number, string>();
 
   for (const citation of citations) {
+    const at = Math.min(Math.max(citation.at, 0), chars.length);
     const key = citation.type === "url" ? citation.url : citation.chunkId;
     let source = sources.get(key);
     if (!source) {
-      source =
-        citation.type === "url"
-          ? {
-              label: nextLabel(),
-              type: "url",
-              url: citation.url,
-              title: citation.title,
-            }
-          : {
-              label: nextLabel(),
-              type: "file",
-              fileId: citation.fileId,
-              filename: citation.filename,
-              chunkId: citation.chunkId,
-              storeId: citation.storeId,
-            };
+      if (citation.type === "url") {
+        source = {
+          label: nextLabel(),
+          type: "url",
+          url: citation.url,
+          title: citation.title,
+        };
+      } else {
+        source = {
+          label: nextLabel(),
+          type: "file",
+          fileId: citation.fileId,
+          filename: citation.filename,
+          chunkId: citation.chunkId,
+          storeId: citation.storeId,
+        };
+        if (citation.image) {
+          source.image = true;
+          source.claim = claimAt(chars, at);
+        }
+      }
       // A page cited at several chunks previews the first.
       if (citation.excerpt) source.excerpt = citation.excerpt;
       sources.set(key, source);
     }
 
-    const at = Math.min(Math.max(citation.at, 0), chars.length);
     const marker = `[${source.label}]`;
     const existing = markers.get(at) ?? "";
     if (!existing.includes(marker)) markers.set(at, existing + marker);
@@ -64,6 +75,17 @@ export function labelCitations(
     labelled += (markers.get(i) ?? "") + (chars[i] ?? "");
   }
   return { text: labelled, sources: Array.from(sources.values()) };
+}
+
+/** The sentence ending where a citation stands, at most a paragraph long. */
+function claimAt(chars: string[], at: number): string {
+  let end = at;
+  while (end > 0 && /[\s.!?]/.test(chars[end - 1])) end--;
+  let start = end;
+  while (start > end - 400 && start > 0 && !/[.!?\n]/.test(chars[start - 1])) {
+    start--;
+  }
+  return chars.slice(start, end).join("").trim();
 }
 
 export function sourceTitle(source: Source): string {

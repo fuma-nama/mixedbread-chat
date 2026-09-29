@@ -289,7 +289,7 @@ function SourceRow({ source, index }: { source: Source; index: number }) {
       <SourcePreview
         source={source}
         align="start"
-        className="group/source flex h-6.5 w-full min-w-0 items-center gap-2 rounded-md text-left text-[12.5px] outline-offset-0 outline-ring focus-visible:outline-2"
+        className="group/source flex h-6.5 w-full min-w-0 items-center gap-2 rounded-md text-left text-[12.5px] outline-offset-0 outline-ring focus-visible:outline-2 aria-[haspopup=dialog]:cursor-pointer"
       >
         <SliceGlyph
           className="size-3 text-berry motion-safe:animate-settle"

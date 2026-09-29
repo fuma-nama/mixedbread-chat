@@ -52,7 +52,7 @@ export type RunResult =
  * several. `nextLabel` continues the conversation's labels.
  */
 export function combine(
-  runs: { label: string }[],
+  runs: { label: string; connection: { organizationId: string } }[],
   results: RunResult[],
   nextLabel: () => string,
 ): { findings: string; sources: Source[] } {
@@ -72,6 +72,7 @@ export function combine(
         if (source.type === "file") {
           const name = result.storeNames.get(source.storeId);
           if (name) source.storeName = name;
+          source.organizationId = run.connection.organizationId;
         }
         sources.push(source);
       }

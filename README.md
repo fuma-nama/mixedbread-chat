@@ -11,7 +11,8 @@ A ChatGPT-style chat template that answers from your documents and the web, with
 - Chat history with titles, search, rename, delete and share links
 - Edit a message or retry an answer, then flip between versions
 - Every tool-calling model on [AI Gateway](https://vercel.com/ai-gateway), each with the thinking efforts it takes, or Toast 1 answering straight from your sources
-- Citations preview the passage they quote, and sharing a chat says when it quotes your stores
+- Citations preview the passage they quote, and a cited PDF page opens with that passage marked
+- Sharing a chat says when it quotes your stores
 - Reasoning, code highlighting and math
 
 ## How it works
@@ -62,13 +63,14 @@ Create a store in the [Mixedbread platform](https://platform.mixedbread.com), th
 
 Everything that depends on Mixedbread's API lives in `lib/mixedbread/`, so upstream changes stay there:
 
-| File               | Owns                                                       |
-| ------------------ | ---------------------------------------------------------- |
-| `platform.ts`      | OAuth provider, scopes and what a token says               |
-| `organizations.ts` | Connected organizations, their tokens and stores           |
-| `research.ts`      | The Toast request, and its stream parsed into app types    |
-| `citations.ts`     | Citation labels                                            |
-| `runs.ts`          | Splitting a search into runs per organization, and merging |
+| File               | Owns                                                         |
+| ------------------ | ------------------------------------------------------------ |
+| `platform.ts`      | OAuth provider, scopes and what a token says                 |
+| `organizations.ts` | Connected organizations, their tokens and stores             |
+| `research.ts`      | The Toast request, and its stream parsed into app types      |
+| `citations.ts`     | Citation labels                                              |
+| `files.ts`         | Pages of parsed files, for showing what a citation points at |
+| `runs.ts`          | Splitting a search into runs per organization, and merging   |
 
 After changing `lib/db/schema.ts`, run `pnpm db:generate` to add a migration.
 

@@ -40,6 +40,7 @@ test("normalizes steps, skips unknown shapes, and cites what Toast read", async 
               {
                 chunk_id: "a",
                 file_title: "Leave policy",
+                mime_type: "image/jpeg",
                 text: "Leave policy\n\n[truncated: chunk payload shortened]…take 30 days…[truncated: chunk payload shortened]a year.",
               },
               { chunk_id: "b", ocr_text: `${"word ".repeat(150)}end` },
@@ -107,6 +108,7 @@ test("normalizes steps, skips unknown shapes, and cites what Toast read", async 
           filename: "hr.pdf",
           chunkId: "a",
           storeId: "s",
+          image: true,
           excerpt: "…take 30 days…a year.",
         },
         {

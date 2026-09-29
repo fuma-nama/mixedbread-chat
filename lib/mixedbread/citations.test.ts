@@ -56,6 +56,30 @@ test("marks every citation and labels each cited page or chunk once", () => {
   ]);
 });
 
+test("an image keeps the sentence citing it, to find on its page", () => {
+  const text = "Leave is short. Staff get 30 days of paid leave. Next.";
+  const { sources } = labelCitations(
+    text,
+    [
+      {
+        type: "file",
+        at: text.indexOf(" Next"),
+        fileId: "file",
+        filename: "handbook.pdf",
+        chunkId: "file:4",
+        storeId: "store",
+        image: true,
+      },
+    ],
+    labels(),
+  );
+
+  assert.equal(
+    sources[0].type === "file" && sources[0].claim,
+    "Staff get 30 days of paid leave",
+  );
+});
+
 test("counts offsets in code points", () => {
   const { text } = labelCitations(
     "👋 hi",

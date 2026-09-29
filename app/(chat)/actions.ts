@@ -3,10 +3,14 @@
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
 import * as queries from "@/lib/db/queries";
+import { highlight } from "@/lib/highlight";
+import { fetchPage, type Page } from "@/lib/mixedbread/files";
 import {
+  clientFor,
   disconnect,
   listConnections,
   listStores,
+  needsReconnect,
 } from "@/lib/mixedbread/organizations";
 import type { StoresResult } from "@/lib/sources";
 
@@ -40,6 +44,42 @@ export async function listAllStores(): Promise<Record<string, StoresResult>> {
     byOrganization[connections[i].organizationId] = results[i];
   }
   return byOrganization;
+}
+
+export type PageResult =
+  | { status: "ok"; page: Page; marked: number[] }
+  | { status: "reconnect" }
+  /** The chunk isn't a page, or the viewer can't reach its organization. */
+  | { status: "missing" }
+  | { status: "error" };
+
+const citedPageSchema = z.object({
+  organizationId: z.string(),
+  storeId: z.string(),
+  chunkId: z.string(),
+  claim: z.string().max(2000).optional(),
+});
+
+/** A cited page, with the viewer's own access, and the blocks its claim stands for. */
+export async function openPage(
+  cited: z.input<typeof citedPageSchema>,
+): Promise<PageResult> {
+  const user = await currentUser();
+  const { organizationId, storeId, chunkId, claim } =
+    citedPageSchema.parse(cited);
+  for (const connection of await listConnections(user.id)) {
+    if (connection.organizationId !== organizationId) continue;
+    try {
+      const client = await clientFor(user.id, connection);
+      const page = await fetchPage(client, storeId, chunkId);
+      if (!page) return { status: "missing" };
+      const marked = claim ? highlight(claim, page.blocks) : [];
+      return { status: "ok", page, marked };
+    } catch (error) {
+      return { status: needsReconnect(error) ? "reconnect" : "error" };
+    }
+  }
+  return { status: "missing" };
 }
 
 export async function disconnectOrganization(organizationId: string) {
