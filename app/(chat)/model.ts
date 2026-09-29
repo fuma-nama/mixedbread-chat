@@ -1,12 +1,6 @@
 import { cookies } from "next/headers";
 import { defaultModel, listModels } from "@/lib/models";
 import { defaultReasoning, isReasoning, type Reasoning } from "@/lib/reasoning";
-import { parseSelection, SELECTION_COOKIE } from "@/lib/sources";
-
-/** The sources picked last, remembered in a cookie by their picker. */
-export async function selectedSources() {
-  return parseSelection((await cookies()).get(SELECTION_COOKIE)?.value);
-}
 
 /** The model picked last, remembered in a cookie by the model picker. */
 export async function selectedModel(): Promise<string> {

@@ -12,18 +12,17 @@ import {
 import { getSession } from "@/lib/auth";
 import { getChats } from "@/lib/db/queries";
 import { listModels } from "@/lib/models";
+import { parseSelection, SELECTION_COOKIE } from "@/lib/sources";
 import { getViewer } from "@/lib/viewer";
-import { selectedSources } from "./model";
 
 export default async function ChatLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [viewer, cookieStore, selection, models, chats] = await Promise.all([
+  const [viewer, cookieStore, models, chats] = await Promise.all([
     getViewer(),
     cookies(),
-    selectedSources(),
     listModels(),
     // Chats need only the session, not the viewer's connections.
     getSession().then((session) => (session ? getChats(session.user.id) : [])),
@@ -36,7 +35,9 @@ export default async function ChatLayout({
       <ChatsProvider initialChats={viewer ? chats : []}>
         <SourcesProvider
           organizations={viewer?.organizations ?? []}
-          initialSelection={selection}
+          initialSelection={parseSelection(
+            cookieStore.get(SELECTION_COOKIE)?.value,
+          )}
         >
           <ModelsProvider models={models}>
             <SearchChats>
