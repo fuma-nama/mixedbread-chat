@@ -10,7 +10,7 @@ import { Logo } from "@/components/brand/logo";
 import { Kbd, KbdGroup, ModKey } from "@/components/ui/kbd";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useWindowEvent } from "@/hooks/use-window-event";
-import { AccountMenu } from "./account-menu";
+import { AccountMenu, type User } from "./account-menu";
 import { Chats } from "./chats";
 import { HoverArea } from "./hover-area";
 import { useOpenSearch } from "./search-chats";
@@ -21,7 +21,7 @@ export function AppSidebar({
   timeZone,
 }: {
   /** Undefined when signed out, as on someone else's shared chat. */
-  user?: { name: string; email: string; image?: string | null };
+  user?: User;
   /** When the server rendered, so both sides group chats by the same day. */
   now: number;
   timeZone: string;
