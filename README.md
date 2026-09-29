@@ -2,7 +2,7 @@
 
 A ChatGPT-style chat template that answers from your documents and the web, with citations. Built with Next.js, the [AI SDK](https://ai-sdk.dev), [shadcn/ui](https://ui.shadcn.com) on Base UI, and [Mixedbread](https://www.mixedbread.com).
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmixedbread-ai%2Fmixedbread-chat&env=MXBAI_CLIENT_ID%2CBETTER_AUTH_SECRET&envDescription=Your%20Mixedbread%20OAuth%20client%20ID%2C%20and%20a%20random%20string%20for%20signing%20sessions&envLink=https%3A%2F%2Fgithub.com%2Fmixedbread-ai%2Fmixedbread-chat%23deploy&products=%5B%7B%22type%22%3A%22integration%22%2C%22protocol%22%3A%22storage%22%2C%22productSlug%22%3A%22neon%22%2C%22integrationSlug%22%3A%22neon%22%7D%5D)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmixedbread-ai%2Fmixedbread-chat&env=BETTER_AUTH_SECRET&envDescription=A%20random%20string%20for%20signing%20sessions&envLink=https%3A%2F%2Fgithub.com%2Fmixedbread-ai%2Fmixedbread-chat%23deploy&products=%5B%7B%22type%22%3A%22integration%22%2C%22protocol%22%3A%22storage%22%2C%22productSlug%22%3A%22neon%22%2C%22integrationSlug%22%3A%22neon%22%7D%5D)
 
 ## Features
 
@@ -33,13 +33,11 @@ pnpm dev
 
 ## Deploy
 
-The Deploy button creates a Neon Postgres database and asks for `MXBAI_CLIENT_ID` and `BETTER_AUTH_SECRET`. Register the client for the address the app will live at first:
+The Deploy button creates a Neon Postgres database and asks for `BETTER_AUTH_SECRET`. Every build runs the migrations, then registers the app with Mixedbread for the address it deploys to. The client is kept in the database, so later builds reuse it and connected organizations keep working.
 
-```bash
-pnpm mixedbread:register https://your-app.vercel.app
-```
-
-Migrations run on every build. On a custom domain, also set `BETTER_AUTH_URL`.
+- Preview deployments get a client of their own.
+- On a custom domain, set `BETTER_AUTH_URL`.
+- To bring your own client, set `MXBAI_CLIENT_ID`, and the build registers nothing.
 
 ## Search your own data
 
@@ -47,17 +45,17 @@ Create a store in the [Mixedbread platform](https://platform.mixedbread.com), th
 
 ## Customize
 
-| What                                  | Where                                     |
-| ------------------------------------- | ----------------------------------------- |
-| Chat models and system prompt         | `lib/models.ts`, `app/api/chat/route.ts`  |
-| Daily limits                          | `lib/limits.ts`                           |
-| Suggested questions on a new chat     | `lib/suggestions.ts`                      |
-| The search tool and what it can reach | `lib/search-tool.ts`, `lib/sources.ts`    |
-| Sign-in                               | `lib/auth.ts`                             |
-| Database schema and queries           | `lib/db/`                                 |
-| Chat UI and sidebar                   | `components/chat/`, `components/sidebar/` |
-| Primitives and theme                  | `components/ui/` and `app/globals.css`    |
-| Logo, halftone mark and bakery icons  | `components/brand/`                       |
+| What                                  | Where                                       |
+| ------------------------------------- | ------------------------------------------- |
+| Chat models and system prompt         | `lib/models.ts`, `app/api/chat/route.ts`    |
+| Daily limits                          | `lib/limits.ts`                             |
+| Suggested questions on a new chat     | `lib/suggestions.ts`                        |
+| The search tool and what it can reach | `lib/search-tool.ts`, `lib/sources.ts`      |
+| Sign-in and OAuth client registration | `lib/auth.ts`, `scripts/register-client.ts` |
+| Database schema and queries           | `lib/db/`                                   |
+| Chat UI and sidebar                   | `components/chat/`, `components/sidebar/`   |
+| Primitives and theme                  | `components/ui/` and `app/globals.css`      |
+| Logo, halftone mark and bakery icons  | `components/brand/`                         |
 
 Everything that depends on Mixedbread's API lives in `lib/mixedbread/`, so upstream changes stay there:
 

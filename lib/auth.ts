@@ -13,7 +13,7 @@ import {
   SCOPES,
 } from "./mixedbread/platform";
 
-/** Created with `pnpm mixedbread:register`. */
+/** Set by hand, or registered by the build: see `scripts/register-client.ts`. */
 export const clientId = process.env.MXBAI_CLIENT_ID;
 
 export const auth = betterAuth({

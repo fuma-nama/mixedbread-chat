@@ -42,3 +42,10 @@ export const message = pgTable(
     index("message_chatId_createdAt_idx").on(table.chatId, table.createdAt),
   ],
 );
+
+/** OAuth clients the build registered with Mixedbread, see `scripts/register-client.ts`. */
+export const oauthClient = pgTable("oauth_client", {
+  /** The callback URLs the client allows, space separated. */
+  redirectUris: text("redirect_uris").primaryKey(),
+  clientId: text("client_id").notNull(),
+});

@@ -15,6 +15,13 @@
       "when": 1790674213512,
       "tag": "0001_drop_guests",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790681977078,
+      "tag": "0002_oauth_clients",
+      "breakpoints": true
     }
   ]
 }
