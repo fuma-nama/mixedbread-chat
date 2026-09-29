@@ -412,7 +412,9 @@ function StepList({ steps, folded }: { steps: Step[]; folded: boolean }) {
   const counts = new Map<Step["kind"], number>();
   let failed = 0;
   for (const step of steps) {
-    counts.set(step.kind, (counts.get(step.kind) ?? 0) + 1);
+    // Steps saved before they had kinds count as plain steps.
+    const kind = step.kind in nouns ? step.kind : "other";
+    counts.set(kind, (counts.get(kind) ?? 0) + 1);
     if (step.status === "failed") failed++;
   }
   let summary = "";
