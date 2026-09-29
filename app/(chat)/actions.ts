@@ -6,10 +6,11 @@ import * as queries from "@/lib/db/queries";
 import { highlight } from "@/lib/highlight";
 import { fetchPage, type Page } from "@/lib/mixedbread/files";
 import {
+  type Connection,
   clientFor,
   disconnect,
+  fetchStores,
   listConnections,
-  listStores,
   needsReconnect,
 } from "@/lib/mixedbread/organizations";
 import type { StoresResult } from "@/lib/sources";
@@ -18,6 +19,21 @@ async function currentUserId() {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
   return session.user.id;
+}
+
+async function listStores(
+  userId: string,
+  connection: Connection,
+): Promise<StoresResult> {
+  try {
+    return {
+      status: "ok",
+      stores: await fetchStores(await clientFor(userId, connection)),
+    };
+  } catch (error) {
+    if (needsReconnect(error)) return { status: "reconnect" };
+    return { status: "error", message: "Couldn’t load the stores." };
+  }
 }
 
 export async function listOrganizationStores(

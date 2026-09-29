@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { auth } from "../auth";
 import { db } from "../db";
 import { account } from "../db/schema";
-import { MAX_STORES, type StoreOption, type StoresResult } from "../sources";
+import { MAX_STORES, type StoreOption } from "../sources";
 import { organizationOfKey, PROVIDER_ID } from "./platform";
 
 /** A grant to one organization, stored as a Better Auth account. */
@@ -123,19 +123,4 @@ export async function fetchStores(client: Mixedbread): Promise<StoreOption[]> {
     });
   }
   return stores.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-}
-
-export async function listStores(
-  userId: string,
-  connection: Connection,
-): Promise<StoresResult> {
-  try {
-    return {
-      status: "ok",
-      stores: await fetchStores(await clientFor(userId, connection)),
-    };
-  } catch (error) {
-    if (needsReconnect(error)) return { status: "reconnect" };
-    return { status: "error", message: "Couldn’t load the stores." };
-  }
 }
