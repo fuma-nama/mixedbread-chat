@@ -38,6 +38,10 @@ export function Chats({
   // Where focus lands once the chats around it are deleted.
   const landing = useRef<HTMLElement>(null);
   const area = useRef<HTMLDivElement>(null);
+  const askToDelete = useCallback((targets: ChatSummary[]) => {
+    landing.current = null;
+    setDeleting(targets);
+  }, []);
   const { selected } = selection;
   const selecting = selected.length > 0;
 
@@ -82,7 +86,7 @@ export function Chats({
   }
 
   function onKeyDown(event: React.KeyboardEvent) {
-    // Menus and dialogs opened from here are portaled, yet their keys bubble here.
+    // Keys from the menus and dialogs opened here bubble here past their portals.
     if (
       event.target instanceof HTMLInputElement ||
       !event.currentTarget.contains(event.target as Node)
@@ -108,11 +112,6 @@ export function Chats({
       askToDelete(selected);
     }
   }
-
-  const askToDelete = useCallback((targets: ChatSummary[]) => {
-    landing.current = null;
-    setDeleting(targets);
-  }, []);
 
   async function deleteForGood(targets: ChatSummary[]) {
     setDeleting(undefined);
