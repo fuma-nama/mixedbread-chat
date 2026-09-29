@@ -17,11 +17,7 @@ export function Sources({
   if (citations.size === 0) return null;
 
   return (
-    <ol
-      aria-label="Sources"
-      data-card-group=""
-      className="flex flex-wrap gap-1.5"
-    >
+    <ol aria-label="Sources" className="flex flex-wrap gap-1.5">
       {Array.from(citations.values(), ({ number, source }, index) => (
         <li
           key={source.label}

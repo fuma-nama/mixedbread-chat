@@ -146,7 +146,6 @@ const Card = memo(function Card({ cards }: { cards: Cards }) {
  * hover, uses the links on it.
  */
 function CardContent({ preview, cards }: { preview?: Preview; cards: Cards }) {
-  const anchor = useMemo(() => preview && around(preview.id), [preview]);
   const source = preview?.source;
   const organization = preview?.organization;
 
@@ -154,7 +153,6 @@ function CardContent({ preview, cards }: { preview?: Preview; cards: Cards }) {
     <HoverCardContent
       side={preview?.side}
       align={preview?.align}
-      anchor={anchor}
       className="pointer-events-none w-80 p-0 pointer-coarse:[&_:is(a,button)]:pointer-events-auto"
     >
       <HoverCardViewport>
@@ -177,30 +175,6 @@ function CardContent({ preview, cards }: { preview?: Preview; cards: Cards }) {
       </HoverCardViewport>
     </HoverCardContent>
   );
-}
-
-// Where an inline citation sits; the lists of sources mark themselves.
-const BLOCKS = "p, li, tr, h1, h2, h3, h4, h5, h6, blockquote";
-
-/**
- * Where the card goes: along the trigger, above or below the group it sits
- * in (its list, row of chips or paragraph), so the triggers next to it stay
- * in view. A group too tall to clear leaves just the trigger.
- */
-function around(id: string) {
-  const trigger = document.getElementById(id);
-  if (!trigger) return undefined;
-  const group =
-    trigger.closest("[data-card-group]") ?? trigger.closest(BLOCKS) ?? trigger;
-  return {
-    contextElement: trigger,
-    getBoundingClientRect() {
-      const own = trigger.getBoundingClientRect();
-      const all = group.getBoundingClientRect();
-      if (all.height > innerHeight / 2) return own;
-      return new DOMRect(own.x, all.y, own.width, all.height);
-    },
-  };
 }
 
 const PageViews = memo(function PageViews({ cards }: { cards: Cards }) {
