@@ -27,22 +27,22 @@ import { scopeOf, sourceSelectionSchema } from "@/lib/sources";
 import { toastModel } from "@/lib/toast-model";
 import { getViewer } from "@/lib/viewer";
 
+const id = z.string().max(100);
+
 const requestSchema = z.object({
-  id: z.string(),
+  id,
   /** The user message to answer: a new one, or a saved one on a retry. */
   message: z.object({
-    id: z.string(),
+    id,
     role: z.literal("user"),
-    parts: z
-      .array(
-        z.object({
-          type: z.literal("text"),
-          text: z.string().min(1).max(20_000),
-        }),
-      )
-      .min(1),
+    parts: z.tuple([
+      z.object({
+        type: z.literal("text"),
+        text: z.string().min(1).max(20_000),
+      }),
+    ]),
   }),
-  parentId: z.string().nullable(),
+  parentId: id.nullable(),
   model: z.string(),
   reasoning: z.custom<Reasoning>(isReasoning),
   /** What the picker says to search. */
@@ -74,8 +74,7 @@ export async function POST(request: Request) {
 
   let naming: Promise<string | undefined> | undefined;
   if (!chat) {
-    let text = "";
-    for (const part of message.parts) text += (text && "\n") + part.text;
+    const [{ text }] = message.parts;
     const title = text.split("\n", 1)[0].slice(0, 80);
     await createChat({ id, userId: user.id, title });
     naming = nameChat(id, user.id, text);
