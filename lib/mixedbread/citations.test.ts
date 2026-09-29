@@ -23,6 +23,7 @@ test("marks every citation and labels each cited page or chunk once", () => {
       fileId: "file",
       filename: "report.pdf",
       chunkId: "file:2",
+      chunkIndex: 2,
       storeId: "store",
     },
     {
@@ -51,6 +52,7 @@ test("marks every citation and labels each cited page or chunk once", () => {
       fileId: "file",
       filename: "report.pdf",
       chunkId: "file:2",
+      chunkIndex: 2,
       storeId: "store",
     },
   ]);
@@ -67,6 +69,7 @@ test("an image keeps the sentence citing it, to find on its page", () => {
         fileId: "file",
         filename: "handbook.pdf",
         chunkId: "file:4",
+        chunkIndex: 4,
         storeId: "store",
         image: true,
       },

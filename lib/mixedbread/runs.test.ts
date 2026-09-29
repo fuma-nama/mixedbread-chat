@@ -57,6 +57,7 @@ test("citations are labelled across runs in order, and files learn their store",
     fileId: "file-1",
     filename: "handbook.pdf",
     chunkId: "file-1:0",
+    chunkIndex: 0,
     storeId: "store-1",
   };
   const web: Citation = {

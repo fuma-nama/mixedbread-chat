@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { auth } from "../auth";
 import { db } from "../db";
 import { account } from "../db/schema";
-import type { StoreOption, StoresResult } from "../sources";
+import { MAX_STORES, type StoreOption, type StoresResult } from "../sources";
 import { organizationOfKey, PROVIDER_ID } from "./platform";
 
 /** A grant to one organization, stored as a Better Auth account. */
@@ -113,7 +113,7 @@ export async function clientFor(
 
 /** The first page of an organization's stores, most recently changed first. */
 export async function fetchStores(client: Mixedbread): Promise<StoreOption[]> {
-  const page = await client.stores.list({ limit: 100 });
+  const page = await client.stores.list({ limit: MAX_STORES });
   const stores: StoreOption[] = [];
   for (const store of page.data) {
     stores.push({

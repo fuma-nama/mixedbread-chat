@@ -56,12 +56,14 @@ export function scopeOf(
   return docs ? "docs" : "none";
 }
 
+/** The stores of an organization the picker lists: the first page. */
+export const MAX_STORES = 100;
+
 export const sourceSelectionSchema = z.object({
   web: z.boolean(),
   organizations: z.record(
     z.string().max(100),
-    // Bounded so the selection cookie stays well under 4 KB.
-    z.union([z.literal("all"), z.array(z.string().max(100)).max(60)]),
+    z.union([z.literal("all"), z.array(z.string().max(100)).max(MAX_STORES)]),
   ),
 });
 

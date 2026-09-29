@@ -8,7 +8,7 @@ const CITATION = /\]\(#(S\d+)\)/g;
 const CITATION_LINK = /\[[^\]]*\]\(#(S\d+)\)/g;
 
 /** What the message's finished searches found. */
-function* sourcesOf(message: ChatMessage): Generator<Source> {
+export function* sourcesOf(message: ChatMessage): Generator<Source> {
   for (const part of message.parts) {
     if (
       part.type === "tool-search" &&

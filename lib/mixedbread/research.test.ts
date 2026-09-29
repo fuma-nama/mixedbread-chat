@@ -38,7 +38,7 @@ test("normalizes steps, skips unknown shapes, and cites what Toast read", async 
             store: "mixedbread/web",
             results: [
               {
-                chunk_id: "a",
+                chunk_id: "f:3",
                 file_title: "Leave policy",
                 mime_type: "image/jpeg",
                 text: "Leave policy\n\n[truncated: chunk payload shortened]…take 30 days…[truncated: chunk payload shortened]a year.",
@@ -61,7 +61,7 @@ test("normalizes steps, skips unknown shapes, and cites what Toast read", async 
                   file_id: "f",
                   filename: "hr.pdf",
                   index: 0,
-                  chunk_id: "a",
+                  chunk_id: "f:3",
                   store_id: "s",
                 },
                 {
@@ -90,7 +90,7 @@ test("normalizes steps, skips unknown shapes, and cites what Toast read", async 
         queries: ["leave"],
         results: 2,
       },
-      chunks: ["a", "b"],
+      chunks: ["f:3", "b"],
     },
     {
       type: "step",
@@ -106,7 +106,8 @@ test("normalizes steps, skips unknown shapes, and cites what Toast read", async 
           at: 0,
           fileId: "f",
           filename: "hr.pdf",
-          chunkId: "a",
+          chunkId: "f:3",
+          chunkIndex: 3,
           storeId: "s",
           image: true,
           excerpt: "…take 30 days…a year.",

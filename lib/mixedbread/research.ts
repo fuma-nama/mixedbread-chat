@@ -2,6 +2,7 @@ import type { Mixedbread } from "@mixedbread/sdk";
 import type { ChatCreateCompletionParams } from "@mixedbread/sdk/resources/chat";
 import { parseJsonEventStream } from "ai";
 import { z } from "zod";
+import { splitChunkId } from "./files.ts";
 
 const WEB_STORE = "mixedbread/web";
 
@@ -63,6 +64,8 @@ export type Citation = { at: number; excerpt?: string } & (
       fileId: string;
       filename: string;
       chunkId: string;
+      /** Its place in the file, from 0: for a visually parsed PDF, its page. */
+      chunkIndex: number;
       storeId: string;
       /** The chunk is an image, such as a page of a visually parsed PDF. */
       image?: true;
@@ -235,6 +238,7 @@ export async function* research(
             fileId: annotation.file_id,
             filename: annotation.filename,
             chunkId: annotation.chunk_id,
+            chunkIndex: splitChunkId(annotation.chunk_id)[1],
             storeId: annotation.store_id,
           };
     const read = seen.get(annotation.chunk_id);
