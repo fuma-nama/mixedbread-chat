@@ -13,9 +13,12 @@ import { TypedText } from "@/components/ui/typed-text";
 
 export function ChatHeader({
   title,
+  readonly,
   share,
 }: {
   title?: string;
+  /** Someone else's shared chat. */
+  readonly?: boolean;
   share?: React.ReactNode;
 }) {
   return (
@@ -32,6 +35,11 @@ export function ChatHeader({
           </span>
         )}
       </p>
+      {readonly && (
+        <span className="shrink-0 rounded-md bg-soft px-1.5 py-0.5 text-[11.5px] font-medium text-muted-foreground">
+          Read-only
+        </span>
+      )}
       <div className="ml-auto flex items-center gap-0.5">
         {share && (
           <span className="flex motion-safe:animate-fade motion-safe:[animation-duration:400ms]">

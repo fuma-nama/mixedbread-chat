@@ -72,7 +72,7 @@ export const ReasoningPicker = memo(function ReasoningPicker({
             </TooltipTrigger>
             <TooltipContent>Thinking effort</TooltipContent>
           </Tooltip>
-          <DropdownMenuContent side="top" sideOffset={8}>
+          <DropdownMenuContent side="top" sideOffset={8} className="w-64">
             <DropdownMenuRadioGroup
               value={value}
               onValueChange={(id) => {
@@ -96,7 +96,12 @@ export const ReasoningPicker = memo(function ReasoningPicker({
                       closeOnClick
                     >
                       <Dial level={level.id} />
-                      {level.name}
+                      <span className="flex flex-col">
+                        {level.name}
+                        <span className="text-xs text-muted-foreground">
+                          {level.description}
+                        </span>
+                      </span>
                     </DropdownMenuRadioItem>
                   ),
               )}

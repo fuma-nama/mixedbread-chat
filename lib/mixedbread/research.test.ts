@@ -90,10 +90,12 @@ test("normalizes steps, skips unknown shapes, and cites what Toast read", async 
         queries: ["leave"],
         results: 2,
       },
+      chunks: ["f:3", "b"],
     },
     {
       type: "step",
       step: { id: "2", kind: "other", status: "running", tool: "rerank_call" },
+      chunks: [],
     },
     {
       type: "answer",

@@ -65,7 +65,7 @@ test("lists tool-calling language models, featured first, with the efforts they 
     {
       id: "mixedbread/toast-1",
       name: "Toast 1",
-      provider: "mixedbread",
+      provider: "Mixedbread",
       featured: true,
       efforts: [],
       toast: true,
@@ -73,14 +73,14 @@ test("lists tool-calling language models, featured first, with the efforts they 
     {
       id: "anthropic/claude-fable-5.1",
       name: "Claude Fable 5.1",
-      provider: "anthropic",
+      provider: "Anthropic",
       featured: true,
       efforts: [],
     },
     {
       id: "anthropic/claude-sonnet-5",
       name: "Claude Sonnet 5",
-      provider: "anthropic",
+      provider: "Anthropic",
       featured: true,
       efforts: ["none", "low", "high", "xhigh"],
     },

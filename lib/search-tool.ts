@@ -24,6 +24,8 @@ export type SearchOutput =
       calls: Step[];
       findings: string;
       sources: Source[];
+      /** Distinct chunks the steps returned. */
+      read: number;
       ms: number;
     };
 
@@ -41,7 +43,7 @@ interface SearchContext {
 }
 
 type RunEvent =
-  | { type: "step"; step: Step }
+  | { type: "step"; step: Step; chunks: string[] }
   | { type: "end"; result: RunResult };
 
 /** One Toast run; it reports how it ended instead of throwing, unless aborted. */
@@ -125,6 +127,7 @@ export function searchTool(context: SearchContext) {
       const started = Date.now();
       const several = runs.length > 1;
       const steps = new Map<string, Step>();
+      const read = new Set<string>();
       const results: RunResult[] = [];
 
       const turns: Turn[] = context.toast
@@ -140,6 +143,7 @@ export function searchTool(context: SearchContext) {
         }
         if (several) value.step.group = runs[index].label;
         steps.set(value.step.id, value.step);
+        for (const chunk of value.chunks) read.add(chunk);
         yield { status: "searching", calls: Array.from(steps.values()) };
       }
 
@@ -153,6 +157,7 @@ export function searchTool(context: SearchContext) {
         calls: Array.from(steps.values()),
         findings: findings || "No sources are picked, so nothing was searched.",
         sources,
+        read: read.size,
         ms: Date.now() - started,
       };
     },

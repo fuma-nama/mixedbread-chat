@@ -14,6 +14,7 @@ import { childrenOf, latestLeaf, pathTo, withPath } from "@/lib/branches";
 import { citationsAlong } from "@/lib/messages";
 import type { Reasoning } from "@/lib/reasoning";
 import type { ChatMessage } from "@/lib/search-tool";
+import type { SearchScope } from "@/lib/sources";
 import { ChatHeader } from "./chat-header";
 import { Composer, type ComposerHandle } from "./composer";
 import { Conversation } from "./conversation";
@@ -27,6 +28,13 @@ import { useSearchScope, useSources } from "./sources-provider";
 
 /** A message with its place in the chat's branch tree. */
 export type TreeMessage = ChatMessage & { parentId: string | null };
+
+const placeholders: Record<SearchScope, string> = {
+  web: "Ask anything",
+  docs: "Ask about your stores",
+  both: "Ask your stores or the web",
+  none: "Ask anything",
+};
 
 const transport = new DefaultChatTransport<ChatMessage>({
   // New messages and retries both end with the user message to answer.
@@ -324,6 +332,7 @@ export function Chat({
     <div ref={frameRef} className="relative flex min-h-0 flex-1 flex-col">
       <ChatHeader
         title={empty ? undefined : title}
+        readonly={readonly}
         share={
           !readonly &&
           !empty && (
@@ -419,9 +428,10 @@ export function Chat({
               onReasoningChange={setReasoning}
               onSubmit={send}
               onStop={() => void stop()}
+              placeholder={empty ? placeholders[scope] : "Ask a follow-up"}
               blocked={
                 current?.toast && scope === "none"
-                  ? "Pick a source for Toast"
+                  ? "Pick a source for Toast to answer from"
                   : undefined
               }
               inviting={empty}

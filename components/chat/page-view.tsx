@@ -4,10 +4,12 @@ import { cn } from "cn";
 import { ArrowUpRightIcon } from "lucide-react";
 import { Suspense, use, useRef, useState } from "react";
 import { openPage, type PageResult } from "@/app/(chat)/actions";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { SliceGlyph } from "@/components/brand/slice";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -51,12 +53,14 @@ const frame = "h-[min(60vh,40rem)] rounded-lg bg-soft";
 export function PageView({
   source,
   organization,
+  origin,
   open,
   onOpenChange,
   finalFocus,
 }: {
   source: FileSource;
   organization: Organization;
+  origin: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Where focus goes back to once it closes. */
@@ -67,15 +71,30 @@ export function PageView({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent finalFocus={finalFocus} className="max-w-xl gap-4">
-        {/* Room for the original's link beside Close. */}
-        <DialogHeader className="pr-16">
+        <DialogHeader>
+          <p className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+            <SliceGlyph className="size-3 text-berry" />
+            <span className="truncate font-mono">{origin}</span>
+          </p>
           <DialogTitle className="truncate">{source.filename}</DialogTitle>
+          {source.claim && (
+            <DialogDescription className="line-clamp-2">
+              Cited for “{source.claim}”
+            </DialogDescription>
+          )}
         </DialogHeader>
         <Suspense
           fallback={
-            <div className={cn(frame, "flex items-center justify-center")}>
-              <Spinner className="text-muted-foreground" />
-            </div>
+            <p
+              role="status"
+              className={cn(
+                frame,
+                "flex items-center justify-center gap-2 text-[13px] text-muted-foreground",
+              )}
+            >
+              <Spinner aria-hidden="true" className="size-3.5" />
+              Loading the page…
+            </p>
           }
         >
           <PageBody
@@ -121,7 +140,7 @@ function PageBody({
   return (
     <div className={notice}>
       {page.status === "missing"
-        ? "This page is no longer available."
+        ? "This page isn’t available anymore."
         : "Couldn’t load the page."}
       {page.status === "error" && (
         <Button variant="outline" size="sm" onClick={onRetry}>
@@ -137,10 +156,9 @@ function Reconnect({ organization }: { organization: Organization }) {
 
   return (
     <div className={notice}>
-      Access to {organization.name} ended.
+      Access to {organization.name} ended. Sign in again to see this page.
       <Button variant="outline" size="sm" disabled={pending} onClick={connect}>
-        {pending && <Spinner aria-hidden="true" />}
-        Reconnect
+        {pending ? "Opening Mixedbread…" : "Sign in again"}
       </Button>
     </div>
   );
@@ -223,15 +241,10 @@ function PageImage({
         href={page.original}
         target="_blank"
         rel="noreferrer"
-        aria-label="Open original"
-        className={buttonVariants({
-          variant: "ghost",
-          size: "icon-xs",
-          className:
-            "absolute top-3.5 right-11.5 text-muted-foreground motion-safe:animate-fade",
-        })}
+        className="flex items-center gap-1 self-start text-xs text-muted-foreground outline-offset-2 outline-ring transition-colors hover:text-foreground focus-visible:outline-2"
       >
-        <ArrowUpRightIcon />
+        <ArrowUpRightIcon className="size-3 shrink-0" />
+        Open original
       </a>
     </>
   );

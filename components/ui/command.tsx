@@ -119,6 +119,21 @@ function trackHeight(content: HTMLDivElement) {
   return () => observer.disconnect();
 }
 
+function CommandGroup({
+  heading,
+  children,
+  ...props
+}: Autocomplete.Group.Props & { heading: React.ReactNode }) {
+  return (
+    <Autocomplete.Group data-slot="command-group" {...props}>
+      <Autocomplete.GroupLabel className="px-2.5 pt-2 pb-1.5 text-xs text-muted-foreground">
+        {heading}
+      </Autocomplete.GroupLabel>
+      {children}
+    </Autocomplete.Group>
+  );
+}
+
 function CommandItem({ className, ...props }: Autocomplete.Item.Props) {
   return (
     <Autocomplete.Item
@@ -132,4 +147,11 @@ function CommandItem({ className, ...props }: Autocomplete.Item.Props) {
   );
 }
 
-export { Command, CommandDialog, CommandInput, CommandItem, CommandList };
+export {
+  Command,
+  CommandDialog,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+};

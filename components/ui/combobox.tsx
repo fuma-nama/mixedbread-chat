@@ -8,6 +8,8 @@ const Combobox = ComboboxPrimitive.Root;
 
 const ComboboxValue = ComboboxPrimitive.Value;
 
+const ComboboxCollection = ComboboxPrimitive.Collection;
+
 /** Items whose selection value is an id, while the list still renders the objects. */
 const createComboboxItems = ComboboxPrimitive.createItems;
 
@@ -103,6 +105,26 @@ function ComboboxList({ className, ...props }: ComboboxPrimitive.List.Props) {
   );
 }
 
+function ComboboxGroup({ ...props }: ComboboxPrimitive.Group.Props) {
+  return <ComboboxPrimitive.Group data-slot="combobox-group" {...props} />;
+}
+
+function ComboboxLabel({
+  className,
+  ...props
+}: ComboboxPrimitive.GroupLabel.Props) {
+  return (
+    <ComboboxPrimitive.GroupLabel
+      data-slot="combobox-label"
+      className={cn(
+        "px-2 pt-1.5 pb-1 text-xs text-muted-foreground",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
 function ComboboxItem({
   className,
   children,
@@ -127,10 +149,13 @@ function ComboboxItem({
 
 export {
   Combobox,
+  ComboboxCollection,
   ComboboxContent,
   ComboboxEmpty,
+  ComboboxGroup,
   ComboboxInput,
   ComboboxItem,
+  ComboboxLabel,
   ComboboxList,
   ComboboxTrigger,
   ComboboxValue,

@@ -4,6 +4,7 @@ import { APICallError } from "ai";
 import { ArrowRightIcon } from "lucide-react";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { answersPerDay } from "@/lib/limits";
 
 type Failure =
   | { kind: "limit" }
@@ -42,18 +43,22 @@ export function ErrorNotice({
 }) {
   const [text, action] =
     failure.kind === "network"
-      ? ["Connection lost.", "Try again"]
+      ? ["Connection lost. Check your network and try again.", "Try again"]
       : failure.kind === "session"
-        ? ["Your session ended.", "Reload"]
+        ? ["Your session ended. Reload to keep going.", "Reload"]
         : failure.kind === "limit"
-          ? ["Daily limit reached. Try again later.", undefined]
-          : ["Something went wrong.", "Try again"];
+          ? [
+              `You’ve reached today’s limit of ${answersPerDay} answers. Try again later.`,
+              undefined,
+            ]
+          : ["Something went wrong. Try again.", "Try again"];
 
   return (
     <div
       role="alert"
-      className="mt-8 flex items-center gap-3 rounded-xl bg-destructive/8 py-2 pr-2 pl-3.5 text-[13.5px] first:mt-0 motion-safe:animate-rise"
+      className="mt-8 flex items-center gap-3 rounded-xl bg-destructive/6 py-2 pr-2 pl-3.5 text-[13.5px] ring-1 ring-destructive/15 first:mt-0 motion-safe:animate-rise"
     >
+      <span className="size-1.5 shrink-0 rounded-full bg-destructive" />
       <p className="flex-1 text-foreground/85">{text}</p>
       {action && (
         <Button
