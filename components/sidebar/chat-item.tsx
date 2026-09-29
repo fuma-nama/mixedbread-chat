@@ -111,11 +111,16 @@ export const ChatItem = memo(function ChatItem({
           </Link>
         )}
 
-        {!renaming && !selecting && (
+        {!selecting && (
           <DropdownMenu>
             <DropdownMenuTrigger
               aria-label="Chat options"
-              className="absolute top-1 right-1 flex size-6 cursor-pointer items-center justify-center rounded-md text-muted-foreground opacity-0 outline-offset-2 outline-ring transition-[opacity,background-color,color] duration-150 group-hover/item:opacity-100 hover:bg-soft hover:text-foreground focus-visible:opacity-100 focus-visible:outline-2 aria-expanded:bg-soft aria-expanded:text-foreground aria-expanded:opacity-100 pointer-coarse:opacity-100"
+              className={cn(
+                "absolute top-1 right-1 flex size-6 cursor-pointer items-center justify-center rounded-md text-muted-foreground opacity-0 outline-offset-2 outline-ring transition-[opacity,background-color,color] duration-150 group-hover/item:opacity-100 hover:bg-soft hover:text-foreground focus-visible:opacity-100 focus-visible:outline-2 aria-expanded:bg-soft aria-expanded:text-foreground aria-expanded:opacity-100 pointer-coarse:opacity-100",
+                // Hidden rather than gone, so the menu Rename closes keeps its
+                // place and leaves focus in the title field.
+                renaming && "invisible",
+              )}
             >
               <EllipsisIcon className="size-4" />
             </DropdownMenuTrigger>
