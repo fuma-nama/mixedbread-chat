@@ -1,15 +1,9 @@
 "use client";
 
 import { cn } from "cn";
-import {
-  CheckIcon,
-  EllipsisIcon,
-  PencilIcon,
-  SquareCheckIcon,
-  TrashIcon,
-} from "lucide-react";
+import { EllipsisIcon, PencilIcon, TrashIcon } from "lucide-react";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { renameChat } from "@/app/(chat)/actions";
 import {
   DropdownMenu,
@@ -28,7 +22,6 @@ export function ChatItem({
   fresh,
   selected,
   onOpen,
-  onSelect,
   onDelete,
 }: {
   chat: ChatSummary;
@@ -38,16 +31,12 @@ export function ChatItem({
   /** Whether it is selected; undefined while no chat is. */
   selected?: boolean;
   onOpen: (event: { preventDefault: () => void }, href: string) => void;
-  /** Toggles it, or with `range`, selects every chat from the last one toggled. */
-  onSelect: (id: string, range: boolean) => void;
   onDelete: (chat: ChatSummary) => void;
 }) {
   const { update } = useChats();
   const [renaming, setRenaming] = useState(false);
   // The title the reader gave it, which shows at once instead of typing out.
   const [named, setNamed] = useState<string>();
-  const link = useRef<HTMLAnchorElement>(null);
-  const press = useLongPress(() => onSelect(chat.id, false));
   const selecting = selected !== undefined;
   const href = `/c/${chat.id}`;
 
@@ -70,7 +59,7 @@ export function ChatItem({
   return (
     <li
       data-row=""
-      data-id={chat.id}
+      data-selected={selected || undefined}
       className={cn(
         "group/item grid grid-cols-1 grid-rows-[1fr]",
         fresh &&
@@ -94,30 +83,20 @@ export function ChatItem({
           />
         ) : (
           <Link
-            ref={link}
             href={href}
-            role={selecting ? "checkbox" : undefined}
-            aria-checked={selected}
-            aria-current={active && !selecting ? "page" : undefined}
+            data-id={chat.id}
+            aria-current={active ? "page" : undefined}
             onNavigate={(event) => onOpen(event, href)}
-            // While selecting, or with a modifier, a click selects rather than opens.
-            onClick={(event) => {
-              const { metaKey, ctrlKey, shiftKey } = event;
-              if (!selecting && !metaKey && !ctrlKey && !shiftKey) return;
-              event.preventDefault();
-              // Safari leaves a clicked link unfocused, and Escape needs focus here.
-              event.currentTarget.focus();
-              onSelect(chat.id, shiftKey);
-            }}
-            onKeyDown={(event) => {
-              if (!selecting || event.key !== " ") return;
-              event.preventDefault();
-              if (!event.repeat) onSelect(chat.id, event.shiftKey);
-            }}
-            {...press}
-            className="group/chat relative flex h-8 items-center rounded-lg px-2 text-[13.5px] text-foreground/75 outline-offset-0 outline-ring transition-colors duration-150 select-none [-webkit-touch-callout:none] group-hover/item:text-foreground group-has-aria-expanded/item:bg-[oklch(from_var(--foreground)_l_c_h/0.055)] focus-visible:outline-2 aria-checked:text-foreground aria-[current=page]:bg-[oklch(from_var(--foreground)_l_c_h/0.075)] aria-[current=page]:text-foreground"
+            className={cn(
+              // Selected neighbors join into one block, square where they meet.
+              "flex h-8 items-center rounded-lg px-2 text-[13.5px] text-foreground/75 outline-offset-0 outline-ring transition-[color,background-color,border-radius,box-shadow,scale] duration-200 ease-[var(--ease-smooth),var(--ease-smooth),var(--ease-smooth),var(--ease-smooth),var(--ease-spring)] select-none [-webkit-touch-callout:none] group-hover/item:text-foreground group-has-aria-expanded/item:bg-[oklch(from_var(--foreground)_l_c_h/0.055)] focus-visible:outline-2 in-[[data-selected]+[data-selected]]:rounded-t-none in-[[data-selected]:has(+[data-selected])]:rounded-b-none in-[[data-selected]:has(+[data-selected])]:shadow-[0_1px_var(--selected)] motion-reduce:transition-none",
+              // A finger resting on it presses it in as the fill builds, past a tap's length.
+              "data-holding:delay-100 data-holding:duration-350 data-holding:ease-linear motion-safe:data-holding:scale-[0.98] motion-safe:data-holding:bg-(--selected)",
+              selected
+                ? "bg-(--selected) text-foreground"
+                : "aria-[current=page]:bg-[oklch(from_var(--foreground)_l_c_h/0.075)] aria-[current=page]:text-foreground",
+            )}
           >
-            <Box shown={selecting} />
             <span
               className={cn(
                 "min-w-0 flex-1 overflow-hidden mask-r-from-[calc(100%-1.5rem)] whitespace-nowrap",
@@ -125,16 +104,9 @@ export function ChatItem({
                   "group-hover/item:mask-r-from-[calc(100%-3.25rem)] group-has-aria-expanded/item:mask-r-from-[calc(100%-3.25rem)] pointer-coarse:mask-r-from-[calc(100%-3.25rem)]",
               )}
             >
-              {/* Slides over to make room for the box, under the nav's labels. */}
-              <span
-                className={cn(
-                  "inline-block transition-[translate] duration-200 ease-smooth motion-reduce:transition-none",
-                  selecting && "translate-x-6.5",
-                )}
-              >
-                <TypedText text={chat.title} instant={chat.title === named} />
-              </span>
+              <TypedText text={chat.title} instant={chat.title === named} />
             </span>
+            {selected && <span className="sr-only">, selected</span>}
           </Link>
         )}
 
@@ -151,16 +123,6 @@ export function ChatItem({
                 <PencilIcon />
                 Rename
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  onSelect(chat.id, false);
-                  // The menu's button leaves with the menu; the row keeps focus.
-                  requestAnimationFrame(() => link.current?.focus());
-                }}
-              >
-                <SquareCheckIcon />
-                Select
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 variant="destructive"
@@ -175,69 +137,4 @@ export function ChatItem({
       </div>
     </li>
   );
-}
-
-/** The row's checkbox, there while chats are selected. The tick springs in. */
-function Box({ shown }: { shown: boolean }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={cn(
-        "absolute inset-y-0 left-2.25 my-auto grid size-3.5 place-items-center rounded-[4px] bg-card shadow-[inset_0_0_0_1.5px_var(--input)] transition-[background-color,box-shadow,opacity,scale] duration-200 ease-smooth group-aria-checked/chat:bg-primary group-aria-checked/chat:shadow-none motion-reduce:transition-none",
-        !shown && "scale-50 opacity-0",
-      )}
-    >
-      <CheckIcon
-        strokeWidth={3}
-        className="size-2.5 scale-50 text-primary-foreground opacity-0 transition-[scale,opacity] duration-200 ease-spring group-aria-checked/chat:scale-100 group-aria-checked/chat:opacity-100 motion-reduce:transition-none"
-      />
-    </span>
-  );
-}
-
-/**
- * A finger resting on the row selects it, in place of the tap and the link's
- * own menu that would follow.
- */
-function useLongPress(onPress: () => void) {
-  const press = useRef({ x: 0, y: 0, timer: 0, touch: false, fired: false });
-  const cancel = () => clearTimeout(press.current.timer);
-  const fire = () => {
-    cancel();
-    if (press.current.fired) return;
-    press.current.fired = true;
-    onPress();
-  };
-
-  return {
-    onPointerDown(event: React.PointerEvent) {
-      const touch = event.pointerType === "touch";
-      press.current = {
-        x: event.clientX,
-        y: event.clientY,
-        timer: touch ? window.setTimeout(fire, 450) : 0,
-        touch,
-        fired: false,
-      };
-    },
-    // A finger on its way somewhere, like swiping the drawer shut.
-    onPointerMove(event: React.PointerEvent) {
-      const { x, y } = press.current;
-      if (Math.hypot(event.clientX - x, event.clientY - y) > 8) cancel();
-    },
-    onPointerUp: cancel,
-    onPointerCancel: cancel,
-    // Android opens the link's menu on a long press, before or after the timer.
-    onContextMenu(event: React.MouseEvent) {
-      if (!press.current.touch) return;
-      event.preventDefault();
-      fire();
-    },
-    onClickCapture(event: React.MouseEvent) {
-      if (!press.current.fired) return;
-      press.current.fired = false;
-      event.preventDefault();
-      event.stopPropagation();
-    },
-  };
 }

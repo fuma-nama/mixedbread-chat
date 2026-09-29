@@ -29,6 +29,17 @@ import { SelectionBar } from "./selection-bar";
 
 const NONE: ReadonlySet<string> = new Set();
 
+/** A press on the list: how it began, and a long hold on a row in the making. */
+interface Press {
+  type: string;
+  x: number;
+  y: number;
+  timer: number;
+  row?: HTMLElement;
+  /** It became a long hold, so the click that ends it neither opens nor toggles. */
+  held?: boolean;
+}
+
 export function AppSidebar({
   user,
   now,
@@ -48,8 +59,11 @@ export function AppSidebar({
   // The chat being opened shows as open from the click, not from its arrival.
   const [activeId, setActiveId] = useOptimistic(chatIdOf(pathname));
   const [selection, setSelection] = useState(NONE);
-  // Where a Shift-click range starts: the chat toggled last.
-  const anchor = useRef<string>(undefined);
+  // Where Shift ranges start, and the selection they add to.
+  const pivot = useRef<{ id?: string; base: ReadonlySet<string> }>({
+    base: NONE,
+  });
+  const press = useRef<Press>({ type: "", x: 0, y: 0, timer: 0 });
   // The chats the delete dialog asks about.
   const [deleting, setDeleting] = useState<ChatSummary[]>();
   // Where focus lands once the chats around it are deleted.
@@ -83,33 +97,123 @@ export function AppSidebar({
 
   function rowOf(id: string | undefined) {
     return id
-      ? area.current?.querySelector<HTMLElement>(`[data-id="${id}"] a`)
+      ? area.current?.querySelector<HTMLElement>(`a[data-id="${id}"]`)
       : undefined;
   }
 
-  function select(id: string, range: boolean) {
-    const next = new Set(selected.map((chat) => chat.id));
-    const from =
-      range && selecting
-        ? chats.findIndex((chat) => chat.id === anchor.current)
-        : -1;
+  /** Selects or unselects a chat, which then anchors the next range. */
+  function toggle(id: string, on = !selection.has(id)) {
+    const next = new Set(selection);
+    if (on) next.add(id);
+    else next.delete(id);
+    pivot.current = { id, base: next };
+    setSelection(next);
+  }
+
+  /** Selects the chats from the anchor to `id`, over what it anchored. */
+  function extend(id: string) {
+    const to = chats.findIndex((chat) => chat.id === id);
+    let from = chats.findIndex((chat) => chat.id === pivot.current.id);
     if (from === -1) {
-      if (!next.delete(id)) next.add(id);
-      anchor.current = id;
-    } else {
-      const to = chats.findIndex((chat) => chat.id === id);
-      const [start, end] = from < to ? [from, to] : [to, from];
-      for (let i = start; i <= end; i++) next.add(chats[i].id);
+      // Without one, the range starts at the open chat, or at this one.
+      from = chats.findIndex((chat) => chat.id === activeId);
+      if (from === -1) from = to;
+      pivot.current = { id: chats[from].id, base: selection };
     }
+    const next = new Set(pivot.current.base);
+    const [start, end] = from < to ? [from, to] : [to, from];
+    for (let i = start; i <= end; i++) next.add(chats[i].id);
     setSelection(next);
   }
 
   function clear() {
-    // The bar goes with the selection, so focus goes back to the chats.
-    if (!document.activeElement?.closest("[data-id]")) {
-      rowOf(anchor.current)?.focus({ preventScroll: true });
-    }
+    pivot.current = { base: NONE };
     setSelection(NONE);
+  }
+
+  // The bar goes with the selection, so focus in it goes back to the chats.
+  function leave() {
+    if (!document.activeElement?.closest("[data-id]")) {
+      rowOf(pivot.current.id ?? selected[0]?.id)?.focus({
+        preventScroll: true,
+      });
+    }
+    clear();
+  }
+
+  function release() {
+    const { timer, row } = press.current;
+    clearTimeout(timer);
+    press.current.timer = 0;
+    if (row) delete row.dataset.holding;
+  }
+
+  /** A finger held on a row selects it, and taps toggle from then on. */
+  function hold() {
+    const { row, held } = press.current;
+    if (!row?.dataset.id || held) return;
+    release();
+    press.current.held = true;
+    navigator.vibrate?.(8);
+    toggle(row.dataset.id, true);
+  }
+
+  function onPointerDown(event: React.PointerEvent) {
+    const row =
+      (event.target as Element).closest<HTMLElement>("a[data-id]") ?? undefined;
+    press.current = {
+      type: event.pointerType,
+      x: event.clientX,
+      y: event.clientY,
+      timer: 0,
+      row,
+    };
+    if (!row || event.pointerType === "mouse") return;
+    row.dataset.holding = "";
+    press.current.timer = window.setTimeout(hold, 450);
+  }
+
+  function onPointerMove(event: React.PointerEvent) {
+    const { timer, x, y } = press.current;
+    if (timer && Math.hypot(event.clientX - x, event.clientY - y) > 8) {
+      release();
+    }
+  }
+
+  // Android opens the link's own menu on a long press, before or after the timer.
+  function onContextMenu(event: React.MouseEvent) {
+    if (press.current.type === "mouse" || !press.current.row) return;
+    event.preventDefault();
+    hold();
+  }
+
+  function onClickCapture(event: React.MouseEvent) {
+    if (press.current.held && event.detail > 0) {
+      // The click a long hold ends with.
+      press.current.held = false;
+      event.preventDefault();
+      return;
+    }
+    const target = event.target as Element;
+    const row = target.closest<HTMLElement>("a[data-id]");
+    const id = row?.dataset.id;
+    if (!row || !id) {
+      // Empty space around the rows, as in Finder.
+      if (!target.closest("[data-row]")) clear();
+      return;
+    }
+    // While chats are selected, a finger's tap toggles rather than opens.
+    const tap = selecting && event.detail > 0 && press.current.type !== "mouse";
+    if (event.metaKey || event.ctrlKey || tap) toggle(id);
+    else if (event.shiftKey) extend(id);
+    else {
+      // A plain click opens it.
+      clear();
+      return;
+    }
+    event.preventDefault();
+    // Safari leaves a clicked link unfocused, and keys act on focus.
+    row.focus({ preventScroll: true });
   }
 
   function askToDelete(targets: ChatSummary[]) {
@@ -123,7 +227,7 @@ export function AppSidebar({
     landing.current = rowOf(successor(chats, ids)) ?? null;
     const restore = remove(ids);
     const previous = selection;
-    setSelection(NONE);
+    clear();
     if (activeId && ids.has(activeId)) router.push("/");
     const one = ids.size === 1;
     try {
@@ -142,12 +246,20 @@ export function AppSidebar({
 
   function onKeyDown(event: React.KeyboardEvent) {
     if (event.target instanceof HTMLInputElement) return;
+    // Space is the keyboard's Cmd-click, and Shift+Space its Shift-click.
+    const id = event.target instanceof HTMLElement && event.target.dataset.id;
+    if (event.key === " " && id) {
+      event.preventDefault();
+      if (event.repeat) return;
+      if (event.shiftKey) extend(id);
+      else toggle(id);
+    }
     if (event.key === "a" && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
       setSelection(new Set(chats.map((chat) => chat.id)));
     }
     if (!selecting) return;
-    if (event.key === "Escape") clear();
+    if (event.key === "Escape") leave();
     if (event.key === "Delete" || event.key === "Backspace") {
       event.preventDefault();
       askToDelete(selected);
@@ -187,20 +299,29 @@ export function AppSidebar({
 
       {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- keys for the chats inside */}
       <div ref={area} onKeyDown={onKeyDown} className="contents">
-        <ChatList
-          chats={chats}
-          now={now}
-          timeZone={timeZone}
-          activeId={activeId}
-          selection={selecting ? selection : undefined}
-          onOpen={open}
-          onSelect={select}
-          onDelete={(chat) => askToDelete([chat])}
-        />
+        <div
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={release}
+          onPointerCancel={release}
+          onContextMenu={onContextMenu}
+          onClickCapture={onClickCapture}
+          className="min-h-0 flex-1 scroll-fade-y scrollbar-thin overflow-y-auto overscroll-contain px-2 pb-4 outline-offset-2 outline-ring [--scroll-fade-size:1.5rem] [--selected:oklch(from_var(--honey)_l_c_h/0.3)] focus-visible:outline-2 dark:[--selected:oklch(from_var(--honey)_l_c_h/0.2)]"
+        >
+          <ChatList
+            chats={chats}
+            now={now}
+            timeZone={timeZone}
+            activeId={activeId}
+            selection={selecting ? selection : undefined}
+            onOpen={open}
+            onDelete={(chat) => askToDelete([chat])}
+          />
+        </div>
 
         <SelectionBar
           count={selected.length}
-          onClear={clear}
+          onClear={leave}
           onDelete={() => askToDelete(selected)}
         >
           <AccountMenu user={user} />
@@ -352,7 +473,6 @@ function ChatList({
   activeId,
   selection,
   onOpen,
-  onSelect,
   onDelete,
 }: {
   chats: ChatSummary[];
@@ -362,7 +482,6 @@ function ChatList({
   /** The selected chats, while some are. */
   selection?: ReadonlySet<string>;
   onOpen: (event: { preventDefault: () => void }, href: string) => void;
-  onSelect: (id: string, range: boolean) => void;
   onDelete: (chat: ChatSummary) => void;
 }) {
   const groups = useMemo(
@@ -372,34 +491,29 @@ function ChatList({
   // Chats listed later than this slide in; the ones a page loads with do not.
   const [listed] = useState(() => new Set(chats.map((chat) => chat.id)));
 
-  if (groups.length === 0) return <div className="flex-1" />;
-
   return (
-    <div className="min-h-0 flex-1 scroll-fade-y scrollbar-thin overflow-y-auto overscroll-contain px-2 pb-4 outline-offset-2 outline-ring [--scroll-fade-size:1.5rem] focus-visible:outline-2">
-      <HoverArea>
-        {groups.map((group) => (
-          <section key={group.label} className="pt-4 first:pt-2">
-            <h3 className="px-2 pb-1 text-xs font-medium text-muted-foreground/80">
-              {group.label}
-            </h3>
-            <ul className="flex flex-col gap-px">
-              {group.chats.map((chat) => (
-                <ChatItem
-                  key={chat.id}
-                  chat={chat}
-                  active={chat.id === activeId}
-                  fresh={!listed.has(chat.id)}
-                  selected={selection?.has(chat.id)}
-                  onOpen={onOpen}
-                  onSelect={onSelect}
-                  onDelete={onDelete}
-                />
-              ))}
-            </ul>
-          </section>
-        ))}
-      </HoverArea>
-    </div>
+    <HoverArea>
+      {groups.map((group) => (
+        <section key={group.label} className="pt-4 first:pt-2">
+          <h3 className="px-2 pb-1 text-xs font-medium text-muted-foreground/80">
+            {group.label}
+          </h3>
+          <ul className="flex flex-col gap-px">
+            {group.chats.map((chat) => (
+              <ChatItem
+                key={chat.id}
+                chat={chat}
+                active={chat.id === activeId}
+                fresh={!listed.has(chat.id)}
+                selected={selection?.has(chat.id)}
+                onOpen={onOpen}
+                onDelete={onDelete}
+              />
+            ))}
+          </ul>
+        </section>
+      ))}
+    </HoverArea>
   );
 }
 
