@@ -1,15 +1,4 @@
-import {
-  and,
-  count,
-  desc,
-  eq,
-  exists,
-  gt,
-  ilike,
-  inArray,
-  or,
-  sql,
-} from "drizzle-orm";
+import { and, count, desc, eq, gt, ilike, inArray, or, sql } from "drizzle-orm";
 import { db } from ".";
 import { chat, message } from "./schema";
 
@@ -90,20 +79,24 @@ export async function countAnswers(userId: string, since: Date) {
 export function searchChats(userId: string, query: string) {
   const pattern = `%${query.replace(/[\\%_]/g, "\\$&")}%`;
   const text = sql`jsonb_path_query_array(${message.parts}, '$[*] ? (@.type == "text").text')::text`;
+  const mine = eq(chat.userId, userId);
 
   return db
     .select({ id: chat.id, title: chat.title, updatedAt: chat.updatedAt })
     .from(chat)
     .where(
       and(
-        eq(chat.userId, userId),
+        mine,
         or(
           ilike(chat.title, pattern),
-          exists(
+          // Joined to the user's chats, so no plan reads others' messages.
+          inArray(
+            chat.id,
             db
-              .select({ id: message.id })
+              .select({ id: message.chatId })
               .from(message)
-              .where(and(eq(message.chatId, chat.id), ilike(text, pattern))),
+              .innerJoin(chat, eq(message.chatId, chat.id))
+              .where(and(mine, ilike(text, pattern))),
           ),
         ),
       ),
