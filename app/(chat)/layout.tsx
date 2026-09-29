@@ -9,6 +9,7 @@ import {
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar";
+import { getSession } from "@/lib/auth";
 import { getChats } from "@/lib/db/queries";
 import { listModels } from "@/lib/models";
 import { getViewer } from "@/lib/viewer";
@@ -19,19 +20,20 @@ export default async function ChatLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [viewer, cookieStore, selection, models] = await Promise.all([
+  const [viewer, cookieStore, selection, models, chats] = await Promise.all([
     getViewer(),
     cookies(),
     selectedSources(),
     listModels(),
+    // Chats need only the session, not the viewer's connections.
+    getSession().then((session) => (session ? getChats(session.user.id) : [])),
   ]);
-  const chats = viewer ? await getChats(viewer.user.id) : [];
 
   return (
     <SidebarProvider
       defaultOpen={cookieStore.get("sidebar_state")?.value !== "false"}
     >
-      <ChatsProvider initialChats={chats}>
+      <ChatsProvider initialChats={viewer ? chats : []}>
         <SourcesProvider
           organizations={viewer?.organizations ?? []}
           initialSelection={selection}
