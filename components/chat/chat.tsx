@@ -144,7 +144,7 @@ export function Chat({
       if (send.text) composer.current?.restore(send.text);
       if (send.first) {
         window.history.replaceState(null, "", "/");
-        chats.update(id, null);
+        chats.remove(new Set([id]));
       }
     },
   });

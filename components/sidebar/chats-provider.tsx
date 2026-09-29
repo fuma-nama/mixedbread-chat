@@ -14,8 +14,8 @@ interface Chats {
   list: Store<ChatSummary[]>;
   /** Replaces the list with the saved one. */
   refresh: () => void;
-  /** Shows a change right away: `null` removes the chat, and a new id lists it first. */
-  update: (id: string, change: Partial<ChatSummary> | null) => void;
+  /** Shows a change right away; a new id lists it first. */
+  update: (id: string, change: Partial<ChatSummary>) => void;
   /** Takes chats off the list at once, returning what puts the list back. */
   remove: (ids: ReadonlySet<string>) => () => void;
 }
@@ -45,10 +45,6 @@ function createChats(initial: ChatSummary[]): Chats {
     refresh: () => void listChats().then(list.set),
     update(id, change) {
       const chats = list.get();
-      if (!change) {
-        list.set(chats.filter((chat) => chat.id !== id));
-        return;
-      }
       const index = chats.findIndex((chat) => chat.id === id);
       list.set(
         index === -1
