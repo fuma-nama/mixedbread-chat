@@ -127,14 +127,7 @@ export const ModelPicker = memo(function ModelPicker({
         <ChevronDownIcon className="size-3.5 shrink-0 opacity-60" />
       </ComboboxTrigger>
       <ComboboxContent side="top" sideOffset={8} aria-label="Choose a model">
-        <ComboboxInput
-          placeholder={
-            models.length > 0
-              ? `Search ${models.length} models`
-              : "Search models"
-          }
-          aria-label="Search models"
-        />
+        <ComboboxInput placeholder="Search models" aria-label="Search models" />
         <ComboboxEmpty>
           {text ? `No models match “${text}”` : "No models"}
         </ComboboxEmpty>
@@ -159,14 +152,7 @@ export const ModelPicker = memo(function ModelPicker({
 const ModelItem = memo(function ModelItem({ model }: { model: Model }) {
   return (
     <ComboboxItem value={model.id}>
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate">{model.name}</span>
-        {model.toast && (
-          <span className="text-xs text-muted-foreground">
-            Answers straight from your sources
-          </span>
-        )}
-      </span>
+      <span className="min-w-0 flex-1 truncate">{model.name}</span>
       {/* Outside the featured groups, the provider says whose model it is. */}
       {!model.featured && (
         <span className="shrink-0 font-mono text-[11px] text-muted-foreground/80">

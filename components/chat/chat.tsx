@@ -332,7 +332,6 @@ export function Chat({
     <div ref={frameRef} className="relative flex min-h-0 flex-1 flex-col">
       <ChatHeader
         title={empty ? undefined : title}
-        readonly={readonly}
         share={
           !readonly &&
           !empty && (

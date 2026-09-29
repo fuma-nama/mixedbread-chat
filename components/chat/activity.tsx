@@ -10,7 +10,7 @@ import { CollapsibleTrigger } from "@/components/ui/collapsible";
  * calls: a status, what happened, and a detail you can unfold.
  */
 
-/** The row that unfolds a step's details. */
+/** The row that unfolds a step's details; without any, it is just a line. */
 export function ActivityTrigger({
   indicator,
   label,
@@ -23,7 +23,7 @@ export function ActivityTrigger({
   meta?: React.ReactNode;
 }) {
   return (
-    <CollapsibleTrigger className="group/trigger -ml-1 flex max-w-full cursor-pointer items-center gap-2 rounded-md py-0.5 pr-1.5 pl-1 text-left text-[13.5px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 hover:text-foreground focus-visible:outline-2">
+    <CollapsibleTrigger className="group/trigger -ml-1 flex max-w-full cursor-pointer items-center gap-2 rounded-md py-0.5 pr-1.5 pl-1 text-left text-[13.5px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 not-data-disabled:hover:text-foreground focus-visible:outline-2 data-disabled:cursor-default">
       <span className="flex w-5 shrink-0 justify-center">{indicator}</span>
       <span className="flex min-w-0 items-baseline gap-1.5">
         <span className="shrink-0">{label}</span>
@@ -36,7 +36,7 @@ export function ActivityTrigger({
           </span>
         )}
       </span>
-      <ChevronRightIcon className="size-3.5 shrink-0 opacity-50 transition-transform duration-300 ease-smooth group-data-panel-open/trigger:rotate-90 motion-reduce:transition-none" />
+      <ChevronRightIcon className="size-3.5 shrink-0 opacity-50 transition-transform duration-300 ease-smooth group-data-disabled/trigger:hidden group-data-panel-open/trigger:rotate-90 motion-reduce:transition-none" />
     </CollapsibleTrigger>
   );
 }

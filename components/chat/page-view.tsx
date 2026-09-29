@@ -156,7 +156,7 @@ function Reconnect({ organization }: { organization: Organization }) {
 
   return (
     <div className={notice}>
-      Access to {organization.name} ended. Sign in again to see this page.
+      Access to {organization.name} ended.
       <Button variant="outline" size="sm" disabled={pending} onClick={connect}>
         {pending ? "Opening Mixedbread…" : "Sign in again"}
       </Button>

@@ -54,7 +54,12 @@ export function Search({
   const elapsed = useElapsed(state === "running");
 
   return (
-    <Collapsible data-slot="activity">
+    <Collapsible
+      data-slot="activity"
+      disabled={
+        state !== "running" && steps.length === 0 && !done?.sources.length
+      }
+    >
       <ActivityTrigger
         indicator={<Toasting state={state} />}
         label={
@@ -85,11 +90,6 @@ export function Search({
         ))}
       <CollapsibleContent hiddenUntilFound>
         <ActivityPanel>
-          {part.state === "output-error" && (
-            <p className="text-[12.5px] text-muted-foreground">
-              {part.errorText}
-            </p>
-          )}
           {groups.size > 1 ? (
             <ol className="flex flex-col gap-3">
               {Array.from(groups, ([name, steps]) => (
@@ -198,9 +198,6 @@ function Group({ name, steps }: { name: string; steps: Step[] }) {
           className="size-3 shrink-0 text-muted-foreground"
         />
         <span className="truncate font-medium text-foreground/80">{name}</span>
-        <span className="ml-auto shrink-0 pl-1 font-mono text-[11px] text-muted-foreground/70 tabular-nums">
-          {plural(steps.length, "step")}
-        </span>
       </p>
       {/* Dots centered under the glyph, so each run reads as one column. */}
       <Steps steps={steps} className="pl-[3px]" />
@@ -239,7 +236,6 @@ function Steps({ steps, className }: { steps: Step[]; className?: string }) {
 
 function StepRow({ step }: { step: Step }) {
   const { done, detail } = describe(step);
-  const failed = step.status === "failed";
   // Reading passages and looking through stores already say how many.
   const results =
     step.kind === "read" || step.kind === "stores" ? undefined : step.results;
@@ -266,17 +262,13 @@ function StepRow({ step }: { step: Step }) {
             {plural(results, "result")}
           </span>
         )}
-        {failed && <span className="shrink-0 text-destructive">· failed</span>}
+        {/* Mostly Toast retrying on its own, so the reason stays with Toast. */}
+        {step.status === "failed" && <span className="shrink-0">· failed</span>}
       </div>
       {/* Under the text, clear of the dot. */}
       {filters && (
         <p className="truncate pl-3.5 font-mono text-[11.5px] text-muted-foreground/80">
           where {filters}
-        </p>
-      )}
-      {failed && step.error && (
-        <p className="pl-3.5 text-[12px] text-pretty text-destructive/85">
-          {step.error}
         </p>
       )}
     </li>

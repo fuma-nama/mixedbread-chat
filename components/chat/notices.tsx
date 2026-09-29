@@ -43,15 +43,15 @@ export function ErrorNotice({
 }) {
   const [text, action] =
     failure.kind === "network"
-      ? ["Connection lost. Check your network and try again.", "Try again"]
+      ? ["Connection lost. Check your network.", "Try again"]
       : failure.kind === "session"
-        ? ["Your session ended. Reload to keep going.", "Reload"]
+        ? ["Your session ended.", "Reload"]
         : failure.kind === "limit"
           ? [
               `You’ve reached today’s limit of ${answersPerDay} answers. Try again later.`,
               undefined,
             ]
-          : ["Something went wrong. Try again.", "Try again"];
+          : ["Something went wrong.", "Try again"];
 
   return (
     <div
