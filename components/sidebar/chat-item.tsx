@@ -5,7 +5,7 @@ import { EllipsisIcon, PencilIcon, TrashIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { deleteChat, renameChat } from "@/app/(chat)/actions";
+import { deleteChats, renameChat } from "@/app/(chat)/actions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -66,7 +66,7 @@ export function ChatItem({
     setDeleting(false);
     update(chat.id, null);
     if (active) router.push("/");
-    await deleteChat(chat.id);
+    await deleteChats([chat.id]);
     toast.add({ title: "Chat deleted" });
   }
 

@@ -99,8 +99,10 @@ export async function renameChat(id: string, title: string) {
   });
 }
 
-export async function deleteChat(id: string) {
-  await queries.deleteChat(id, await currentUserId());
+export async function deleteChats(ids: string[]) {
+  const userId = await currentUserId();
+  const parsed = z.array(z.string().max(100)).min(1).max(1000).parse(ids);
+  await queries.deleteChats(parsed, userId);
 }
 
 /** Remembers the branch the user switched to. */

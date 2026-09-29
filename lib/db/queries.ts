@@ -1,4 +1,15 @@
-import { and, count, desc, eq, exists, gt, ilike, or, sql } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  exists,
+  gt,
+  ilike,
+  inArray,
+  or,
+  sql,
+} from "drizzle-orm";
 import { db } from ".";
 import { chat, message } from "./schema";
 
@@ -53,8 +64,10 @@ export async function updateChat(
     .where(and(eq(chat.id, id), eq(chat.userId, userId)));
 }
 
-export async function deleteChat(id: string, userId: string) {
-  await db.delete(chat).where(and(eq(chat.id, id), eq(chat.userId, userId)));
+export async function deleteChats(ids: string[], userId: string) {
+  await db
+    .delete(chat)
+    .where(and(inArray(chat.id, ids), eq(chat.userId, userId)));
 }
 
 /** How many answers the user got since `since`, retries included. */
