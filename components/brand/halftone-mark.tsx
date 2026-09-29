@@ -274,8 +274,8 @@ function animate(canvas: HTMLCanvasElement | null) {
     layout();
     schedule();
   });
-  const watcher = new IntersectionObserver(([entry]) => {
-    visible = entry?.isIntersecting ?? false;
+  const watcher = new IntersectionObserver((entries) => {
+    visible = entries.at(-1)?.isIntersecting ?? false;
     schedule();
   });
 
