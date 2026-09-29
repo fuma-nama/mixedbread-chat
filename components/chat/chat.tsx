@@ -269,6 +269,8 @@ export function Chat({
 
   /** Answers the last question again, as after a failure or a closed tab. */
   function answerAgain() {
+    // The question is already there, so a refusal has nothing to take back.
+    lastSend.current = null;
     const question = messages.findLast((message) => message.role === "user");
     if (question) answer(question.id);
     void regenerate({
