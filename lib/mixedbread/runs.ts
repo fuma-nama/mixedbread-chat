@@ -94,8 +94,8 @@ export function combine(
   runs.forEach((run, index) => {
     const result = results[index];
     let text: string;
-    if (!result || result.status === "failed") {
-      text = `The search failed: ${result?.message ?? "it did not finish."}`;
+    if (result.status === "failed") {
+      text = `The search failed: ${result.message}`;
     } else {
       const labelled = labelCitations(result.text, result.citations, nextLabel);
       text = labelled.text.trim() || "Nothing relevant found.";
