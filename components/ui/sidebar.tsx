@@ -28,7 +28,7 @@ interface SidebarContextValue {
 
 const SidebarContext = createContext<SidebarContextValue | null>(null);
 
-export function useSidebar() {
+function useSidebar() {
   const context = use(SidebarContext);
   if (!context) throw new Error("useSidebar needs a <SidebarProvider>");
   return context;

@@ -32,22 +32,16 @@ function HoverCardTrigger<Payload>({
 function HoverCardContent({
   className,
   side = "top",
-  sideOffset = 8,
-  align = "center",
-  alignOffset = 0,
+  align,
   ...props
 }: PreviewCardPrimitive.Popup.Props &
-  Pick<
-    PreviewCardPrimitive.Positioner.Props,
-    "align" | "alignOffset" | "side" | "sideOffset"
-  >) {
+  Pick<PreviewCardPrimitive.Positioner.Props, "align" | "side">) {
   return (
     <PreviewCardPrimitive.Portal data-slot="hover-card-portal">
       <PreviewCardPrimitive.Positioner
         align={align}
-        alignOffset={alignOffset}
         side={side}
-        sideOffset={sideOffset}
+        sideOffset={8}
         // Sized to the card, so what the card lets through isn't caught here.
         className="pointer-events-none isolate z-50 h-(--positioner-height) w-(--positioner-width) max-w-(--available-width) transition-[top,right,bottom,left] duration-240 ease-smooth data-instant:transition-none motion-reduce:transition-none"
       >

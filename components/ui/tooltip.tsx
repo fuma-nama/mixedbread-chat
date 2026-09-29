@@ -3,38 +3,24 @@
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
 import { cn } from "cn";
 
-function TooltipProvider({ ...props }: TooltipPrimitive.Provider.Props) {
-  return <TooltipPrimitive.Provider data-slot="tooltip-provider" {...props} />;
-}
+const TooltipProvider = TooltipPrimitive.Provider;
 
-function Tooltip({ ...props }: TooltipPrimitive.Root.Props) {
-  return <TooltipPrimitive.Root data-slot="tooltip" {...props} />;
-}
+const Tooltip = TooltipPrimitive.Root;
 
-function TooltipTrigger({ ...props }: TooltipPrimitive.Trigger.Props) {
-  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />;
-}
+const TooltipTrigger = TooltipPrimitive.Trigger;
 
 function TooltipContent({
   className,
-  side = "top",
-  sideOffset = 6,
-  align = "center",
-  alignOffset = 0,
+  side,
   children,
   ...props
 }: TooltipPrimitive.Popup.Props &
-  Pick<
-    TooltipPrimitive.Positioner.Props,
-    "align" | "alignOffset" | "side" | "sideOffset"
-  >) {
+  Pick<TooltipPrimitive.Positioner.Props, "side">) {
   return (
     <TooltipPrimitive.Portal>
       <TooltipPrimitive.Positioner
-        align={align}
-        alignOffset={alignOffset}
         side={side}
-        sideOffset={sideOffset}
+        sideOffset={6}
         className="isolate z-50"
       >
         <TooltipPrimitive.Popup

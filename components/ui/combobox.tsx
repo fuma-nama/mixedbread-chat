@@ -15,9 +15,7 @@ const createComboboxItems = ComboboxPrimitive.createItems;
 
 const useComboboxFilter = ComboboxPrimitive.useFilter;
 
-function ComboboxTrigger({ ...props }: ComboboxPrimitive.Trigger.Props) {
-  return <ComboboxPrimitive.Trigger data-slot="combobox-trigger" {...props} />;
-}
+const ComboboxTrigger = ComboboxPrimitive.Trigger;
 
 /**
  * A popup with its own search field, for a searchable select. It is only as
@@ -25,23 +23,17 @@ function ComboboxTrigger({ ...props }: ComboboxPrimitive.Trigger.Props) {
  * stays put while results come and go.
  */
 function ComboboxContent({
-  align = "start",
-  alignOffset = 0,
-  side = "bottom",
+  side,
   sideOffset = 6,
   className,
   ...props
 }: ComboboxPrimitive.Popup.Props &
-  Pick<
-    ComboboxPrimitive.Positioner.Props,
-    "align" | "alignOffset" | "side" | "sideOffset"
-  >) {
+  Pick<ComboboxPrimitive.Positioner.Props, "side" | "sideOffset">) {
   return (
     <ComboboxPrimitive.Portal>
       <ComboboxPrimitive.Positioner
         className="isolate z-50 outline-none"
-        align={align}
-        alignOffset={alignOffset}
+        align="start"
         side={side}
         sideOffset={sideOffset}
       >
@@ -105,9 +97,7 @@ function ComboboxList({ className, ...props }: ComboboxPrimitive.List.Props) {
   );
 }
 
-function ComboboxGroup({ ...props }: ComboboxPrimitive.Group.Props) {
-  return <ComboboxPrimitive.Group data-slot="combobox-group" {...props} />;
-}
+const ComboboxGroup = ComboboxPrimitive.Group;
 
 function ComboboxLabel({
   className,

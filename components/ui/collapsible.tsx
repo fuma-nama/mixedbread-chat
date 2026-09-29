@@ -3,15 +3,9 @@
 import { Collapsible as CollapsiblePrimitive } from "@base-ui/react/collapsible";
 import { cn } from "cn";
 
-function Collapsible({ ...props }: CollapsiblePrimitive.Root.Props) {
-  return <CollapsiblePrimitive.Root data-slot="collapsible" {...props} />;
-}
+const Collapsible = CollapsiblePrimitive.Root;
 
-function CollapsibleTrigger({ ...props }: CollapsiblePrimitive.Trigger.Props) {
-  return (
-    <CollapsiblePrimitive.Trigger data-slot="collapsible-trigger" {...props} />
-  );
-}
+const CollapsibleTrigger = CollapsiblePrimitive.Trigger;
 
 /** Grows to its content's height when opened, and folds back when closed. */
 function CollapsibleContent({

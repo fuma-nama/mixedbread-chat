@@ -12,22 +12,15 @@ export const backdropClassName =
 export const popupClassName =
   "fixed top-1/2 left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-5 rounded-2xl bg-popover p-5 text-sm text-popover-foreground shadow-float outline-none transition-[opacity,scale] duration-200 ease-smooth data-ending-style:scale-[0.97] data-ending-style:opacity-0 data-ending-style:duration-150 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none";
 
-function Dialog({ ...props }: DialogPrimitive.Root.Props) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />;
-}
+const Dialog = DialogPrimitive.Root;
 
-function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
-  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />;
-}
+const DialogTrigger = DialogPrimitive.Trigger;
 
 function DialogContent({
   className,
   children,
-  showCloseButton = true,
   ...props
-}: DialogPrimitive.Popup.Props & {
-  showCloseButton?: boolean;
-}) {
+}: DialogPrimitive.Popup.Props) {
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Backdrop
@@ -40,21 +33,19 @@ function DialogContent({
         {...props}
       >
         {children}
-        {showCloseButton && (
-          <DialogPrimitive.Close
-            data-slot="dialog-close"
-            render={
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                className="absolute top-3.5 right-3.5 text-muted-foreground"
-              />
-            }
-          >
-            <XIcon />
-            <span className="sr-only">Close</span>
-          </DialogPrimitive.Close>
-        )}
+        <DialogPrimitive.Close
+          data-slot="dialog-close"
+          render={
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              className="absolute top-3.5 right-3.5 text-muted-foreground"
+            />
+          }
+        >
+          <XIcon />
+          <span className="sr-only">Close</span>
+        </DialogPrimitive.Close>
       </DialogPrimitive.Popup>
     </DialogPrimitive.Portal>
   );

@@ -3,36 +3,26 @@
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import { cn } from "cn";
 
-function Popover({ ...props }: PopoverPrimitive.Root.Props) {
-  return <PopoverPrimitive.Root data-slot="popover" {...props} />;
-}
+const Popover = PopoverPrimitive.Root;
 
-function PopoverTrigger({ ...props }: PopoverPrimitive.Trigger.Props) {
-  return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />;
-}
+const PopoverTrigger = PopoverPrimitive.Trigger;
 
 /**
  * A panel of controls that stays open while they change, unlike a menu,
  * which closes on a pick. It opens like the menus do, from its trigger.
  */
 function PopoverContent({
-  align = "start",
-  alignOffset = 0,
-  side = "bottom",
+  side,
   sideOffset = 6,
   className,
   ...props
 }: PopoverPrimitive.Popup.Props &
-  Pick<
-    PopoverPrimitive.Positioner.Props,
-    "align" | "alignOffset" | "side" | "sideOffset"
-  >) {
+  Pick<PopoverPrimitive.Positioner.Props, "side" | "sideOffset">) {
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Positioner
         className="isolate z-50 outline-none"
-        align={align}
-        alignOffset={alignOffset}
+        align="start"
         side={side}
         sideOffset={sideOffset}
       >

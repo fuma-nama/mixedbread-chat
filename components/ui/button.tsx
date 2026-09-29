@@ -4,21 +4,17 @@ import { cn } from "cn";
 const variants = {
   default:
     "bg-primary text-primary-foreground shadow-raised hover:bg-primary/88",
-  secondary:
-    "bg-secondary text-secondary-foreground hover:bg-accent aria-expanded:bg-accent",
   outline:
     "bg-card text-foreground shadow-raised ring-1 ring-soft hover:bg-accent aria-expanded:bg-accent",
   ghost:
     "text-foreground/80 hover:bg-soft hover:text-foreground aria-expanded:bg-soft aria-expanded:text-foreground",
   destructive:
     "bg-destructive text-white shadow-raised hover:bg-destructive/90",
-  link: "text-foreground underline decoration-foreground/25 underline-offset-4 hover:decoration-foreground",
 };
 
 const sizes = {
   default: "h-9 gap-2 rounded-lg px-3.5 text-sm",
   sm: "h-8 gap-1.5 rounded-lg px-3 text-[13px]",
-  xs: "h-7 gap-1 rounded-md px-2 text-xs [&_svg:not([class*='size-'])]:size-3.5",
   lg: "h-10 gap-2 rounded-xl px-4 text-sm",
   icon: "size-9 rounded-lg",
   "icon-sm": "size-8 rounded-lg",

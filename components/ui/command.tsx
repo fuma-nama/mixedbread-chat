@@ -27,12 +27,10 @@ function CommandDialog({
   title,
   description,
   children,
-  className,
   ...props
 }: Omit<DialogPrimitive.Root.Props, "children"> & {
   title: string;
   description: string;
-  className?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -41,10 +39,7 @@ function CommandDialog({
         <DialogPrimitive.Backdrop className={backdropClassName} />
         <DialogPrimitive.Popup
           data-slot="command-dialog"
-          className={cn(
-            "fixed top-[min(18vh,10rem)] left-1/2 z-50 flex max-h-[calc(100dvh-min(18vh,10rem)-1.5rem)] w-[min(36rem,calc(100%-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-2xl bg-popover text-popover-foreground shadow-float transition-[opacity,scale,translate] duration-200 ease-smooth outline-none data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-ending-style:duration-150 data-starting-style:-translate-y-2 data-starting-style:scale-[0.98] data-starting-style:opacity-0 motion-reduce:transition-none",
-            className,
-          )}
+          className="fixed top-[min(18vh,10rem)] left-1/2 z-50 flex max-h-[calc(100dvh-min(18vh,10rem)-1.5rem)] w-[min(36rem,calc(100%-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-2xl bg-popover text-popover-foreground shadow-float transition-[opacity,scale,translate] duration-200 ease-smooth outline-none data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-ending-style:duration-150 data-starting-style:-translate-y-2 data-starting-style:scale-[0.98] data-starting-style:opacity-0 motion-reduce:transition-none"
         >
           <DialogPrimitive.Title className="sr-only">
             {title}

@@ -4,18 +4,14 @@ import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import { cn } from "cn";
 import { CheckIcon, ChevronRightIcon } from "lucide-react";
 
-function DropdownMenu({ ...props }: MenuPrimitive.Root.Props) {
-  return <MenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
-}
+const DropdownMenu = MenuPrimitive.Root;
 
-function DropdownMenuTrigger({ ...props }: MenuPrimitive.Trigger.Props) {
-  return <MenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props} />;
-}
+const DropdownMenuTrigger = MenuPrimitive.Trigger;
 
 function DropdownMenuContent({
   align = "start",
-  alignOffset = 0,
-  side = "bottom",
+  alignOffset,
+  side,
   sideOffset = 6,
   className,
   ...props
@@ -84,14 +80,10 @@ function DropdownMenuLinkItem({
   );
 }
 
-function DropdownMenuGroup({ ...props }: MenuPrimitive.Group.Props) {
-  return <MenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />;
-}
+const DropdownMenuGroup = MenuPrimitive.Group;
 
 /** A menu inside a menu, opened from one of its items. */
-function DropdownMenuSub({ ...props }: MenuPrimitive.SubmenuRoot.Props) {
-  return <MenuPrimitive.SubmenuRoot data-slot="dropdown-menu-sub" {...props} />;
-}
+const DropdownMenuSub = MenuPrimitive.SubmenuRoot;
 
 function DropdownMenuSubTrigger({
   className,
@@ -110,34 +102,21 @@ function DropdownMenuSubTrigger({
   );
 }
 
-function DropdownMenuSubContent({
-  align = "start",
-  alignOffset = -4,
-  side = "inline-end",
-  sideOffset = 2,
-  ...props
-}: React.ComponentProps<typeof DropdownMenuContent>) {
+function DropdownMenuSubContent(
+  props: React.ComponentProps<typeof DropdownMenuContent>,
+) {
   return (
     <DropdownMenuContent
       data-slot="dropdown-menu-sub-content"
-      align={align}
-      alignOffset={alignOffset}
-      side={side}
-      sideOffset={sideOffset}
+      alignOffset={-4}
+      sideOffset={2}
       {...props}
     />
   );
 }
 
 /** One choice of several, e.g. a setting; the chosen one has a check. */
-function DropdownMenuRadioGroup({ ...props }: MenuPrimitive.RadioGroup.Props) {
-  return (
-    <MenuPrimitive.RadioGroup
-      data-slot="dropdown-menu-radio-group"
-      {...props}
-    />
-  );
-}
+const DropdownMenuRadioGroup = MenuPrimitive.RadioGroup;
 
 function DropdownMenuRadioItem({
   className,
