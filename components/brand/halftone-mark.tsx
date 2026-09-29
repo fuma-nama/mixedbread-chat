@@ -141,8 +141,9 @@ function animate(canvas: HTMLCanvasElement | null) {
     const settled = SPREAD + 0.12 + SETTLE;
     const since = time - settled;
     const into = since % EVERY;
-    const pass =
-      !still && since > 0 && into < PASS ? (into / PASS) * 1.5 - 0.25 : -1;
+    const passing = !still && since > 0 && into < PASS;
+    // The band of light, from off the left edge to past the right.
+    const pass = (into / PASS) * 1.5 - 0.25;
     let moving = false;
 
     batches.clear();
@@ -169,7 +170,7 @@ function animate(canvas: HTMLCanvasElement | null) {
 
       const along = clamp01(t);
       const band = home.band + (slot.band - home.band) * along;
-      const glint = pass < 0 ? 0 : Math.exp(-(((band - pass) / 0.09) ** 2));
+      const glint = passing ? Math.exp(-(((band - pass) / 0.09) ** 2)) : 0;
       const radius =
         (dot.homeRadius + (dot.slotRadius - dot.homeRadius) * smooth(along)) *
         (1 - SLIM * Math.sin(Math.PI * along)) *
@@ -203,7 +204,7 @@ function animate(canvas: HTMLCanvasElement | null) {
     }
 
     if (disposed || !visible || document.hidden || still) return;
-    if (moving || pass >= 0 || since <= 0) {
+    if (moving || passing || since <= 0) {
       frame = requestAnimationFrame(draw);
     } else {
       // Sleep until the next pass of light.
