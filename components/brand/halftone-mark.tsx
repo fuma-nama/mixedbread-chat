@@ -93,9 +93,7 @@ function styleOf(key: number): string {
 
 export function HalftoneMark() {
   return (
-    <div aria-hidden="true" className="size-full">
-      <canvas ref={animate} className="block size-full" />
-    </div>
+    <canvas ref={animate} aria-hidden="true" className="block size-full" />
   );
 }
 
@@ -118,7 +116,8 @@ function animate(canvas: HTMLCanvasElement | null) {
   let frame = 0;
   let wake = 0;
   let visible = true;
-  let disposed = false;
+  const listening = new AbortController();
+  const { signal } = listening;
   const pointer = { x: 0, y: 0, inside: false };
 
   const layout = () => {
@@ -211,7 +210,7 @@ function animate(canvas: HTMLCanvasElement | null) {
       context.fill(batch);
     }
 
-    if (disposed || !visible || document.hidden || still) return;
+    if (signal.aborted || !visible || document.hidden || still) return;
     if (moving || passing || since <= 0) {
       frame = requestAnimationFrame(draw);
     } else {
@@ -222,7 +221,9 @@ function animate(canvas: HTMLCanvasElement | null) {
 
   // Starts drawing unless a frame is already on its way.
   const schedule = () => {
-    if (frame || !image || disposed || !visible || document.hidden) return;
+    if (frame || !image || signal.aborted || !visible || document.hidden) {
+      return;
+    }
     window.clearTimeout(wake);
     last = 0;
     frame = requestAnimationFrame(draw);
@@ -281,7 +282,7 @@ function animate(canvas: HTMLCanvasElement | null) {
 
   void loadLogo().then(
     (loaded) => {
-      if (disposed) return;
+      if (signal.aborted) return;
       image = loaded;
       layout();
       start = performance.now();
@@ -291,24 +292,19 @@ function animate(canvas: HTMLCanvasElement | null) {
   );
   resizer.observe(canvas);
   watcher.observe(canvas);
-  canvas.addEventListener("pointermove", onMove);
-  canvas.addEventListener("pointerleave", onLeave);
-  scheme.addEventListener("change", paint);
+  canvas.addEventListener("pointermove", onMove, { signal });
+  canvas.addEventListener("pointerleave", onLeave, { signal });
+  scheme.addEventListener("change", paint, { signal });
+  reduced.addEventListener("change", schedule, { signal });
+  document.addEventListener("visibilitychange", schedule, { signal });
   const stopTheme = subscribeTheme(paint);
-  reduced.addEventListener("change", schedule);
-  document.addEventListener("visibilitychange", schedule);
 
   return () => {
-    disposed = true;
+    listening.abort();
     cancelAnimationFrame(frame);
     window.clearTimeout(wake);
     resizer.disconnect();
     watcher.disconnect();
-    canvas.removeEventListener("pointermove", onMove);
-    canvas.removeEventListener("pointerleave", onLeave);
-    scheme.removeEventListener("change", paint);
     stopTheme();
-    reduced.removeEventListener("change", schedule);
-    document.removeEventListener("visibilitychange", schedule);
   };
 }

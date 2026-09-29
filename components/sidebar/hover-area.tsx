@@ -64,14 +64,11 @@ function follow(area: HTMLDivElement | null) {
   const onBlur = () => {
     if (!area.matches(":hover")) show(null);
   };
-  area.addEventListener("pointerover", onOver);
-  area.addEventListener("pointerleave", onLeave);
-  area.addEventListener("focusin", onFocus);
-  area.addEventListener("focusout", onBlur);
-  return () => {
-    area.removeEventListener("pointerover", onOver);
-    area.removeEventListener("pointerleave", onLeave);
-    area.removeEventListener("focusin", onFocus);
-    area.removeEventListener("focusout", onBlur);
-  };
+  const listening = new AbortController();
+  const { signal } = listening;
+  area.addEventListener("pointerover", onOver, { signal });
+  area.addEventListener("pointerleave", onLeave, { signal });
+  area.addEventListener("focusin", onFocus, { signal });
+  area.addEventListener("focusout", onBlur, { signal });
+  return () => listening.abort();
 }
