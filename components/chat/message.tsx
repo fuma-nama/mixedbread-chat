@@ -10,7 +10,7 @@ import { LazyMarkdown } from "./lazy-markdown";
 import { MessageActions } from "./message-actions";
 import { MessageEditor } from "./message-editor";
 import { Reasoning } from "./reasoning";
-import { Search } from "./search";
+import { Search, type SearchPart } from "./search";
 import { Sources } from "./sources";
 
 /** How a message enters: sent just now it rises, shown by a version switch it fades. */
@@ -53,6 +53,8 @@ export const MessageView = memo(function MessageView({
   const [editing, setEditing] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const user = message.role === "user";
+  const traces = tracesOf(message.parts);
+  const waiting = live ? pending(message) : undefined;
 
   if (editing) {
     return (
@@ -127,14 +129,20 @@ export const MessageView = memo(function MessageView({
                     deferred={appear !== undefined}
                   />
                 );
-              case "tool-search":
-                return <Search key={part.toolCallId} part={part} live={live} />;
+              case "tool-search": {
+                const steps = traces.get(index);
+                return (
+                  steps && (
+                    <Search key={part.toolCallId} steps={steps} live={live} />
+                  )
+                );
+              }
               default:
                 return null;
             }
           })}
         </div>
-        {live && quiet(message) && <Pending label={pendingLabel(message)} />}
+        {waiting && <Pending label={waiting} />}
         {stopped && (
           <p className="text-[12.5px] text-muted-foreground">Stopped</p>
         )}
@@ -208,32 +216,60 @@ function Pending({ label }: { label: string }) {
   );
 }
 
-function lastStep(message: ChatMessage) {
-  return message.parts.findLast(
-    (part) =>
-      part.type === "text" ||
-      part.type === "reasoning" ||
-      part.type === "tool-search",
+/**
+ * Searches in a row read as one trace, where the first began: side by side
+ * within a step, one after another across steps. Words or thoughts between
+ * them start a new one.
+ */
+function tracesOf(parts: ChatMessage["parts"]): Map<number, SearchPart[][]> {
+  const traces = new Map<number, SearchPart[][]>();
+  let trace: SearchPart[][] | undefined;
+  let stepped = false;
+  for (let index = 0; index < parts.length; index++) {
+    const part = parts[index];
+    if (part.type === "tool-search") {
+      if (!trace) {
+        trace = [[part]];
+        traces.set(index, trace);
+      } else if (stepped) trace.push([part]);
+      else trace[trace.length - 1].push(part);
+      stepped = false;
+    } else if (part.type === "step-start") stepped = true;
+    else if (shows(part)) trace = undefined;
+  }
+  return traces;
+}
+
+function shows(part: ChatMessage["parts"][number]): boolean {
+  return (
+    (part.type === "text" || part.type === "reasoning") && !!part.text.trim()
   );
 }
 
-/** Streaming, with nothing arriving right now: before the first part, or between steps. */
-function quiet(message: ChatMessage): boolean {
-  if (message.role !== "assistant") return false;
-  const part = lastStep(message);
-  if (!part) return true;
-  if (part.type === "text") return part.text.length === 0;
-  if (part.type === "reasoning") return part.state === "done";
-  return part.state === "output-available" && part.output.status === "done";
-}
-
-/** What the model is doing while nothing arrives: reading what a search found, or thinking. */
-function pendingLabel(message: ChatMessage): string {
-  const part = lastStep(message);
-  const found =
-    part?.type === "tool-search" &&
-    part.state === "output-available" &&
-    part.output.status === "done" &&
-    part.output.sources.length > 0;
+/**
+ * What the model is doing while nothing arrives, if nothing does: before the
+ * first part, between steps, or once every search in a row is through.
+ */
+function pending(message: ChatMessage): string | undefined {
+  if (message.role !== "assistant") return undefined;
+  let searched = false;
+  let found = false;
+  for (let index = message.parts.length - 1; index >= 0; index--) {
+    const part = message.parts[index];
+    if (part.type === "tool-search") {
+      if (part.state === "output-available" && part.output.status === "done") {
+        found ||= part.output.sources.length > 0;
+      } else if (part.state !== "output-error") return undefined;
+      searched = true;
+    } else if (part.type === "text" || part.type === "reasoning") {
+      if (searched) {
+        if (shows(part)) break;
+        continue;
+      }
+      const quiet =
+        part.type === "text" ? part.text.length === 0 : part.state === "done";
+      return quiet ? "Thinking" : undefined;
+    }
+  }
   return found ? "Reading sources" : "Thinking";
 }

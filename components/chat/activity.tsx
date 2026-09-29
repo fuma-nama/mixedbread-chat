@@ -31,7 +31,7 @@ export function ActivityTrigger({
           <span className="truncate text-muted-foreground/75">{detail}</span>
         )}
         {meta && (
-          <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground/70 tabular-nums">
+          <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground/70 tabular-nums empty:hidden">
             {meta}
           </span>
         )}
