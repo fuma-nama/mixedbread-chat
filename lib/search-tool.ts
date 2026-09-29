@@ -138,11 +138,9 @@ export function searchTool(context: SearchContext) {
       // The web run borrows an organization's token, fetched once for both.
       const clients = new Map<Connection, Promise<Mixedbread>>();
       function clientOf(connection: Connection) {
-        let client = clients.get(connection);
-        if (!client) {
-          client = clientFor(context.userId, connection);
-          clients.set(connection, client);
-        }
+        const client =
+          clients.get(connection) ?? clientFor(context.userId, connection);
+        clients.set(connection, client);
         return client;
       }
       const events = merge(
