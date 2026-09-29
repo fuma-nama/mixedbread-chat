@@ -158,11 +158,11 @@ function SignedIn({ user }: { user: User }) {
               closeOnClick={false}
               disabled={pending}
               onClick={connect}
+              className="text-xs text-muted-foreground"
             >
-              {/* A tile like the organizations', so the names line up. */}
               <span
                 aria-hidden="true"
-                className="flex size-6 shrink-0 items-center justify-center rounded-md bg-soft"
+                className="flex size-6 shrink-0 items-center justify-center"
               >
                 {pending ? (
                   <Spinner className="size-3.5" />
