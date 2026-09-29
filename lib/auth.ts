@@ -22,6 +22,7 @@ export const auth = betterAuth({
     allowedHosts: ["localhost:*", "*.vercel.app"],
   },
   database: drizzleAdapter(db, { provider: "pg" }),
+  advanced: { database: { joins: true } },
   account: {
     encryptOAuthTokens: true,
     // Signing in to another organization adds it to the same person.
