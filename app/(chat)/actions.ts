@@ -123,7 +123,9 @@ export async function deleteChats(ids: string[]) {
 
 /** Remembers the branch the user switched to. */
 export async function setChatLeaf(id: string, leafId: string) {
-  await queries.updateChat(id, await currentUserId(), { leafId });
+  await queries.updateChat(id, await currentUserId(), {
+    leafId: z.string().max(100).parse(leafId),
+  });
 }
 
 export async function setChatVisibility(
