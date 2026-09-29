@@ -1,23 +1,20 @@
-import Link from "next/link";
-import { AuthForm } from "@/components/auth-form";
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { AuthPage } from "@/components/auth-form";
+import { getSession } from "@/lib/auth";
+import { safeNext } from "@/lib/safe-next";
 
-export default function RegisterPage() {
-  return (
-    <>
-      <div className="flex flex-col gap-1">
-        <h1 className="font-heading text-2xl font-semibold">Sign up</h1>
-        <p className="text-muted-foreground">
-          Keep your chats on every device. Chats from this browser come with
-          you.
-        </p>
-      </div>
-      <AuthForm mode="register" />
-      <p className="text-sm text-muted-foreground">
-        Have an account?{" "}
-        <Link href="/login" className="text-foreground underline">
-          Log in
-        </Link>
-      </p>
-    </>
-  );
+export const metadata: Metadata = { title: "Sign up" };
+
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string | string[] }>;
+}) {
+  const next = safeNext((await searchParams).next);
+  // Already signed in: nothing to do here.
+  const session = await getSession();
+  if (session && !session.user.isAnonymous) redirect(next);
+
+  return <AuthPage mode="register" next={next} />;
 }

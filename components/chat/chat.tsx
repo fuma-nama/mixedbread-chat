@@ -1,71 +1,112 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { DefaultChatTransport, generateId } from "ai";
+import { cn } from "cn";
+import { CornerDownRightIcon } from "lucide-react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { setChatLeaf } from "@/app/(chat)/actions";
-import { useChats } from "@/components/sidebar/chats-provider";
+import { useChats, useChatTitle } from "@/components/sidebar/chats-provider";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
-import { latestLeaf, pathTo, siblingsOf } from "@/lib/branches";
-import type { Source } from "@/lib/mixedbread/citations";
-import type { ModelId } from "@/lib/models";
-import type { ChatMessage } from "@/lib/search-tool";
+import { useReducedMotion } from "@/hooks/use-media";
+import { useWindowEvent } from "@/hooks/use-window-event";
+import { childrenOf, latestLeaf, pathTo, withPath } from "@/lib/branches";
+import { citationsAlong } from "@/lib/messages";
+import { type ModelId, models } from "@/lib/models";
+import type { ChatMessage, SearchScope } from "@/lib/search-tool";
 import { ChatHeader } from "./chat-header";
+import { Composer, type ComposerHandle } from "./composer";
 import { Conversation } from "./conversation";
-import { type Citations, Markdown } from "./markdown";
-import { Message, MessageBubble } from "./message";
-import { MessageActions } from "./message-actions";
-import { MessageEditor } from "./message-editor";
-import { PromptInput } from "./prompt-input";
-import { Reasoning } from "./reasoning";
-import { Search } from "./search";
-import { Sources } from "./sources";
+import { EmptyState, Suggestions } from "./empty-state";
+import { preloadMarkdown } from "./lazy-markdown";
+import { type Appear, MessageView } from "./message";
+import {
+  ErrorNotice,
+  failureOf,
+  LimitNotice,
+  SharedNotice,
+  wasRejected,
+} from "./notices";
+import { ShareDialog } from "./share-dialog";
 
 /** A message with its place in the chat's branch tree. */
 export type TreeMessage = ChatMessage & { parentId: string | null };
+
+const placeholders: Record<SearchScope, string> = {
+  web: "Ask anything",
+  docs: "Ask about your documents",
+  both: "Ask about your documents or the web",
+};
+
+const transport = new DefaultChatTransport<ChatMessage>({
+  // New messages and retries both end with the user message to answer.
+  prepareSendMessagesRequest: ({ id, messages, body }) => ({
+    body: {
+      ...body,
+      id,
+      message: messages.at(-1),
+      parentId: messages.at(-2)?.id ?? null,
+    },
+  }),
+});
+
+// While waiting on a reply, a stand-in answer holds its place, so the real
+// one takes over the same view instead of popping in.
+const PENDING: ChatMessage = { id: "pending", role: "assistant", parts: [] };
 
 export function Chat({
   id,
   initialMessages,
   initialLeafId,
   initialModel,
+  initialTitle,
   visibility,
+  scope,
   readonly = false,
 }: {
   id: string;
   initialMessages: TreeMessage[];
   initialLeafId: string | null;
   initialModel: ModelId;
+  initialTitle?: string;
   visibility: "private" | "public";
+  scope: SearchScope;
   /** Someone else's shared chat. */
   readonly?: boolean;
 }) {
-  const { refresh } = useChats();
+  const chats = useChats();
+  const title = useChatTitle(id) ?? initialTitle;
   const [tree, setTree] = useState(initialMessages);
   const [model, setModel] = useState(initialModel);
-  const [transport] = useState(
-    () =>
-      new DefaultChatTransport<ChatMessage>({
-        // New messages and retries both end with the user message to answer.
-        prepareSendMessagesRequest: ({ id, messages, body }) => ({
-          body: {
-            ...body,
-            id,
-            message: messages.at(-1),
-            parentId: messages.at(-2)?.id ?? null,
-          },
-        }),
-      }),
-  );
-  const [initialPath] = useState(() =>
-    withoutParents(
-      pathTo(
-        initialMessages,
-        initialLeafId ?? initialMessages.at(-1)?.id ?? null,
-      ),
-    ),
-  );
+  const [stopped, setStopped] = useState<ReadonlySet<string>>(() => new Set());
+  const [announcement, setAnnouncement] = useState("");
+  const [initial] = useState(() => {
+    const path = pathTo(
+      initialMessages,
+      initialLeafId ?? initialMessages.at(-1)?.id ?? null,
+    );
+    const shown = new Set<string>();
+    for (const message of path) shown.add(message.id);
+    const known = new Set<string>();
+    for (const message of initialMessages) known.add(message.id);
+    return { path, shown, known };
+  });
+  const composer = useRef<ComposerHandle>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const glideFrom = useRef<DOMRect | null>(null);
+  // The last request, so one the server turns away can be taken back.
+  const lastSend = useRef<{
+    text?: string;
+    first: boolean;
+    /** Show this message's branch again instead of dropping the last message. */
+    restore?: string;
+  }>(null);
+  const [leaving, setLeaving] = useState<React.CSSProperties | null>(null);
+  // The question being answered this visit, brought to the top of the view.
+  const [turn, setTurn] = useState<{ id: string; key: number }>();
+  const reduced = useReducedMotion();
+
   const {
     messages,
     setMessages,
@@ -77,264 +118,349 @@ export function Chat({
     clearError,
   } = useChat<ChatMessage>({
     id,
-    messages: initialPath,
+    messages: initial.path,
     transport,
-    onFinish: refresh,
+    throttle: 40,
+    onData(part) {
+      if (part.type === "data-title") chats.update(id, { title: part.data });
+    },
+    onFinish({ message, isAbort }) {
+      if (isAbort) {
+        setStopped((stopped) => new Set(stopped).add(message.id));
+        setAnnouncement("Stopped.");
+      } else {
+        setAnnouncement("Answer ready.");
+      }
+      chats.refresh();
+    },
+    onError(error) {
+      // The server turned the message away before saving it: take it back.
+      const send = lastSend.current;
+      if (!send || !wasRejected(error)) return;
+      lastSend.current = null;
+      if (send.restore) switchTo(send.restore);
+      else setMessages((messages) => messages.slice(0, -1));
+      if (send.text) composer.current?.restore(send.text);
+      if (send.first) {
+        window.history.replaceState(null, "", "/");
+        chats.update(id, null);
+      }
+    },
   });
 
-  // A new chat is saved before its first answer streams; list it right away.
-  const listed = useRef(initialMessages.length > 0);
-  useEffect(() => {
-    if (status === "streaming" && !listed.current) {
-      listed.current = true;
-      refresh();
-    }
-  }, [status, refresh]);
-
+  const empty = messages.length === 0;
   const busy = status === "submitted" || status === "streaming";
-  const all = useMemo(() => withPath(tree, messages), [tree, messages]);
-  const sources = useMemo(() => collectSources(messages), [messages]);
+  // Edits, retries and version switches wait for the answer, and are the owner's.
+  const idle = !readonly && !busy;
+  const rendered =
+    busy && messages.at(-1)?.role === "user"
+      ? [...messages, PENDING]
+      : messages;
+  const citations = citationsAlong(rendered);
+  const children = useMemo(() => childrenOf(tree), [tree]);
+  const failure = error ? failureOf(error, chats.guest) : undefined;
+  const limited = failure?.kind === "limit" && failure.guest;
+  const modelName = models.find((entry) => entry.id === model)?.name;
+  // Screen readers hear where a search is, not every token of it.
+  const spoken = (busy && searchStatus(messages.at(-1))) || announcement;
 
-  function send(text: string) {
-    if (messages.length === 0)
-      window.history.replaceState(null, "", `/c/${id}`);
-    void sendMessage({ text }, { body: { model } });
+  useEffect(() => {
+    document.title = title ? `${title} · Mixedbread Chat` : "Mixedbread Chat";
+  }, [title]);
+
+  // The first message glides the composer from the middle of the page to its dock.
+  useLayoutEffect(() => {
+    const from = glideFrom.current;
+    glideFrom.current = null;
+    const element = composer.current?.element();
+    if (empty || !from || !element) return;
+    const distance = from.top - element.getBoundingClientRect().top;
+    if (Math.abs(distance) < 2) return;
+    element.animate([{ translate: `0 ${distance}px` }, { translate: "0 0" }], {
+      duration: 460,
+      easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+    });
+  }, [empty]);
+
+  // Keys that work anywhere: type to write, Escape to stop.
+  useWindowEvent("keydown", (event) => {
+    if (readonly) return;
+    const loose =
+      document.activeElement === document.body &&
+      !document.querySelector("[role=dialog]");
+    if (event.key === "Escape" && busy && loose) {
+      void stop();
+      return;
+    }
+    if (
+      loose &&
+      event.key.length === 1 &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.altKey
+    ) {
+      composer.current?.focus();
+    }
+    // ⌘⇧O on a fresh chat has nowhere to go but here.
+    if (
+      empty &&
+      event.key.toLowerCase() === "o" &&
+      event.shiftKey &&
+      (event.metaKey || event.ctrlKey)
+    ) {
+      composer.current?.focus();
+    }
+  });
+
+  /** Brings `questionId` to the top, with room below for its answer. */
+  function answer(questionId: string) {
+    setTurn((turn) => ({ id: questionId, key: (turn?.key ?? 0) + 1 }));
+    setAnnouncement("");
   }
 
-  function edit(index: number, text: string) {
-    setTree(all);
-    setMessages(messages.slice(0, index));
-    void sendMessage({ text }, { body: { model } });
+  /** Sends `text` as a new question. Its id is made here, so the view can
+   * pin it in the same frame it appears. */
+  function sendQuestion(text: string) {
+    const question = generateId();
+    answer(question);
+    preloadMarkdown();
+    void sendMessage(
+      { id: question, role: "user", parts: [{ type: "text", text }] },
+      { body: { model } },
+    );
+  }
+
+  /** Answers the last question again, as after a failure or a closed tab. */
+  function answerAgain() {
+    const question = messages.findLast((message) => message.role === "user");
+    if (question) answer(question.id);
+    void regenerate({ body: { model } });
+  }
+
+  function send(text: string) {
+    clearError();
+    lastSend.current = { text, first: empty };
+    if (empty) {
+      const hero = heroRef.current?.getBoundingClientRect();
+      const frame = frameRef.current?.getBoundingClientRect();
+      if (!reduced && hero && frame) {
+        glideFrom.current =
+          composer.current?.element()?.getBoundingClientRect() ?? null;
+        setLeaving({
+          top: hero.top - frame.top,
+          left: hero.left - frame.left,
+          width: hero.width,
+        });
+      }
+      window.history.replaceState(null, "", `/c/${id}`);
+      chats.update(id, {
+        title: text.split("\n")[0].slice(0, 80),
+        updatedAt: new Date(),
+      });
+    }
+    sendQuestion(text);
+  }
+
+  function edit(messageId: string, text: string) {
+    clearError();
+    lastSend.current = { text, first: false, restore: messageId };
+    setTree(withPath(tree, messages));
+    setMessages(
+      messages.slice(
+        0,
+        messages.findIndex((message) => message.id === messageId),
+      ),
+    );
+    sendQuestion(text);
+    composer.current?.focus();
   }
 
   function retry(messageId: string) {
-    setTree(all);
-    void regenerate({ messageId, body: { model } });
-  }
-
-  function switchTo(messageId: string) {
-    setTree(all);
-    const leaf = latestLeaf(all, messageId);
     clearError();
-    setMessages(withoutParents(pathTo(all, leaf)));
-    void setChatLeaf(id, leaf);
+    lastSend.current = { first: false, restore: messageId };
+    setTree(withPath(tree, messages));
+    const index = messages.findIndex((message) => message.id === messageId);
+    const question = messages[index - 1];
+    if (question) answer(question.id);
+    void regenerate({ messageId, body: { model } });
+    composer.current?.focus();
   }
 
-  const composer = !readonly && (
-    <PromptInput status={status} onSubmit={send} onStop={stop} />
-  );
+  /** Shows the branch through `messageId`, down its latest replies. */
+  function switchTo(messageId: string) {
+    const all = withPath(tree, messages);
+    const replies = childrenOf(all);
+    const leaf = latestLeaf(replies, messageId);
+    setTree(all);
+    clearError();
+    setMessages(pathTo(all, leaf));
+    void setChatLeaf(id, leaf);
+    const versions =
+      replies.get(
+        all.find((message) => message.id === messageId)?.parentId ?? null,
+      ) ?? [];
+    const index = versions.findIndex((version) => version.id === messageId);
+    setAnnouncement(`Showing version ${index + 1} of ${versions.length}.`);
+  }
+
+  function switchVersion(messageId: string, step: -1 | 1) {
+    const index = messages.findIndex((message) => message.id === messageId);
+    const siblings = children.get(messages[index - 1]?.id ?? null) ?? [];
+    const known = siblings.findIndex((sibling) => sibling.id === messageId);
+    const target = siblings[(known === -1 ? siblings.length : known) + step];
+    if (target) switchTo(target.id);
+  }
+
+  // Messages on screen at load stay still; others rise in when sent, or fade
+  // in when a version switch brings them back from the saved tree.
+  function appearOf(messageId: string): Appear {
+    if (initial.shown.has(messageId)) return undefined;
+    return initial.known.has(messageId) ? "fade" : "rise";
+  }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div ref={frameRef} className="relative flex min-h-0 flex-1 flex-col">
       <ChatHeader
-        chatId={id}
-        model={readonly ? undefined : model}
-        onModelChange={setModel}
-        visibility={!readonly && messages.length > 0 ? visibility : undefined}
+        title={empty ? undefined : title}
+        readonly={readonly}
+        share={
+          !readonly &&
+          !empty && <ShareDialog chatId={id} initialVisibility={visibility} />
+        }
       />
-      {messages.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-6 pb-[12vh]">
-          <h1 className="px-4 text-center font-heading font-semibold text-2xl">
-            What do you want to know?
-          </h1>
-          {composer}
-        </div>
-      ) : (
-        <>
-          <Conversation>
-            {messages.map((message, index) => (
-              <ChatMessageView
-                key={message.id}
+
+      {!empty && (
+        <Conversation turn={turn} streaming={busy}>
+          {rendered.map((message, index) => {
+            const parentId = rendered[index - 1]?.id ?? null;
+            // A message sent this visit is the newest of its versions.
+            const siblings = children.get(parentId) ?? [];
+            const known = siblings.findIndex(
+              (sibling) => sibling.id === message.id,
+            );
+            const last = index === rendered.length - 1;
+            return (
+              <MessageView
+                // Keyed by parent, so switching versions keeps the view in place.
+                key={parentId ?? "root"}
                 message={message}
-                sources={sources}
-                streaming={busy && index === messages.length - 1}
-                versions={siblingsOf(all, messages[index - 1]?.id ?? null)}
-                actions={!readonly && !busy}
-                onEdit={(text) => edit(index, text)}
-                onRetry={() => retry(message.id)}
-                onSwitch={switchTo}
+                citations={citations[index]}
+                appear={appearOf(message.id)}
+                live={busy && last}
+                stopped={stopped.has(message.id)}
+                version={known === -1 ? siblings.length : known}
+                versions={known === -1 ? siblings.length + 1 : siblings.length}
+                pinned={last && message.role === "assistant"}
+                retryLabel={
+                  modelName ? `Try again with ${modelName}` : undefined
+                }
+                onEdit={idle ? edit : undefined}
+                onRetry={idle ? retry : undefined}
+                onSwitch={idle ? switchVersion : undefined}
               />
-            ))}
-            {status === "submitted" && (
-              <Spinner className="text-muted-foreground" />
-            )}
-            {error && (
-              <div className="flex items-center gap-3 text-destructive text-sm">
-                {error.message || "Something went wrong."}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => void regenerate({ body: { model } })}
-                >
-                  Retry
-                </Button>
-              </div>
-            )}
-          </Conversation>
-          {composer}
-        </>
+            );
+          })}
+          {failure && !limited && (
+            <ErrorNotice failure={failure} onRetry={answerAgain} />
+          )}
+          {idle && !failure && rendered.at(-1)?.role === "user" && (
+            <Unanswered onAnswer={answerAgain} />
+          )}
+        </Conversation>
       )}
+
+      {(empty || leaving) && (
+        <div
+          className={cn(
+            leaving
+              ? "pointer-events-none absolute z-10 motion-safe:animate-[fade_200ms_ease-out_reverse_both]"
+              : "flex flex-1 flex-col justify-center pb-6 md:justify-end md:pb-9",
+          )}
+          style={leaving ?? undefined}
+          onAnimationEnd={(event) => {
+            if (event.target === event.currentTarget) setLeaving(null);
+          }}
+        >
+          <EmptyState ref={heroRef} />
+        </div>
+      )}
+
+      <div
+        className={cn(
+          "mx-auto flex w-full max-w-[44rem] flex-col gap-3 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6",
+          empty ? "max-md:order-2 md:pb-3" : "md:pb-5",
+        )}
+      >
+        {readonly ? (
+          <SharedNotice />
+        ) : (
+          <>
+            {limited && <LimitNotice chatId={empty ? undefined : id} />}
+            {failure && !limited && empty && (
+              <ErrorNotice
+                failure={failure}
+                onRetry={() => {
+                  clearError();
+                  composer.current?.focus();
+                }}
+              />
+            )}
+            <Composer
+              ref={composer}
+              status={status}
+              model={model}
+              onModelChange={setModel}
+              onSubmit={send}
+              onStop={() => void stop()}
+              placeholder={empty ? placeholders[scope] : "Ask a follow-up"}
+              blocked={limited ? "Sign up to keep chatting" : undefined}
+              inviting={empty}
+            />
+          </>
+        )}
+      </div>
+
+      {empty && !readonly && !limited && (
+        <div className="max-md:order-1 max-md:pb-3 md:flex-[1.2] md:pt-2">
+          <Suggestions
+            scope={scope}
+            onPick={send}
+            className="max-md:scroll-fade-x max-md:scrollbar-none max-md:flex-nowrap max-md:justify-start max-md:overflow-x-auto max-md:py-1 max-md:[--scroll-fade-size:1.25rem]"
+          />
+        </div>
+      )}
+
+      <p role="status" aria-live="polite" className="sr-only">
+        {spoken}
+      </p>
     </div>
   );
 }
 
-function ChatMessageView({
-  message,
-  sources,
-  streaming,
-  versions,
-  actions,
-  onEdit,
-  onRetry,
-  onSwitch,
-}: {
-  message: ChatMessage;
-  sources: Map<string, Source>;
-  streaming: boolean;
-  /** This message and its edits or retries. */
-  versions: TreeMessage[];
-  actions: boolean;
-  onEdit: (text: string) => void;
-  onRetry: () => void;
-  onSwitch: (messageId: string) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const citations = useMemo(
-    () => citationsOf(message, sources),
-    [message, sources],
-  );
-
-  if (editing) {
-    return (
-      <Message from={message.role}>
-        <MessageEditor
-          defaultValue={textOf(message)}
-          onCancel={() => setEditing(false)}
-          onSubmit={(text) => {
-            setEditing(false);
-            onEdit(text);
-          }}
-        />
-      </Message>
-    );
-  }
-
+/** A question saved without its answer, as when the tab closed mid-way. */
+function Unanswered({ onAnswer }: { onAnswer: () => void }) {
   return (
-    <Message from={message.role}>
-      {message.parts.map((part, index) => {
-        switch (part.type) {
-          case "text":
-            return message.role === "user" ? (
-              // biome-ignore lint/suspicious/noArrayIndexKey: parts are append-only and text parts have no id
-              <MessageBubble key={index}>{part.text}</MessageBubble>
-            ) : (
-              <Markdown
-                // biome-ignore lint/suspicious/noArrayIndexKey: parts are append-only and text parts have no id
-                key={index}
-                citations={citations}
-                isAnimating={streaming}
-              >
-                {part.text}
-              </Markdown>
-            );
-          case "reasoning":
-            return (
-              <Reasoning
-                // biome-ignore lint/suspicious/noArrayIndexKey: parts are append-only and reasoning parts have no id
-                key={index}
-                text={part.text}
-                streaming={part.state === "streaming"}
-              />
-            );
-          case "tool-search":
-            return <Search key={part.toolCallId} part={part} />;
-          default:
-            return null;
-        }
-      })}
-      {!streaming && (
-        <>
-          <Sources citations={citations} />
-          <MessageActions
-            from={message.role}
-            text={textOf(message)}
-            versions={versions.map((version) => version.id)}
-            current={message.id}
-            onSwitch={actions ? onSwitch : undefined}
-            onEdit={
-              actions && message.role === "user"
-                ? () => setEditing(true)
-                : undefined
-            }
-            onRetry={
-              actions && message.role === "assistant" ? onRetry : undefined
-            }
-          />
-        </>
-      )}
-    </Message>
+    <div className="mt-8 motion-safe:animate-fade">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="-ml-2.5 text-muted-foreground"
+        onClick={onAnswer}
+      >
+        <CornerDownRightIcon />
+        Answer
+      </Button>
+    </div>
   );
 }
 
-function withoutParents(messages: TreeMessage[]): ChatMessage[] {
-  return messages.map(({ parentId: _, ...message }) => message);
-}
-
-/** The tree, plus any message on the current path it has not seen yet. */
-function withPath(tree: TreeMessage[], path: ChatMessage[]): TreeMessage[] {
-  const known = new Set<string>();
-  for (const message of tree) known.add(message.id);
-
-  let merged = tree;
-  for (let i = 0; i < path.length; i++) {
-    if (known.has(path[i].id)) continue;
-    if (merged === tree) merged = [...tree];
-    merged.push({ ...path[i], parentId: path[i - 1]?.id ?? null });
+/** The latest search's progress in words: searching, or what it found. */
+function searchStatus(message: ChatMessage | undefined): string | undefined {
+  const part = message?.parts.findLast((part) => part.type === "tool-search");
+  if (!part) return undefined;
+  if (part.state !== "output-available" || part.output.status !== "done") {
+    return "Searching.";
   }
-  return merged;
-}
-
-/** The message's text as the user sees it, without citation links. */
-function textOf(message: ChatMessage): string {
-  let text = "";
-  for (const part of message.parts) {
-    if (part.type === "text") text += part.text;
-  }
-  return text.replace(CITATION_LINK, "");
-}
-
-const CITATION_LINK = /\[[^\]]*\]\(#S\d+\)/g;
-const CITATION = /\]\(#(S\d+)\)/g;
-
-/** Every labelled source the conversation's searches found. */
-function collectSources(messages: ChatMessage[]): Map<string, Source> {
-  const sources = new Map<string, Source>();
-  for (const message of messages) {
-    for (const part of message.parts) {
-      if (part.type !== "tool-search" || part.state !== "output-available")
-        continue;
-      if (part.output.status !== "done") continue;
-      for (const source of part.output.sources) {
-        sources.set(source.label, source);
-      }
-    }
-  }
-  return sources;
-}
-
-function citationsOf(
-  message: ChatMessage,
-  sources: Map<string, Source>,
-): Citations {
-  const citations: Citations = new Map();
-  for (const part of message.parts) {
-    if (part.type !== "text") continue;
-    for (const [, label] of part.text.matchAll(CITATION)) {
-      const source = sources.get(label);
-      if (source && !citations.has(label)) {
-        citations.set(label, { number: citations.size + 1, source });
-      }
-    }
-  }
-  return citations;
+  const count = part.output.sources.length;
+  return `Found ${count} ${count === 1 ? "source" : "sources"}.`;
 }

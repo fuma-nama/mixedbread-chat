@@ -1,32 +1,83 @@
+import { cn } from "cn";
+import { SquarePenIcon } from "lucide-react";
+import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
+import { Kbd, KbdGroup, ModKey } from "@/components/ui/kbd";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import type { ModelId } from "@/lib/models";
-import { ModelPicker } from "./model-picker";
-import { ShareDialog } from "./share-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { TypedText } from "@/components/ui/typed-text";
 
 export function ChatHeader({
-  chatId,
-  model,
-  onModelChange,
-  visibility,
+  title,
+  readonly,
+  share,
 }: {
-  chatId: string;
-  /** Hidden when undefined, as on someone else's shared chat. */
-  model?: ModelId;
-  onModelChange: (model: ModelId) => void;
-  /** Hidden when undefined, as before the first message. */
-  visibility?: "private" | "public";
+  title?: string;
+  /** Someone else's shared chat. */
+  readonly?: boolean;
+  share?: React.ReactNode;
 }) {
   return (
-    <header className="flex h-14 shrink-0 items-center gap-1 px-3">
-      <SidebarTrigger />
-      {model && <ModelPicker value={model} onChange={onModelChange} />}
-      {visibility && (
-        <ShareDialog
-          chatId={chatId}
-          initialVisibility={visibility}
-          className="ml-auto"
-        />
+    <header className="flex h-12 shrink-0 items-center gap-1 px-2 md:px-3">
+      {/* The sidebar has these when it is open. */}
+      <div className="flex items-center md:group-data-[sidebar=expanded]/shell:hidden">
+        <SidebarTrigger />
+        <NewChatButton className="max-md:hidden" />
+      </div>
+      <p className="min-w-0 truncate px-1.5 text-[13.5px] text-muted-foreground">
+        {title && (
+          <span className="motion-safe:animate-fade motion-safe:[animation-duration:400ms]">
+            <TypedText text={title} />
+          </span>
+        )}
+      </p>
+      {readonly && (
+        <span className="shrink-0 rounded-md bg-soft px-1.5 py-0.5 text-[11.5px] font-medium text-muted-foreground">
+          Read-only
+        </span>
       )}
+      <div className="ml-auto flex items-center gap-0.5">
+        {share && (
+          <span className="flex motion-safe:animate-fade motion-safe:[animation-duration:400ms]">
+            {share}
+          </span>
+        )}
+        <NewChatButton className="md:hidden" />
+      </div>
     </header>
+  );
+}
+
+function NewChatButton({ className }: { className: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Link
+            href="/"
+            aria-label="New chat"
+            className={buttonVariants({
+              variant: "ghost",
+              size: "icon-sm",
+              className: cn("text-muted-foreground", className),
+            })}
+          />
+        }
+      >
+        <SquarePenIcon />
+      </TooltipTrigger>
+      <TooltipContent side="bottom">
+        New chat
+        <KbdGroup>
+          <ModKey />
+          <Kbd>⇧</Kbd>
+          <Kbd>O</Kbd>
+        </KbdGroup>
+      </TooltipContent>
+    </Tooltip>
   );
 }

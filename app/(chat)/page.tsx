@@ -1,4 +1,5 @@
 import { Chat } from "@/components/chat/chat";
+import { searchScope } from "@/lib/search-tool";
 import { selectedModel } from "./model";
 
 export default async function NewChatPage() {
@@ -12,6 +13,7 @@ export default async function NewChatPage() {
       initialLeafId={null}
       initialModel={await selectedModel()}
       visibility="private"
+      scope={searchScope}
     />
   );
 }

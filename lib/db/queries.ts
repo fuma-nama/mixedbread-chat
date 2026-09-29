@@ -3,11 +3,10 @@ import { db } from ".";
 import { chat, message } from "./schema";
 
 export type Chat = typeof chat.$inferSelect;
-export type StoredMessage = typeof message.$inferSelect;
 
 export function getChats(userId: string) {
   return db
-    .select({ id: chat.id, title: chat.title })
+    .select({ id: chat.id, title: chat.title, updatedAt: chat.updatedAt })
     .from(chat)
     .where(eq(chat.userId, userId))
     .orderBy(desc(chat.updatedAt))
@@ -19,9 +18,15 @@ export async function getChat(id: string): Promise<Chat | undefined> {
   return row;
 }
 
+/** A chat's messages, oldest first, with what the UI and the model need. */
 export function getMessages(chatId: string) {
   return db
-    .select()
+    .select({
+      id: message.id,
+      parentId: message.parentId,
+      role: message.role,
+      parts: message.parts,
+    })
     .from(message)
     .where(eq(message.chatId, chatId))
     .orderBy(message.createdAt);
@@ -74,7 +79,7 @@ export function searchChats(userId: string, query: string) {
   const text = sql`jsonb_path_query_array(${message.parts}, '$[*] ? (@.type == "text").text')::text`;
 
   return db
-    .select({ id: chat.id, title: chat.title })
+    .select({ id: chat.id, title: chat.title, updatedAt: chat.updatedAt })
     .from(chat)
     .where(
       and(

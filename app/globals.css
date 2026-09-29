@@ -1,46 +1,45 @@
 @import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import "streamdown/styles.css";
 
 @source "../node_modules/streamdown/dist/*.js";
 @source "../node_modules/@streamdown/code/dist/*.js";
 
-@custom-variant dark (@media (prefers-color-scheme: dark));
-
 @theme inline {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
   --font-heading: var(--font-sans);
-  --font-sans: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --color-foreground: var(--foreground);
+
   --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-panel: var(--panel);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-soft: var(--soft);
+  --color-sidebar: var(--background);
+  --color-sidebar-foreground: var(--foreground);
+  --color-sidebar-border: var(--border);
+
+  /* The bakery: crumb, crust and the berry that marks what was cited. */
+  --color-honey: var(--honey);
+  --color-crust: var(--crust);
+  --color-crust-ink: var(--crust-ink);
+  --color-berry: var(--berry);
+  --color-shade: var(--shade);
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -48,87 +47,585 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  --shadow-float: var(--elevation-float);
+  --shadow-raised: var(--elevation-raised);
+  --shadow-composer: var(--elevation-composer);
+}
+
+@theme {
+  /* Lands softly: fast out of the gate, long settle. */
+  --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+  /* A small overshoot, for things that pop into place. */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-glide: cubic-bezier(0.65, 0, 0.35, 1);
+  /* Sheets that follow a finger, then coast to rest. */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --animate-rise: rise 420ms var(--ease-smooth) both;
+  --animate-fade: fade 240ms var(--ease-smooth) both;
+  --animate-settle: settle 360ms var(--ease-smooth) both;
+  --animate-shimmer: shimmer 2.2s linear infinite;
+  --animate-breathe: breathe 1.6s var(--ease-glide) infinite;
+  --animate-pop: pop 220ms var(--ease-spring);
+  --animate-swap-in: swap-in 180ms var(--ease-smooth);
+  --animate-count-back: count-back 220ms var(--ease-smooth);
+  --animate-count-forward: count-forward 220ms var(--ease-smooth);
+  --animate-nudge: nudge 1.6s var(--ease-glide) infinite;
+  --animate-toast-bob: toast-bob 1.6s var(--ease-glide) infinite;
+  --animate-toast-heat: toast-heat 1.2s var(--ease-glide) infinite;
+  --animate-proof-spin: proof-spin 1.2s linear infinite;
+  --animate-proof-breathe: proof-breathe 1.8s var(--ease-glide) infinite;
+  --animate-proof-collapse: proof-collapse 360ms cubic-bezier(0.55, 0, 1, 0.45)
+    forwards;
+  --animate-proof-bake: proof-bake 520ms var(--ease-spring) 170ms backwards;
+  --animate-proof-puff: proof-puff 520ms var(--ease-smooth) 230ms backwards;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+      filter: blur(4px);
+    }
+  }
+
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+  }
+
+  /* A slice lands at the size it flew in at, then settles to its own. */
+  @keyframes settle {
+    from {
+      opacity: 0;
+      scale: 2.6;
+    }
+  }
+
+  @keyframes shimmer {
+    from {
+      background-position: 100% 0;
+    }
+    to {
+      background-position: -100% 0;
+    }
+  }
+
+  @keyframes breathe {
+    0%,
+    100% {
+      opacity: 1;
+      scale: 1;
+    }
+    50% {
+      opacity: 0.45;
+      scale: 0.8;
+    }
+  }
+
+  /* A status dot changing color gives one small pop. */
+  @keyframes pop {
+    from {
+      scale: 1.5;
+    }
+  }
+
+  /* A live line replaced in place: the new text rises in. */
+  @keyframes swap-in {
+    from {
+      opacity: 0;
+      translate: 0 4px;
+    }
+  }
+
+  /* A version count slides in from the side of the version just picked. */
+  @keyframes count-back {
+    from {
+      opacity: 0;
+      translate: -6px 0;
+    }
+  }
+  @keyframes count-forward {
+    from {
+      opacity: 0;
+      translate: 6px 0;
+    }
+  }
+
+  /* The scroll-to-latest arrow, while more of an answer arrives below. */
+  @keyframes nudge {
+    50% {
+      translate: 0 2px;
+    }
+  }
+
+  /* Toast in a toaster: a slow bob while it browns, the element under it glowing. */
+  @keyframes toast-bob {
+    50% {
+      translate: 0 -0.6px;
+    }
+  }
+  @keyframes toast-heat {
+    0%,
+    100% {
+      opacity: 0.3;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  /*
+   * Thinking: crumbs circle and gently rise and fall like proofing dough; when
+   * the thought ends the ring spirals in, spinning faster as it closes, and a
+   * slice springs out of it with a puff of flour.
+   */
+  @keyframes proof-spin {
+    to {
+      rotate: 360deg;
+    }
+  }
+  @keyframes proof-breathe {
+    50% {
+      scale: 0.82;
+    }
+  }
+  @keyframes proof-collapse {
+    to {
+      rotate: 220deg;
+      scale: 0;
+      opacity: 0;
+    }
+  }
+  @keyframes proof-bake {
+    from {
+      opacity: 0;
+      scale: 0.3;
+    }
+    40% {
+      opacity: 1;
+    }
+  }
+  @keyframes proof-puff {
+    0% {
+      opacity: 0;
+      scale: 0.45;
+    }
+    20% {
+      opacity: 0.55;
+    }
+    100% {
+      opacity: 0;
+      scale: 1.15;
+    }
+  }
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+
+  --background: oklch(0.972 0.01 82);
+  --panel: oklch(0.992 0.005 85);
+  --foreground: oklch(0.235 0.02 48);
+  --card: oklch(0.997 0.003 85);
+  --card-foreground: var(--foreground);
+  --popover: oklch(0.997 0.003 85);
+  --popover-foreground: var(--foreground);
+  --primary: var(--foreground);
+  --primary-foreground: oklch(0.985 0.007 83);
+  --secondary: oklch(0.955 0.012 80);
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(0.955 0.012 80);
+  --muted-foreground: oklch(0.5 0.022 55);
+  --accent: oklch(0.945 0.014 78);
+  --accent-foreground: var(--foreground);
+  --destructive: oklch(0.56 0.19 29);
+  --border: oklch(0.905 0.015 76);
+  --input: oklch(0.88 0.017 74);
+  --ring: oklch(0.67 0.15 50 / 0.45);
+  --soft: oklch(0.235 0.02 48 / 0.09);
+
+  --honey: oklch(0.8 0.13 78);
+  --crust: oklch(0.67 0.15 50);
+  --crust-ink: oklch(0.52 0.13 45);
+  --berry: oklch(0.66 0.19 15);
+  /* The ink shadows are printed in: halftone blue on paper. */
+  --shade: oklch(0.52 0.09 258);
+
+  --elevation-raised:
+    0 1px 1px oklch(0.235 0.02 48 / 0.04),
+    0 2px 6px -2px oklch(0.235 0.02 48 / 0.06);
+  --elevation-float:
+    0 0 0 1px oklch(0.235 0.02 48 / 0.07),
+    0 2px 4px -1px oklch(0.235 0.02 48 / 0.05),
+    0 12px 32px -8px oklch(0.235 0.02 48 / 0.16);
+  --elevation-composer:
+    0 1px 2px oklch(0.235 0.02 48 / 0.04),
+    0 6px 16px -6px oklch(0.235 0.02 48 / 0.08),
+    0 24px 48px -24px oklch(0.235 0.02 48 / 0.14);
+
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    --background: oklch(0.165 0.011 52);
+    --panel: oklch(0.19 0.012 52);
+    --foreground: oklch(0.95 0.014 82);
+    --card: oklch(0.222 0.014 52);
+    --popover: oklch(0.232 0.014 52);
+    --primary: var(--foreground);
+    --primary-foreground: oklch(0.2 0.013 52);
+    --secondary: oklch(0.25 0.014 52);
+    --muted: oklch(0.235 0.014 52);
+    --muted-foreground: oklch(0.72 0.02 72);
+    --accent: oklch(0.255 0.016 52);
+    --destructive: oklch(0.7 0.17 27);
+    --border: oklch(0.28 0.016 52);
+    --input: oklch(0.32 0.016 52);
+    --ring: oklch(0.72 0.14 52 / 0.5);
+    --soft: oklch(0.95 0.014 82 / 0.1);
+
+    --honey: oklch(0.82 0.12 80);
+    --crust: oklch(0.72 0.14 52);
+    --crust-ink: oklch(0.78 0.12 55);
+    --berry: oklch(0.74 0.16 15);
+    --shade: oklch(0.42 0.05 260);
+
+    --elevation-raised:
+      inset 0 1px 0 oklch(1 0 0 / 0.04), 0 1px 2px oklch(0 0 0 / 0.3);
+    --elevation-float:
+      inset 0 1px 0 oklch(1 0 0 / 0.05), 0 0 0 1px oklch(0.95 0.014 82 / 0.08),
+      0 16px 40px -8px oklch(0 0 0 / 0.6);
+    --elevation-composer:
+      inset 0 1px 0 oklch(1 0 0 / 0.04), 0 1px 2px oklch(0 0 0 / 0.3),
+      0 24px 48px -20px oklch(0 0 0 / 0.55);
+
+    color-scheme: dark;
   }
 }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
+/* Text that is still happening: a band of light sweeps across it with `animate-shimmer`. */
+@utility text-shimmer {
+  background: linear-gradient(
+      90deg,
+      var(--muted-foreground) 0%,
+      var(--muted-foreground) 35%,
+      var(--foreground) 50%,
+      var(--muted-foreground) 65%,
+      var(--muted-foreground) 100%
+    )
+    0 0 / 200% 100%;
+  background-clip: text;
+  color: transparent;
+}
+
+/*
+ * Scrollers that fade out toward the edges they can scroll past. Without
+ * scroll-driven animations, both edges fade. A scroll timeline stretches the
+ * 1ms duration over the scroll range (the build turns `auto` into 0s).
+ */
+@property --scroll-fade-size {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: min(12%, 40px);
+}
+
+@property --scroll-fade-start {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --scroll-fade-end {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@keyframes scroll-fade-start {
+  to {
+    --scroll-fade-start: var(--scroll-fade-size);
   }
-  body {
-    @apply bg-background text-foreground;
+}
+
+@keyframes scroll-fade-end {
+  from {
+    --scroll-fade-end: var(--scroll-fade-size);
   }
-  html {
-    @apply font-sans;
+}
+
+@utility scroll-fade-y {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--scroll-fade-start),
+    #000 calc(100% - var(--scroll-fade-end)),
+    transparent 100%
+  );
+  @supports (animation-timeline: scroll()) {
+    animation:
+      scroll-fade-start 1ms ease-in-out both,
+      scroll-fade-end 1ms ease-in-out both;
+    animation-timeline: scroll(self y);
+    animation-range:
+      0 6rem,
+      calc(100% - 6rem) 100%;
+  }
+  @supports not (animation-timeline: scroll()) {
+    --scroll-fade-start: var(--scroll-fade-size);
+    --scroll-fade-end: var(--scroll-fade-size);
+  }
+}
+
+@utility scroll-fade-x {
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--scroll-fade-start),
+    #000 calc(100% - var(--scroll-fade-end)),
+    transparent 100%
+  );
+  @supports (animation-timeline: scroll()) {
+    animation:
+      scroll-fade-start 1ms ease-in-out both,
+      scroll-fade-end 1ms ease-in-out both;
+    animation-timeline: scroll(self x);
+    animation-range:
+      0 6rem,
+      calc(100% - 6rem) 100%;
+  }
+  @supports not (animation-timeline: scroll()) {
+    --scroll-fade-start: var(--scroll-fade-size);
+    --scroll-fade-end: var(--scroll-fade-size);
+  }
+}
+
+/*
+ * Answers, as Streamdown renders them. It ships its own utility classes, so
+ * these sit outside any layer to take precedence over them. Links and inline
+ * code, which this app renders itself, carry their own classes.
+ */
+.markdown {
+  & > * + * {
+    margin-top: 1em;
+  }
+
+  & strong,
+  & [data-streamdown="strong"] {
+    color: var(--foreground);
+    font-weight: 600;
+  }
+
+  & :is(h1, h2, h3, h4, h5, h6) {
+    margin-top: 1.6em;
+    margin-bottom: 0.5em;
+    color: var(--foreground);
+    font-weight: 500;
+    letter-spacing: -0.015em;
+    line-height: 1.3;
+  }
+  & h1 {
+    font-size: 1.5rem;
+  }
+  & h2 {
+    font-size: 1.25rem;
+  }
+  & h3 {
+    font-size: 1.075rem;
+  }
+  & :is(h4, h5, h6) {
+    font-size: 1rem;
+  }
+  & > :first-child {
+    margin-top: 0;
+  }
+
+  & :is(ul, ol) {
+    list-style-position: outside;
+    padding-left: 1.4em;
+  }
+  & ul {
+    list-style-type: disc;
+  }
+  & li {
+    padding-block: 0.15em;
+  }
+  & ol {
+    font-variant-numeric: tabular-nums;
+  }
+  & li::marker {
+    color: var(--muted-foreground);
+  }
+
+  /*
+   * Task lists: a small box in place of the bullet, in the list's 1.4em marker
+   * column and centered on the label's first line (below the item's 0.15em
+   * padding), so the label lines up with other items' text and wraps under
+   * itself. Loose lists put the box inside the item's <p>.
+   */
+  & .task-list-item {
+    position: relative;
+    list-style: none;
+  }
+  & .task-list-item input[type="checkbox"] {
+    appearance: none;
+    position: absolute;
+    top: calc(0.15em + (1lh - 0.95em) / 2);
+    left: -1.4em;
+    display: grid;
+    place-content: center;
+    width: 0.95em;
+    height: 0.95em;
+    margin: 0;
+    border-radius: 0.3em;
+    box-shadow: inset 0 0 0 1.5px var(--input);
+    background: var(--card);
+  }
+  & .task-list-item input[type="checkbox"]:checked {
+    box-shadow: none;
+    background: var(--primary);
+  }
+  /* Rotated, the tick's ink sits low in its box: lift it to the middle. */
+  & .task-list-item input[type="checkbox"]:checked::after {
+    content: "";
+    width: 0.5em;
+    height: 0.28em;
+    translate: 0 -0.06em;
+    rotate: -45deg;
+    border: solid var(--primary-foreground);
+    border-width: 0 0 1.5px 1.5px;
+  }
+
+  & blockquote {
+    border-left: 2px solid var(--honey);
+    padding-left: 1em;
+    color: var(--muted-foreground);
+    font-style: normal;
+  }
+
+  & hr {
+    margin-block: 2em;
+    border-color: var(--border);
+  }
+
+  & [data-streamdown="image"] {
+    border-radius: 0.875rem;
+    box-shadow: 0 0 0 1px var(--soft);
+  }
+
+  /* Code: one card, a hairline under the language, actions tucked into it. */
+  & [data-streamdown="code-block"] {
+    margin-block: 1.25em;
+    gap: 0;
+    border-color: var(--soft);
+    border-radius: 0.875rem;
+    background: var(--card);
+    padding: 0;
+  }
+  & [data-streamdown="code-block-header"] {
+    height: 2.25rem;
+    border-bottom: 1px solid var(--soft);
+    padding-inline: 0.875rem;
+    font-size: 11.5px;
+  }
+  & [data-streamdown="code-block-header"] > span {
+    margin-left: 0;
+  }
+  /* The actions ride along at the top while a tall block scrolls by. */
+  &
+    [data-streamdown="code-block"]
+    > div:has(> [data-streamdown="code-block-actions"]) {
+    height: 2.25rem;
+    margin-top: -2.25rem;
+    padding-right: 0.25rem;
+  }
+  & [data-streamdown="code-block-actions"] {
+    border: 0;
+    border-radius: 0.5rem;
+    background: var(--card);
+    padding: 0;
+    backdrop-filter: none;
+  }
+  & [data-streamdown="code-block-body"] {
+    border: 0;
+    border-radius: 0 0 0.875rem 0.875rem;
+    background: transparent;
+    padding: 0.875rem 1rem;
+    font-size: 13px;
+    line-height: 1.65;
+  }
+  & [data-streamdown="code-block-body"] pre {
+    background: transparent;
+  }
+
+  /* Tables: hairlines only; download and copy wait in the header's corner. */
+  & [data-slot="table"] {
+    margin-block: 1.25em;
+  }
+  & [data-streamdown="table-header"] {
+    background: transparent;
+  }
+  & [data-streamdown="table"] :is(thead, tbody, tr) {
+    border-color: var(--soft);
+  }
+  /* Wide tables scroll rather than squeeze their cells a word at a time. */
+  & :is(th, td) {
+    min-width: 5.5rem;
+    padding: 0.55rem 0.875rem;
+    font-size: 13.5px;
+  }
+  @media (width >= 40rem) {
+    & :is(th, td) {
+      min-width: 7rem;
+    }
+  }
+  & th {
+    color: var(--muted-foreground);
+    font-weight: 500;
+    white-space: normal;
+  }
+  /* Room for the actions, so they never sit on a heading. */
+  & th:last-child {
+    padding-right: 4.75rem;
+  }
+
+  /* Download and copy show on hover, as a message's own actions do. */
+  @media (pointer: fine) {
+    & [data-slot="block-actions"] {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 200ms;
+    }
+    & [data-streamdown="code-block"]:hover [data-slot="block-actions"],
+    & [data-slot="table"]:hover [data-slot="block-actions"],
+    & [data-slot="block-actions"]:has(:focus-visible) {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+
+  & .katex-display {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-block: 0.25em;
+  }
+
+  & :is([data-streamdown="code-block-body"], .katex-display) {
+    scrollbar-width: thin;
+
+    &:focus-visible {
+      outline: 2px solid var(--ring);
+      outline-offset: 2px;
+    }
+  }
+
+  /* Words land at once rather than blurring in. */
+  @media (prefers-reduced-motion: reduce) {
+    & [data-sd-animate],
+    & [data-sd-animate-marker]::marker {
+      animation: none;
+    }
   }
 }

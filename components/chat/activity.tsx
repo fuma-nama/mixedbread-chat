@@ -1,0 +1,142 @@
+"use client";
+
+import { cn } from "cn";
+import { ChevronRightIcon } from "lucide-react";
+import { useState, useSyncExternalStore } from "react";
+import { CollapsibleTrigger } from "@/components/ui/collapsible";
+
+/*
+ * Work the answer did on its way, one row per step like a coding agent's tool
+ * calls: a status, what happened, and a detail you can unfold.
+ */
+
+/** The row that unfolds a step's details. */
+export function ActivityTrigger({
+  indicator,
+  label,
+  detail,
+  meta,
+}: {
+  indicator: React.ReactNode;
+  label: React.ReactNode;
+  detail?: React.ReactNode;
+  meta?: React.ReactNode;
+}) {
+  return (
+    <CollapsibleTrigger className="group/trigger -ml-1 flex max-w-full cursor-pointer items-center gap-2 rounded-md py-0.5 pr-1.5 pl-1 text-left text-[13.5px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 hover:text-foreground focus-visible:outline-2">
+      <span className="flex w-5 shrink-0 justify-center">{indicator}</span>
+      <span className="flex min-w-0 items-baseline gap-1.5">
+        <span className="shrink-0">{label}</span>
+        {detail && (
+          <span className="truncate text-muted-foreground/75">{detail}</span>
+        )}
+        {meta && (
+          <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground/70 tabular-nums">
+            {meta}
+          </span>
+        )}
+      </span>
+      <ChevronRightIcon className="size-3.5 shrink-0 opacity-50 transition-transform duration-300 ease-smooth group-data-panel-open/trigger:rotate-90 motion-reduce:transition-none" />
+    </CollapsibleTrigger>
+  );
+}
+
+/** A small dot that breathes while its step runs and pops once when it settles. */
+export function StatusDot({
+  state,
+}: {
+  state: "running" | "done" | "failed" | "stopped";
+}) {
+  return (
+    <span
+      key={state}
+      aria-hidden="true"
+      className={cn(
+        "size-1.5 rounded-full",
+        state === "running" && "bg-crust motion-safe:animate-breathe",
+        state === "done" && "bg-muted-foreground/45 motion-safe:animate-pop",
+        state === "failed" && "bg-destructive motion-safe:animate-pop",
+        state === "stopped" && "bg-muted-foreground/30",
+      )}
+    />
+  );
+}
+
+/** The newest thing a running step did, replaced in place as it goes. */
+export function LiveLine({ text }: { text?: string }) {
+  if (!text) return null;
+  return (
+    <div className="mt-0.5 ml-7 h-5 overflow-hidden text-[12.5px] text-muted-foreground/80">
+      <p key={text} className="truncate motion-safe:animate-swap-in">
+        {text}
+      </p>
+    </div>
+  );
+}
+
+/** The panel a step unfolds into, hung from a thread under its indicator. */
+export function ActivityPanel({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
+  return (
+    <div
+      className={cn(
+        "mt-2 ml-[9.5px] flex flex-col gap-3 border-l border-soft pb-1 pl-[17.5px]",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+// One clock for every running step, ticking only while one is.
+const clock = { now: 0, listeners: new Set<() => void>() };
+let ticker: ReturnType<typeof setInterval> | undefined;
+
+function tick() {
+  clock.now = Date.now();
+  for (const listener of clock.listeners) listener();
+}
+
+function subscribeClock(listener: () => void) {
+  if (clock.listeners.size === 0) {
+    clock.now = Date.now();
+    ticker = setInterval(tick, 500);
+  }
+  clock.listeners.add(listener);
+  return () => {
+    clock.listeners.delete(listener);
+    if (clock.listeners.size === 0) clearInterval(ticker);
+  };
+}
+
+const still = () => () => {};
+const now = () => clock.now;
+
+/**
+ * Seconds since `running` turned on, counting up while it stays on. Timed on
+ * this client, so a step loaded from history has none.
+ */
+export function useElapsed(running: boolean): number | undefined {
+  const [start] = useState(() => (running ? Date.now() : undefined));
+  const time = useSyncExternalStore(running ? subscribeClock : still, now, now);
+  return start === undefined ? undefined : Math.max(0, time - start) / 1000;
+}
+
+/**
+ * How long `running` stayed on, once it turns off. Timed on this client, so
+ * a step loaded from history has none.
+ */
+export function useDuration(running: boolean): number | undefined {
+  const [span, setSpan] = useState(() =>
+    running ? { start: Date.now(), end: 0 } : undefined,
+  );
+  // oxlint-disable-next-line react/purity -- stamped once, as `running` turns off
+  if (span && !running && !span.end) setSpan({ ...span, end: Date.now() });
+  return span?.end ? (span.end - span.start) / 1000 : undefined;
+}
+
+export function formatSeconds(seconds: number): string {
+  return seconds < 10 ? `${seconds.toFixed(1)}s` : `${Math.round(seconds)}s`;
+}

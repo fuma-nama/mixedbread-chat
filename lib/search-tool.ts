@@ -6,6 +6,17 @@ import { type HostedCall, research, WEB_STORE } from "./mixedbread/research";
 
 const stores = process.env.MXBAI_STORES?.match(/[^\s,]+/g) ?? [WEB_STORE];
 
+export type SearchScope = "web" | "docs" | "both";
+
+/** What the search can reach, so the UI never promises documents it cannot see. */
+export const searchScope: SearchScope = stores.every(
+  (store) => store === WEB_STORE,
+)
+  ? "web"
+  : stores.includes(WEB_STORE)
+    ? "both"
+    : "docs";
+
 export type SearchOutput =
   | { status: "searching"; calls: HostedCall[] }
   | {
@@ -13,6 +24,8 @@ export type SearchOutput =
       calls: HostedCall[];
       findings: string;
       sources: Source[];
+      /** How long the search took; missing on chats saved before it was kept. */
+      ms?: number;
     };
 
 /** `firstLabel` continues the conversation's source labels, see {@link nextLabel}. */
@@ -27,6 +40,7 @@ export function searchTool(firstLabel: number) {
       query: z.string().describe("What to find out, with all needed context"),
     }),
     async *execute({ query }, { abortSignal }): AsyncGenerator<SearchOutput> {
+      const started = Date.now();
       const calls = new Map<string, HostedCall>();
       for await (const event of research(client, {
         query,
@@ -48,6 +62,7 @@ export function searchTool(firstLabel: number) {
           calls: Array.from(calls.values()),
           findings: text,
           sources,
+          ms: Date.now() - started,
         };
       }
     },
@@ -67,7 +82,8 @@ export function searchTool(firstLabel: number) {
 
 export type ChatMessage = UIMessage<
   unknown,
-  never,
+  /** Sent once the chat is named; not kept in the message. */
+  { title: string },
   InferUITools<{ search: ReturnType<typeof searchTool> }>
 >;
 

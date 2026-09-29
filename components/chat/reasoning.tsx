@@ -1,34 +1,70 @@
 "use client";
 
-import { cn } from "cn";
-import { ChevronDownIcon } from "lucide-react";
+import { Proofing } from "@/components/brand/bakery";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+  ActivityPanel,
+  ActivityTrigger,
+  formatSeconds,
+  LiveLine,
+  useDuration,
+} from "./activity";
+import { LazyMarkdown } from "./lazy-markdown";
 
-/** The model's reasoning, folded like ChatGPT's "Thought" block. */
+/** The model's reasoning: a live line while it thinks, folded away after. */
 export function Reasoning({
   text,
-  streaming,
+  live,
+  deferred,
 }: {
   text: string;
-  streaming: boolean;
+  live: boolean;
+  /** Arrived after the page loaded, see `LazyMarkdown`. */
+  deferred: boolean;
 }) {
-  if (!text && !streaming) return null;
+  const seconds = useDuration(live);
+  if (!text && !live) return null;
 
   return (
-    <Collapsible className="text-muted-foreground text-sm">
-      <CollapsibleTrigger className="group/trigger flex items-center gap-1 transition-colors hover:text-foreground">
-        <span className={cn(streaming && "animate-pulse")}>
-          {streaming ? "Thinking" : "Thought"}
-        </span>
-        <ChevronDownIcon className="size-4 transition-transform group-data-panel-open/trigger:rotate-180" />
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <p className="mt-2 whitespace-pre-wrap border-l pl-4">{text}</p>
+    <Collapsible data-slot="activity">
+      <ActivityTrigger
+        indicator={<Proofing live={live} />}
+        label={
+          live ? (
+            <span className="text-shimmer motion-safe:animate-shimmer">
+              Thinking
+            </span>
+          ) : seconds !== undefined && seconds >= 1 ? (
+            `Thought for ${formatSeconds(seconds)}`
+          ) : (
+            "Thought"
+          )
+        }
+      />
+      {live && <LiveLine text={latestThought(text)} />}
+      <CollapsibleContent hiddenUntilFound>
+        <ActivityPanel>
+          <LazyMarkdown
+            deferred={deferred}
+            isAnimating={live}
+            className="text-[13px]/relaxed text-muted-foreground"
+          >
+            {text}
+          </LazyMarkdown>
+        </ActivityPanel>
       </CollapsibleContent>
     </Collapsible>
   );
+}
+
+/** The newest finished thought: a bold heading if the model writes them, else a sentence. */
+function latestThought(text: string): string | undefined {
+  let heading: string | undefined;
+  for (const [, title] of text.matchAll(/\*\*(.+?)\*\*/g)) heading = title;
+  if (heading) return heading;
+
+  const trimmed = text.trim();
+  const sentences = trimmed.split(/(?<=[.!?])\s+/);
+  // The last sentence may still be arriving; show the one before it.
+  return sentences.at(/[.!?]$/.test(trimmed) ? -1 : -2)?.replace(/\s+/g, " ");
 }

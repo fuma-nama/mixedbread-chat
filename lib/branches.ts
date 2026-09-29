@@ -24,20 +24,48 @@ export function pathTo<T extends Branched>(
   return path.reverse();
 }
 
-/** The messages that share `parentId`, oldest first. */
-export function siblingsOf<T extends Branched>(
+/** Each message's replies by its id, oldest first; the first messages are under `null`. */
+export function childrenOf<T extends Branched>(
   messages: T[],
-  parentId: string | null,
-): T[] {
-  return messages.filter((message) => message.parentId === parentId);
+): Map<string | null, T[]> {
+  const children = new Map<string | null, T[]>();
+  for (const message of messages) {
+    const siblings = children.get(message.parentId);
+    if (siblings) siblings.push(message);
+    else children.set(message.parentId, [message]);
+  }
+  return children;
 }
 
 /** The newest leaf below `id`, following the latest reply at each step. */
-export function latestLeaf(messages: Branched[], id: string): string {
+export function latestLeaf(
+  children: Map<string | null, Branched[]>,
+  id: string,
+): string {
   let leaf = id;
-  for (;;) {
-    const children = siblingsOf(messages, leaf);
-    if (children.length === 0) return leaf;
-    leaf = children[children.length - 1].id;
+  for (
+    let replies = children.get(leaf);
+    replies;
+    replies = children.get(leaf)
+  ) {
+    leaf = replies[replies.length - 1].id;
   }
+  return leaf;
+}
+
+/** `tree`, plus the messages on `path` it has not seen yet, each under the one before it. */
+export function withPath<T extends Branched>(
+  tree: T[],
+  path: Omit<T, "parentId">[],
+): T[] {
+  const known = new Set<string>();
+  for (const message of tree) known.add(message.id);
+
+  let merged = tree;
+  for (let i = 0; i < path.length; i++) {
+    if (known.has(path[i].id)) continue;
+    if (merged === tree) merged = [...tree];
+    merged.push({ ...path[i], parentId: path[i - 1]?.id ?? null } as T);
+  }
+  return merged;
 }

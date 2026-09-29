@@ -1,7 +1,8 @@
-import { loadEnvConfig } from "@next/env";
+import { existsSync } from "node:fs";
 import { defineConfig } from "drizzle-kit";
 
-loadEnvConfig(process.cwd());
+// Next.js loads `.env.local` for the app; deployments set variables directly.
+if (existsSync(".env.local")) process.loadEnvFile(".env.local");
 
 export default defineConfig({
   dialect: "postgresql",

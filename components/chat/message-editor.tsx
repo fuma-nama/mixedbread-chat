@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 
-/** Edits a sent message; sending it starts a new version of the chat. */
+/** Edits a sent message in place; sending it starts a new version of the chat. */
 export function MessageEditor({
   defaultValue,
   onCancel,
@@ -21,11 +20,16 @@ export function MessageEditor({
   }
 
   return (
-    <div className="flex w-full flex-col gap-2 rounded-2xl bg-secondary p-3">
-      <Textarea
+    <div className="flex w-full max-w-[85%] flex-col gap-3 rounded-[20px] bg-card p-3 shadow-raised ring-1 ring-crust/40 motion-safe:animate-fade motion-safe:[animation-duration:150ms]">
+      <textarea
         aria-label="Edit message"
         value={text}
+        // oxlint-disable-next-line jsx-a11y/no-autofocus -- opened by pressing Edit
         autoFocus
+        onFocus={(event) => {
+          const { length } = event.currentTarget.value;
+          event.currentTarget.setSelectionRange(length, length);
+        }}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === "Escape") onCancel();
@@ -38,10 +42,15 @@ export function MessageEditor({
             submit();
           }
         }}
-        className="max-h-64 border-0 bg-transparent shadow-none focus-visible:ring-0 dark:bg-transparent"
+        className="field-sizing-content max-h-72 min-h-10 w-full resize-none scrollbar-thin bg-transparent px-1 text-base leading-relaxed outline-none md:text-[15px]"
       />
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" size="sm" onClick={onCancel}>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="ml-auto"
+          onClick={onCancel}
+        >
           Cancel
         </Button>
         <Button size="sm" disabled={!text.trim()} onClick={submit}>

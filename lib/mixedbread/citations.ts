@@ -68,6 +68,20 @@ export function labelCitations(
   return { text: labelled, sources: Array.from(sources.values()) };
 }
 
+export function sourceTitle(source: Source): string {
+  return source.type === "url" ? source.title || source.url : source.filename;
+}
+
+/** Where a source is from: the site, or the reader's own documents. */
+export function sourceOrigin(source: Source): string {
+  if (source.type === "file") return "Your documents";
+  try {
+    return new URL(source.url).hostname.replace(/^www\./, "");
+  } catch {
+    return source.url;
+  }
+}
+
 function toSource(annotation: Annotation, label: string): Source {
   if (annotation.type === "url_citation") {
     return {

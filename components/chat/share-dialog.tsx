@@ -1,7 +1,7 @@
 "use client";
 
-import { ShareIcon } from "lucide-react";
-import { useState } from "react";
+import { CheckIcon, CopyIcon, GlobeIcon, ShareIcon } from "lucide-react";
+import { memo, useState, useTransition } from "react";
 import { setChatVisibility } from "@/app/(chat)/actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,80 +13,118 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { IconSwap } from "@/components/ui/icon-swap";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 
-export function ShareDialog({
+export const ShareDialog = memo(function ShareDialog({
   chatId,
   initialVisibility,
-  className,
 }: {
   chatId: string;
   initialVisibility: "private" | "public";
-  className?: string;
 }) {
   const [visibility, setVisibility] = useState(initialVisibility);
   const [copied, setCopied] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const shared = visibility === "public";
 
-  async function update(next: "private" | "public") {
-    await setChatVisibility(chatId, next);
-    setVisibility(next);
+  // Copies inside the click itself: Safari refuses clipboard writes after an await.
+  function copy() {
+    void navigator.clipboard.writeText(shareUrl(chatId)).then(
+      () => {
+        setCopied(true);
+        toast.add({ title: "Link copied" });
+      },
+      () => setCopied(false),
+    );
+  }
+
+  function change(next: "private" | "public") {
+    startTransition(async () => {
+      try {
+        await setChatVisibility(chatId, next);
+        setVisibility(next);
+        if (next === "private") toast.add({ title: "Link turned off" });
+      } catch {
+        toast.add({ title: "Couldn’t update sharing. Try again." });
+      }
+    });
   }
 
   return (
     <Dialog onOpenChange={() => setCopied(false)}>
       <DialogTrigger
-        render={<Button variant="ghost" size="sm" className={className} />}
+        render={
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 text-muted-foreground max-sm:size-8 max-sm:px-0"
+          />
+        }
       >
-        <ShareIcon />
-        Share
+        {shared ? <GlobeIcon /> : <ShareIcon />}
+        <span className="max-sm:sr-only">{shared ? "Shared" : "Share"}</span>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Share chat</DialogTitle>
+          <DialogTitle>
+            {shared ? "This chat is shared" : "Share chat"}
+          </DialogTitle>
           <DialogDescription>
-            {visibility === "public"
-              ? "Anyone with the link can read this chat."
-              : "Create a link that lets anyone read this chat."}
+            Anyone with the link can read this chat.
           </DialogDescription>
         </DialogHeader>
-        {visibility === "public" && <ShareLink chatId={chatId} />}
+
+        {shared && (
+          <div className="flex gap-2 motion-safe:animate-rise">
+            <Input
+              aria-label="Link"
+              value={shareUrl(chatId)}
+              readOnly
+              onFocus={(event) => event.currentTarget.select()}
+              className="h-9 font-mono text-[12.5px] text-muted-foreground"
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label={copied ? "Copied" : "Copy link"}
+              onClick={copy}
+            >
+              <IconSwap
+                swapped={copied}
+                from={<CopyIcon />}
+                to={<CheckIcon />}
+              />
+            </Button>
+          </div>
+        )}
+
         <DialogFooter>
-          {visibility === "public" ? (
-            <>
-              <Button variant="outline" onClick={() => void update("private")}>
-                Stop sharing
-              </Button>
-              <Button
-                onClick={() =>
-                  void navigator.clipboard.writeText(shareUrl(chatId)).then(
-                    () => setCopied(true),
-                    () => setCopied(false),
-                  )
-                }
-              >
-                {copied ? "Copied" : "Copy link"}
-              </Button>
-            </>
+          {shared ? (
+            <Button
+              variant="ghost"
+              disabled={pending}
+              onClick={() => change("private")}
+            >
+              Stop sharing
+            </Button>
           ) : (
-            <Button onClick={() => void update("public")}>Create link</Button>
+            <Button
+              disabled={pending}
+              onClick={() => {
+                copy();
+                change("public");
+              }}
+            >
+              Create and copy link
+            </Button>
           )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
-}
-
-/** Rendered only while the dialog is open, so `window` exists. */
-function ShareLink({ chatId }: { chatId: string }) {
-  return (
-    <Input
-      aria-label="Link"
-      value={shareUrl(chatId)}
-      readOnly
-      onFocus={(event) => event.currentTarget.select()}
-    />
-  );
-}
+});
 
 function shareUrl(chatId: string) {
   return `${window.location.origin}/c/${chatId}`;

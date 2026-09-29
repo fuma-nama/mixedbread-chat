@@ -45,15 +45,18 @@ Leave out `mixedbread/web` to answer from your documents only.
 
 ## Customize
 
-| What | Where |
-| --- | --- |
-| Chat models, system prompt and daily limits | `lib/models.ts`, `app/api/chat/route.ts` |
-| The search tool | `lib/search-tool.ts` |
-| Toast request and citation labels | `lib/mixedbread/` |
-| Database schema and queries | `lib/db/` |
-| Sign-in methods | `lib/auth.ts` |
-| Chat UI and sidebar | `components/chat/`, `components/sidebar/` |
-| Primitives and theme | `components/ui/` and `app/globals.css` |
+| What                                 | Where                                     |
+| ------------------------------------ | ----------------------------------------- |
+| Chat models and system prompt        | `lib/models.ts`, `app/api/chat/route.ts`  |
+| Daily limits                         | `lib/limits.ts`                           |
+| Suggested questions on a new chat    | `lib/suggestions.ts`                      |
+| The search tool                      | `lib/search-tool.ts`                      |
+| Toast request and citation labels    | `lib/mixedbread/`                         |
+| Database schema and queries          | `lib/db/`                                 |
+| Sign-in methods                      | `lib/auth.ts`                             |
+| Chat UI and sidebar                  | `components/chat/`, `components/sidebar/` |
+| Primitives and theme                 | `components/ui/` and `app/globals.css`    |
+| Logo, halftone mark and bakery icons | `components/brand/`                       |
 
 After changing `lib/db/schema.ts`, run `pnpm db:generate` to add a migration.
 

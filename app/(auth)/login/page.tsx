@@ -1,17 +1,20 @@
-import Link from "next/link";
-import { AuthForm } from "@/components/auth-form";
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { AuthPage } from "@/components/auth-form";
+import { getSession } from "@/lib/auth";
+import { safeNext } from "@/lib/safe-next";
 
-export default function LoginPage() {
-  return (
-    <>
-      <h1 className="font-heading text-2xl font-semibold">Log in</h1>
-      <AuthForm mode="login" />
-      <p className="text-sm text-muted-foreground">
-        No account yet?{" "}
-        <Link href="/register" className="text-foreground underline">
-          Sign up
-        </Link>
-      </p>
-    </>
-  );
+export const metadata: Metadata = { title: "Log in" };
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string | string[] }>;
+}) {
+  const next = safeNext((await searchParams).next);
+  // Already signed in: nothing to do here.
+  const session = await getSession();
+  if (session && !session.user.isAnonymous) redirect(next);
+
+  return <AuthPage mode="login" next={next} />;
 }

@@ -4,6 +4,7 @@ import { nextCookies } from "better-auth/next-js";
 import { anonymous } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
+import { cache } from "react";
 import { db } from "./db";
 import { chat } from "./db/schema";
 
@@ -28,6 +29,7 @@ export const auth = betterAuth({
   ],
 });
 
-export async function getSession() {
-  return auth.api.getSession({ headers: await headers() });
-}
+/** The visitor's session, looked up once per request. */
+export const getSession = cache(async () =>
+  auth.api.getSession({ headers: await headers() }),
+);
