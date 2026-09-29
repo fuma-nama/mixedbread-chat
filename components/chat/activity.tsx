@@ -90,6 +90,40 @@ export function ActivityPanel({
   );
 }
 
+/** The first `count` items, and how many more wait until they are asked for. */
+export function useFirst<T>(items: T[], count: number) {
+  const [all, setAll] = useState(false);
+  const more = all ? 0 : items.length - count;
+  return {
+    shown: more > 0 ? items.slice(0, count) : items,
+    more,
+    showAll: () => setAll(true),
+  };
+}
+
+/** Shows the rest of a list that lists its first few. */
+export function More({
+  count,
+  onClick,
+}: {
+  count: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="-ml-1 cursor-pointer self-start rounded-md px-1 text-[12.5px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 hover:text-foreground focus-visible:outline-2"
+    >
+      {count} more
+    </button>
+  );
+}
+
+export function plural(count: number, noun: string): string {
+  return `${count} ${count === 1 ? noun : `${noun}s`}`;
+}
+
 // One clock for every running step, ticking only while one is.
 const clock = { now: 0, listeners: new Set<() => void>() };
 let ticker: ReturnType<typeof setInterval> | undefined;
