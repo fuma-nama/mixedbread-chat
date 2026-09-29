@@ -23,45 +23,35 @@
 @theme inline {
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
-  --font-heading: var(--font-sans);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-panel: var(--panel);
   --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-soft: var(--soft);
   --color-sidebar: var(--background);
-  --color-sidebar-foreground: var(--foreground);
-  --color-sidebar-border: var(--border);
 
   /* The bakery: crumb, crust and the berry that marks what was cited. */
   --color-honey: var(--honey);
   --color-crust: var(--crust);
   --color-berry: var(--berry);
-  --color-shade: var(--shade);
 
-  --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
   --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
 
   --shadow-float: var(--elevation-float);
   --shadow-raised: var(--elevation-raised);
@@ -274,17 +264,14 @@
   --panel: oklch(0.992 0.005 85);
   --foreground: oklch(0.235 0.02 48);
   --card: oklch(0.997 0.003 85);
-  --card-foreground: var(--foreground);
   --popover: oklch(0.997 0.003 85);
   --popover-foreground: var(--foreground);
   --primary: var(--foreground);
   --primary-foreground: oklch(0.985 0.007 83);
   --secondary: oklch(0.955 0.012 80);
-  --secondary-foreground: var(--foreground);
   --muted: oklch(0.955 0.012 80);
   --muted-foreground: oklch(0.5 0.022 55);
   --accent: oklch(0.945 0.014 78);
-  --accent-foreground: var(--foreground);
   --destructive: oklch(0.56 0.19 29);
   --border: oklch(0.905 0.015 76);
   --input: oklch(0.88 0.017 74);
@@ -317,7 +304,6 @@
     --foreground: oklch(0.95 0.014 82);
     --card: oklch(0.222 0.014 52);
     --popover: oklch(0.232 0.014 52);
-    --primary: var(--foreground);
     --primary-foreground: oklch(0.2 0.013 52);
     --secondary: oklch(0.25 0.014 52);
     --muted: oklch(0.235 0.014 52);
