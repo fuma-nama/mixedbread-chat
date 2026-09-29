@@ -11,16 +11,23 @@ import {
   useEffect,
   useMemo,
   useOptimistic,
+  useRef,
   useState,
 } from "react";
+import { deleteChats } from "@/app/(chat)/actions";
 import { Logo } from "@/components/brand/logo";
 import { Kbd, KbdGroup, ModKey } from "@/components/ui/kbd";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { toast } from "@/components/ui/toast";
 import { useWindowEvent } from "@/hooks/use-window-event";
 import { AccountMenu } from "./account-menu";
 import { ChatItem } from "./chat-item";
-import { type ChatSummary, useChatList } from "./chats-provider";
+import { type ChatSummary, useChatList, useChats } from "./chats-provider";
+import { DeleteDialog } from "./delete-dialog";
 import { useOpenSearch } from "./search-chats";
+import { SelectionBar } from "./selection-bar";
+
+const NONE: ReadonlySet<string> = new Set();
 
 export function AppSidebar({
   user,
@@ -34,11 +41,25 @@ export function AppSidebar({
   timeZone: string;
 }) {
   const chats = useChatList();
+  const { remove, refresh } = useChats();
   const pathname = usePathname();
   const router = useRouter();
   const openSearch = useOpenSearch();
   // The chat being opened shows as open from the click, not from its arrival.
   const [activeId, setActiveId] = useOptimistic(chatIdOf(pathname));
+  const [selection, setSelection] = useState(NONE);
+  // Where a Shift-click range starts: the chat toggled last.
+  const anchor = useRef<string>(undefined);
+  // The chats the delete dialog asks about.
+  const [deleting, setDeleting] = useState<ChatSummary[]>();
+  // Where focus lands once the chats around it are deleted.
+  const landing = useRef<HTMLElement>(null);
+  const area = useRef<HTMLDivElement>(null);
+
+  // The selected chats still listed, in the list's order.
+  const selected: ChatSummary[] = [];
+  for (const chat of chats) if (selection.has(chat.id)) selected.push(chat);
+  const selecting = selected.length > 0;
 
   // Lets the server group chats by the reader's own days on the next load.
   useEffect(() => {
@@ -58,6 +79,79 @@ export function AppSidebar({
       setActiveId(chatIdOf(href));
       router.push(href);
     });
+  }
+
+  function rowOf(id: string | undefined) {
+    return id
+      ? area.current?.querySelector<HTMLElement>(`[data-id="${id}"] a`)
+      : undefined;
+  }
+
+  function select(id: string, range: boolean) {
+    const next = new Set(selected.map((chat) => chat.id));
+    const from =
+      range && selecting
+        ? chats.findIndex((chat) => chat.id === anchor.current)
+        : -1;
+    if (from === -1) {
+      if (!next.delete(id)) next.add(id);
+      anchor.current = id;
+    } else {
+      const to = chats.findIndex((chat) => chat.id === id);
+      const [start, end] = from < to ? [from, to] : [to, from];
+      for (let i = start; i <= end; i++) next.add(chats[i].id);
+    }
+    setSelection(next);
+  }
+
+  function clear() {
+    // The bar goes with the selection, so focus goes back to the chats.
+    if (!document.activeElement?.closest("[data-id]")) {
+      rowOf(anchor.current)?.focus({ preventScroll: true });
+    }
+    setSelection(NONE);
+  }
+
+  function askToDelete(targets: ChatSummary[]) {
+    landing.current = null;
+    setDeleting(targets);
+  }
+
+  async function deleteForGood(targets: ChatSummary[]) {
+    setDeleting(undefined);
+    const ids = new Set(targets.map((chat) => chat.id));
+    landing.current = rowOf(successor(chats, ids)) ?? null;
+    const restore = remove(ids);
+    const previous = selection;
+    setSelection(NONE);
+    if (activeId && ids.has(activeId)) router.push("/");
+    const one = ids.size === 1;
+    try {
+      await toast.promise(deleteChats(Array.from(ids)), {
+        loading: "Deleting…",
+        success: one ? "Chat deleted" : `${ids.size} chats deleted`,
+        error: one ? "Couldn’t delete the chat." : "Couldn’t delete the chats.",
+      });
+      // Older chats move up into the room they left.
+      refresh();
+    } catch {
+      restore();
+      setSelection(previous);
+    }
+  }
+
+  function onKeyDown(event: React.KeyboardEvent) {
+    if (event.target instanceof HTMLInputElement) return;
+    if (event.key === "a" && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      setSelection(new Set(chats.map((chat) => chat.id)));
+    }
+    if (!selecting) return;
+    if (event.key === "Escape") clear();
+    if (event.key === "Delete" || event.key === "Backspace") {
+      event.preventDefault();
+      askToDelete(selected);
+    }
   }
 
   return (
@@ -91,17 +185,34 @@ export function AppSidebar({
         </HoverArea>
       </nav>
 
-      <ChatList
-        chats={chats}
-        now={now}
-        timeZone={timeZone}
-        activeId={activeId}
-        onOpen={open}
-      />
+      {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- keys for the chats inside */}
+      <div ref={area} onKeyDown={onKeyDown} className="contents">
+        <ChatList
+          chats={chats}
+          now={now}
+          timeZone={timeZone}
+          activeId={activeId}
+          selection={selecting ? selection : undefined}
+          onOpen={open}
+          onSelect={select}
+          onDelete={(chat) => askToDelete([chat])}
+        />
 
-      <div className="shrink-0 p-2">
-        <AccountMenu user={user} />
+        <SelectionBar
+          count={selected.length}
+          onClear={clear}
+          onDelete={() => askToDelete(selected)}
+        >
+          <AccountMenu user={user} />
+        </SelectionBar>
       </div>
+
+      <DeleteDialog
+        chats={deleting}
+        landing={landing}
+        onCancel={() => setDeleting(undefined)}
+        onDelete={(targets) => void deleteForGood(targets)}
+      />
     </>
   );
 }
@@ -239,13 +350,20 @@ function ChatList({
   now,
   timeZone,
   activeId,
+  selection,
   onOpen,
+  onSelect,
+  onDelete,
 }: {
   chats: ChatSummary[];
   now: number;
   timeZone: string;
   activeId?: string;
+  /** The selected chats, while some are. */
+  selection?: ReadonlySet<string>;
   onOpen: (event: { preventDefault: () => void }, href: string) => void;
+  onSelect: (id: string, range: boolean) => void;
+  onDelete: (chat: ChatSummary) => void;
 }) {
   const groups = useMemo(
     () => groupByDay(chats, now, timeZone),
@@ -271,7 +389,10 @@ function ChatList({
                   chat={chat}
                   active={chat.id === activeId}
                   fresh={!listed.has(chat.id)}
+                  selected={selection?.has(chat.id)}
                   onOpen={onOpen}
+                  onSelect={onSelect}
+                  onDelete={onDelete}
                 />
               ))}
             </ul>
@@ -284,6 +405,18 @@ function ChatList({
 
 function chatIdOf(pathname: string): string | undefined {
   return pathname.match(/^\/c\/([^/]+)/)?.[1];
+}
+
+/** The chat that takes the place of the first of `ids`, or the one above it. */
+function successor(chats: ChatSummary[], ids: ReadonlySet<string>) {
+  let above: string | undefined;
+  let passed = false;
+  for (const chat of chats) {
+    if (ids.has(chat.id)) passed = true;
+    else if (passed) return chat.id;
+    else above = chat.id;
+  }
+  return above;
 }
 
 const DAY = 24 * 60 * 60 * 1000;

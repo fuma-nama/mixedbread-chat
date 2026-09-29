@@ -16,6 +16,8 @@ interface Chats {
   refresh: () => void;
   /** Shows a change right away: `null` removes the chat, and a new id lists it first. */
   update: (id: string, change: Partial<ChatSummary> | null) => void;
+  /** Takes chats off the list at once, returning what puts the list back. */
+  remove: (ids: ReadonlySet<string>) => () => void;
 }
 
 const ChatsContext = createContext<Chats | null>(null);
@@ -56,6 +58,11 @@ function createChats(initial: ChatSummary[]): Chats {
             ]
           : chats.with(index, { ...chats[index], ...change }),
       );
+    },
+    remove(ids) {
+      const before = list.get();
+      list.set(before.filter((chat) => !ids.has(chat.id)));
+      return () => list.set(before);
     },
   };
 }
