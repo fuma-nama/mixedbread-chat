@@ -3,7 +3,7 @@
 import { cn } from "cn";
 import { EllipsisIcon, PencilIcon, TrashIcon } from "lucide-react";
 import Link from "next/link";
-import { memo, useState } from "react";
+import { memo, useRef, useState } from "react";
 import { renameChat } from "@/app/(chat)/actions";
 import {
   DropdownMenu,
@@ -36,6 +36,8 @@ export const ChatItem = memo(function ChatItem({
 }) {
   const { update } = useChats();
   const [renaming, setRenaming] = useState(false);
+  // Renaming ended from the keyboard, so the row takes focus back.
+  const refocus = useRef(false);
   // The title the reader gave it, which shows at once instead of typing out.
   const [named, setNamed] = useState<string>();
   const selecting = selected !== undefined;
@@ -77,13 +79,20 @@ export const ChatItem = memo(function ChatItem({
             onFocus={(event) => event.currentTarget.select()}
             onBlur={(event) => void rename(event.currentTarget.value)}
             onKeyDown={(event) => {
+              if (event.key !== "Enter" && event.key !== "Escape") return;
+              refocus.current = true;
               if (event.key === "Enter") event.currentTarget.blur();
-              if (event.key === "Escape") setRenaming(false);
+              else setRenaming(false);
             }}
             className="h-8 w-full rounded-lg bg-card px-2 text-[13.5px] shadow-[0_0_0_1px_var(--crust),0_0_0_3px_oklch(from_var(--crust)_l_c_h/0.15)] outline-none"
           />
         ) : (
           <Link
+            ref={(link) => {
+              if (!link || !refocus.current) return;
+              refocus.current = false;
+              link.focus();
+            }}
             href={href}
             data-id={chat.id}
             aria-current={active ? "page" : undefined}
