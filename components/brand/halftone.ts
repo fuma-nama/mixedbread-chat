@@ -112,13 +112,13 @@ function sample(
 ): Tone[] {
   const scale = 2;
   const canvas = document.createElement("canvas");
-  canvas.width = Math.ceil(width * scale);
-  canvas.height = Math.ceil(height * scale);
+  const w = (canvas.width = Math.ceil(width * scale));
+  const h = (canvas.height = Math.ceil(height * scale));
   const context = canvas.getContext("2d", { willReadFrequently: true });
-  if (!context || !canvas.width || !canvas.height) return [];
+  if (!context || !w || !h) return [];
   context.scale(scale, scale);
   paint(context);
-  const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+  const { data } = context.getImageData(0, 0, w, h);
 
   const tones: Tone[] = [];
   const rowStep = (cell * Math.sqrt(3)) / 2;
@@ -126,30 +126,31 @@ function sample(
 
   for (let row = 0, y = cell / 2; y < height; row++, y += rowStep) {
     for (let x = cell / 2 + (row % 2) * (cell / 2); x < width; x += cell) {
+      // The pixels around the cell's center, within the canvas.
+      const cx = Math.round(x * scale);
+      const cy = Math.round(y * scale);
+      const left = Math.max(cx - reach, 0);
+      const right = Math.min(cx + reach, w - 1);
+      const top = Math.max(cy - reach, 0);
+      const bottom = Math.min(cy + reach, h - 1);
       let red = 0;
       let green = 0;
       let blue = 0;
       let alpha = 0;
-      let count = 0;
-      const cx = Math.round(x * scale);
-      const cy = Math.round(y * scale);
-      for (let sy = cy - reach; sy <= cy + reach; sy++) {
-        for (let sx = cx - reach; sx <= cx + reach; sx++) {
-          if (sx < 0 || sy < 0 || sx >= canvas.width || sy >= canvas.height)
-            continue;
-          const i = (sy * canvas.width + sx) * 4;
+      for (let sy = top; sy <= bottom; sy++) {
+        const end = (sy * w + right) * 4;
+        for (let i = (sy * w + left) * 4; i <= end; i += 4) {
           const a = data[i + 3] / 255;
           red += data[i] * a;
           green += data[i + 1] * a;
           blue += data[i + 2] * a;
           alpha += a;
-          count++;
         }
       }
       tones.push({
         x,
         y,
-        coverage: count > 0 ? alpha / count : 0,
+        coverage: alpha / ((right - left + 1) * (bottom - top + 1)),
         color:
           alpha > 0 ? [red / alpha, green / alpha, blue / alpha] : [0, 0, 0],
       });

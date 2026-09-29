@@ -69,9 +69,15 @@ function readInks(element: Element): Rgb[] {
  */
 const styles = new Map<number, string>();
 
+const level = (value: number) => Math.round(clamp01(value / 255) * 63);
+
 function colorKey(r: number, g: number, b: number, alpha: number): number {
-  const q = (value: number) => Math.round(clamp01(value / 255) * 63);
-  return (Math.round(alpha * 8) << 18) | (q(r) << 12) | (q(g) << 6) | q(b);
+  return (
+    (Math.round(alpha * 8) << 18) |
+    (level(r) << 12) |
+    (level(g) << 6) |
+    level(b)
+  );
 }
 
 function styleOf(key: number): string {
@@ -117,6 +123,8 @@ function animate(canvas: HTMLCanvasElement | null) {
 
   const layout = () => {
     const rect = canvas.getBoundingClientRect();
+    // Already printed at this size, as when the first resize follows the logo.
+    if (dots.length && rect.width === width && rect.height === height) return;
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
     width = rect.width;
     height = rect.height;
