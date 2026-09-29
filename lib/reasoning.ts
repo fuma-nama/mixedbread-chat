@@ -4,13 +4,13 @@
  * most, and each model takes the ones AI Gateway lists for it.
  */
 export const reasoningLevels = [
-  { id: "auto", name: "Auto", description: "Up to the model" },
-  { id: "none", name: "Off", description: "Answers right away" },
-  { id: "minimal", name: "Minimal", description: "A moment’s thought" },
-  { id: "low", name: "Low", description: "Thinks briefly" },
-  { id: "medium", name: "Medium", description: "Balanced speed and depth" },
-  { id: "high", name: "High", description: "For hard questions" },
-  { id: "xhigh", name: "Extra high", description: "Deepest and slowest" },
+  { id: "auto", name: "Auto" },
+  { id: "none", name: "Off" },
+  { id: "minimal", name: "Minimal" },
+  { id: "low", name: "Low" },
+  { id: "medium", name: "Medium" },
+  { id: "high", name: "High" },
+  { id: "xhigh", name: "Extra high" },
 ] as const;
 
 export type Reasoning = (typeof reasoningLevels)[number]["id"];

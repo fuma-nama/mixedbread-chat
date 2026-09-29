@@ -24,7 +24,6 @@ export interface Step {
   stores?: { name: string }[];
   /** Chunks the step returned or read. */
   results?: number;
-  error?: string;
 }
 
 /** A turn of the conversation Toast answers. */
@@ -101,7 +100,6 @@ const callSchema = z.object({
     .nullish(),
   stores: z.array(z.object({ name: z.string() })).nullish(),
   results: z.array(resultSchema).nullish(),
-  error: z.object({ message: z.string() }).nullish(),
 });
 
 // Steps and annotations are parsed one by one, so a shape the app doesn't
@@ -280,7 +278,6 @@ function stepOf(call: z.infer<typeof callSchema>): Step {
   if (call.stores) step.stores = call.stores;
   const results = call.results?.length ?? call.chunk_ids?.length;
   if (results !== undefined) step.results = results;
-  if (call.error) step.error = call.error.message;
   return step;
 }
 
