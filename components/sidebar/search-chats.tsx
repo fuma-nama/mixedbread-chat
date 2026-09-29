@@ -7,7 +7,6 @@ import { searchChats } from "@/app/(chat)/actions";
 import {
   Command,
   CommandDialog,
-  CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
@@ -87,12 +86,7 @@ function Palette({ onGo }: { onGo: () => void }) {
         {searching && <Spinner className="text-muted-foreground" />}
       </CommandInput>
       <CommandList
-        empty={
-          trimmed &&
-          !searching &&
-          shown.length === 0 &&
-          `No chats mention “${trimmed}”.`
-        }
+        empty={trimmed && !searching && shown.length === 0 && "No chats"}
       >
         {!trimmed && (
           <CommandItem
@@ -104,35 +98,18 @@ function Palette({ onGo }: { onGo: () => void }) {
             New chat
           </CommandItem>
         )}
-        {shown.length > 0 && (
-          <CommandGroup heading={trimmed ? "Chats" : "Recent"}>
-            {shown.map((chat) => (
-              <CommandItem
-                key={chat.id}
-                value={chat.id}
-                render={<Link href={`/c/${chat.id}`} prefetch={false} />}
-                onClick={onGo}
-              >
-                <MessageSquareIcon />
-                <span className="truncate">{chat.title}</span>
-                <span className="ml-auto shrink-0 font-mono text-[11px] text-muted-foreground/80 tabular-nums">
-                  {ago(chat.updatedAt)}
-                </span>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        )}
+        {shown.map((chat) => (
+          <CommandItem
+            key={chat.id}
+            value={chat.id}
+            render={<Link href={`/c/${chat.id}`} prefetch={false} />}
+            onClick={onGo}
+          >
+            <MessageSquareIcon />
+            <span className="truncate">{chat.title}</span>
+          </CommandItem>
+        ))}
       </CommandList>
     </Command>
   );
-}
-
-/** Short relative time: 5m, 3h, 2d, then the date. */
-function ago(date: Date): string {
-  const minutes = Math.round((Date.now() - date.getTime()) / 60000);
-  if (minutes < 1) return "now";
-  if (minutes < 60) return `${minutes}m`;
-  if (minutes < 60 * 24) return `${Math.round(minutes / 60)}h`;
-  if (minutes < 60 * 24 * 7) return `${Math.round(minutes / 60 / 24)}d`;
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }

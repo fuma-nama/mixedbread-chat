@@ -44,6 +44,6 @@ export function suggestionsFor(
         `What do ${a.name} and ${b.name} cover?`,
         `Compare ${a.name} and ${b.name}`,
       ]
-    : [`What does ${a.name} cover?`, `Summarize the key points in ${a.name}`];
+    : [`What does ${a.name} cover?`, `Summarize ${a.name}`];
   return [...named, base[2]];
 }

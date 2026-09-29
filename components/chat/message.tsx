@@ -10,7 +10,7 @@ import { LazyMarkdown } from "./lazy-markdown";
 import { MessageActions } from "./message-actions";
 import { MessageEditor } from "./message-editor";
 import { Reasoning } from "./reasoning";
-import { Search } from "./search";
+import { Search, type SearchPart } from "./search";
 import { Sources } from "./sources";
 
 /** How a message enters: sent just now it rises, shown by a version switch it fades. */
@@ -53,6 +53,10 @@ export const MessageView = memo(function MessageView({
   const [editing, setEditing] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const user = message.role === "user";
+  const searches: SearchPart[] = [];
+  for (const part of message.parts) {
+    if (part.type === "tool-search") searches.push(part);
+  }
 
   if (editing) {
     return (
@@ -128,13 +132,18 @@ export const MessageView = memo(function MessageView({
                   />
                 );
               case "tool-search":
-                return <Search key={part.toolCallId} part={part} live={live} />;
+                // Every search reads as one trace, where the first one began.
+                return (
+                  part === searches[0] && (
+                    <Search key="search" parts={searches} live={live} />
+                  )
+                );
               default:
                 return null;
             }
           })}
         </div>
-        {live && quiet(message) && <Pending label={pendingLabel(message)} />}
+        {live && quiet(message) && <Pending />}
         {stopped && (
           <p className="text-[12.5px] text-muted-foreground">Stopped</p>
         )}
@@ -195,45 +204,37 @@ function Message({
 }
 
 /** Waiting on the model: shown a beat late, so quick answers never flash it. */
-function Pending({ label }: { label: string }) {
+function Pending() {
   return (
-    <div className="-ml-1 flex items-center gap-2 py-0.5 pl-1 text-[13.5px] motion-safe:animate-[fade_240ms_150ms_both] [[data-slot=parts]:has(>[data-slot=activity]:last-child)+&]:-mt-2">
-      <span className="flex w-5 justify-center">
-        <Proofing live />
-      </span>
-      <span key={label} className="text-shimmer motion-safe:animate-fade">
-        {label}
-      </span>
+    <div className="flex h-6 w-5 items-center justify-center motion-safe:animate-[fade_240ms_150ms_both] [[data-slot=parts]:has(>[data-slot=activity]:last-child)+&]:-mt-2">
+      <Proofing live />
     </div>
   );
 }
 
-function lastStep(message: ChatMessage) {
-  return message.parts.findLast(
-    (part) =>
-      part.type === "text" ||
-      part.type === "reasoning" ||
-      part.type === "tool-search",
-  );
-}
-
-/** Streaming, with nothing arriving right now: before the first part, or between steps. */
+/**
+ * Streaming, with nothing arriving where the reader is: before the first
+ * part, between steps, or while a search works in the trace above the text.
+ */
 function quiet(message: ChatMessage): boolean {
   if (message.role !== "assistant") return false;
-  const part = lastStep(message);
-  if (!part) return true;
-  if (part.type === "text") return part.text.length === 0;
-  if (part.type === "reasoning") return part.state === "done";
-  return part.state === "output-available" && part.output.status === "done";
-}
-
-/** What the model is doing while nothing arrives: reading what a search found, or thinking. */
-function pendingLabel(message: ChatMessage): string {
-  const part = lastStep(message);
-  const found =
-    part?.type === "tool-search" &&
-    part.state === "output-available" &&
-    part.output.status === "done" &&
-    part.output.sources.length > 0;
-  return found ? "Reading sources" : "Thinking";
+  let last: ChatMessage["parts"][number] | undefined;
+  let searched = false;
+  let below = false;
+  let searching = false;
+  for (const part of message.parts) {
+    if (part.type === "tool-search") {
+      searched = true;
+      searching ||=
+        part.state !== "output-error" &&
+        (part.state !== "output-available" || part.output.status !== "done");
+    } else if (part.type === "text" || part.type === "reasoning") {
+      below ||= searched;
+    } else continue;
+    last = part;
+  }
+  if (!last) return true;
+  if (last.type === "text") return last.text.length === 0;
+  if (last.type === "reasoning") return last.state === "done";
+  return below || !searching;
 }

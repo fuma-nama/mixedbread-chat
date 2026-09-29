@@ -16,18 +16,19 @@ import {
 import { IconSwap } from "@/components/ui/icon-swap";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { sourcesOf } from "@/lib/messages";
 import type { ChatMessage } from "@/lib/search-tool";
 
 /** Whether a search in the chat found files in the user's stores. */
 export function searchedStores(messages: ChatMessage[]): boolean {
   for (const message of messages) {
-    for (const part of message.parts) {
-      if (part.type !== "tool-search" || part.state !== "output-available")
-        continue;
-      if (part.output.status !== "done") continue;
-      for (const source of part.output.sources) {
-        if (source.type === "file") return true;
-      }
+    for (const source of sourcesOf(message)) {
+      if (source.type === "file") return true;
     }
   }
   return false;
@@ -64,7 +65,6 @@ export const ShareDialog = memo(function ShareDialog({
       try {
         await setChatVisibility(chatId, next);
         setVisibility(next);
-        if (next === "private") toast.add({ title: "Link turned off" });
       } catch {
         toast.add({ title: "Couldn’t update sharing. Try again." });
       }
@@ -73,27 +73,34 @@ export const ShareDialog = memo(function ShareDialog({
 
   return (
     <Dialog onOpenChange={() => setCopied(false)}>
-      <DialogTrigger
-        render={
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1.5 text-muted-foreground max-sm:size-8 max-sm:px-0"
-          />
-        }
-      >
-        {shared ? <GlobeIcon /> : <ShareIcon />}
-        <span className="max-sm:sr-only">{shared ? "Shared" : "Share"}</span>
-      </DialogTrigger>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <DialogTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={shared ? "Shared" : "Share"}
+                  className="text-muted-foreground"
+                />
+              }
+            />
+          }
+        >
+          {shared ? <GlobeIcon /> : <ShareIcon />}
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          {shared ? "Shared" : "Share"}
+        </TooltipContent>
+      </Tooltip>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {shared ? "This chat is shared" : "Share chat"}
-          </DialogTitle>
+          <DialogTitle>Share chat</DialogTitle>
           <DialogDescription>
             {stores
-              ? "Anyone with the link can read this chat, including the passages it quotes from your stores."
-              : "Anyone with the link can read this chat."}
+              ? "Anyone with the link can read it, including passages from your stores."
+              : "Anyone with the link can read it."}
           </DialogDescription>
         </DialogHeader>
 
@@ -138,7 +145,7 @@ export const ShareDialog = memo(function ShareDialog({
                 change("public");
               }}
             >
-              Create and copy link
+              Copy link
             </Button>
           )}
         </DialogFooter>

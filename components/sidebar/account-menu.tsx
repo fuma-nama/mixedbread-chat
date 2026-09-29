@@ -36,7 +36,6 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuLinkItem,
   DropdownMenuSeparator,
   DropdownMenuSub,
@@ -50,8 +49,6 @@ import { PLATFORM_URL } from "@/lib/mixedbread/platform";
 import { withNext } from "@/lib/safe-next";
 import type { Organization } from "@/lib/sources";
 import { ThemeSwitch } from "./theme-switch";
-
-/** Where people manage their stores and organizations. */
 
 interface User {
   name: string;
@@ -123,25 +120,17 @@ function SignedIn({ user }: { user: User }) {
           align="start"
           className="w-(--anchor-width) min-w-60"
         >
-          <div className="flex items-center gap-2.5 px-2 pt-1.5 pb-2">
-            <Avatar user={user} className="size-8 text-[13px]" />
-            <div className="flex min-w-0 flex-col">
-              {user.name && (
-                <span className="truncate text-[13.5px] font-medium">
-                  {user.name}
-                </span>
-              )}
-              <span className="truncate text-xs text-muted-foreground">
+          {/* Without a name, the trigger already shows the address. */}
+          {user.name && (
+            <>
+              <p className="truncate px-2 pt-1.5 pb-1 text-xs text-muted-foreground">
                 {user.email}
-              </span>
-            </div>
-          </div>
-          <DropdownMenuSeparator />
+              </p>
+              <DropdownMenuSeparator />
+            </>
+          )}
 
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>
-              {organizations.length === 1 ? "Organization" : "Organizations"}
-            </DropdownMenuLabel>
+          <DropdownMenuGroup aria-label="Organizations">
             {organizations.map((organization) => (
               <OrganizationRow
                 key={organization.id}
@@ -160,7 +149,7 @@ function SignedIn({ user }: { user: User }) {
               onClick={connect}
             >
               {pending ? <Spinner aria-hidden="true" /> : <PlusIcon />}
-              {pending ? "Opening Mixedbread…" : "Connect another organization"}
+              Connect organization
             </DropdownMenuItem>
           </DropdownMenuGroup>
 
@@ -190,8 +179,8 @@ function SignedIn({ user }: { user: User }) {
 }
 
 /**
- * An organization, opening a menu to manage it on Mixedbread, sign in to it
- * again when its grant lapsed, or disconnect it.
+ * An organization, opening a menu to manage it on Mixedbread, reconnect it
+ * when its grant lapsed, or disconnect it.
  */
 function OrganizationRow({
   organization,
@@ -213,19 +202,12 @@ function OrganizationRow({
         >
           {organization.name.charAt(0)}
         </span>
-        <span className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate">{organization.name}</span>
-          {lapsed && (
-            <span className="truncate text-xs text-muted-foreground">
-              Sign in again to search it
-            </span>
-          )}
-        </span>
+        <span className="min-w-0 flex-1 truncate">{organization.name}</span>
+        {/* Its access ended: a small mark, not an alarm. */}
         {lapsed && (
-          <span
-            aria-hidden="true"
-            className="size-1.5 shrink-0 rounded-full bg-crust"
-          />
+          <span className="size-1.5 shrink-0 rounded-full bg-crust">
+            <span className="sr-only">, access ended</span>
+          </span>
         )}
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent className="w-56">
@@ -245,7 +227,7 @@ function OrganizationRow({
             onClick={connect}
           >
             {pending ? <Spinner aria-hidden="true" /> : <RotateCwIcon />}
-            {pending ? "Opening Mixedbread…" : "Sign in again"}
+            Reconnect
           </DropdownMenuItem>
         )}
         {onDisconnect && (
@@ -296,7 +278,7 @@ function DisconnectDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Disconnect {shown?.name}?</AlertDialogTitle>
           <AlertDialogDescription>
-            Its stores won’t be searched. You can connect it again anytime.
+            Its stores won’t be searched.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

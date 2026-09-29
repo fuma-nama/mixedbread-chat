@@ -31,7 +31,7 @@ export function ActivityTrigger({
           <span className="truncate text-muted-foreground/75">{detail}</span>
         )}
         {meta && (
-          <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground/70 tabular-nums">
+          <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground/70 tabular-nums empty:hidden">
             {meta}
           </span>
         )}
@@ -62,15 +62,56 @@ export function StatusDot({
   );
 }
 
-/** The newest thing a running step did, replaced in place as it goes. */
-export function LiveLine({ text }: { text?: string }) {
-  if (!text) return null;
+/** Lines under a step while it runs, folded away once `open` turns off. */
+export function Fold({
+  open,
+  children,
+}: {
+  open: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="mt-0.5 ml-7 h-5 overflow-hidden text-[12.5px] text-muted-foreground/80">
-      <p key={text} className="truncate motion-safe:animate-swap-in">
-        {text}
-      </p>
+    <div
+      className={cn(
+        "grid transition-[grid-template-rows,opacity] duration-240 ease-smooth motion-reduce:transition-none",
+        open ? "grid-rows-[1fr]" : "grid-rows-[0fr] opacity-0",
+      )}
+    >
+      <div className="min-h-0 overflow-hidden">{children}</div>
     </div>
+  );
+}
+
+/**
+ * The newest thing a running step did, replaced in place as it goes, after a
+ * dot for each step running at once. Without one it folds away.
+ */
+export function LiveLine({
+  text,
+  running = 0,
+}: {
+  text?: string;
+  running?: number;
+}) {
+  // Kept while it folds, so the words don't vanish first.
+  const [shown, setShown] = useState(text);
+  if (text && text !== shown) setShown(text);
+
+  return (
+    <Fold open={Boolean(text)}>
+      <div className="mt-0.5 ml-7 flex h-5 items-center gap-2 text-[12.5px] text-muted-foreground/80">
+        {running > 1 && (
+          <span className="flex gap-0.5">
+            {Array.from({ length: Math.min(running, 4) }, (_, index) => (
+              <StatusDot key={index} state="running" />
+            ))}
+          </span>
+        )}
+        <p key={shown} className="truncate motion-safe:animate-swap-in">
+          {shown}
+        </p>
+      </div>
+    </Fold>
   );
 }
 

@@ -41,7 +41,7 @@ export function Reasoning({
           )
         }
       />
-      {live && <LiveLine text={latestThought(text)} />}
+      <LiveLine text={live ? latestThought(text) : undefined} />
       <CollapsibleContent hiddenUntilFound>
         <ActivityPanel>
           <LazyMarkdown

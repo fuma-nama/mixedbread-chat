@@ -43,7 +43,6 @@ export function Composer({
   onReasoningChange,
   onSubmit,
   onStop,
-  placeholder,
   blocked,
   inviting = false,
 }: {
@@ -57,7 +56,6 @@ export function Composer({
   onReasoningChange: (reasoning: Reasoning) => void;
   onSubmit: (text: string) => void;
   onStop: () => void;
-  placeholder: string;
   /** Why sending is off for now, shown in place of the placeholder. */
   blocked?: string;
   /** Glows warm whenever it has focus, as on a new chat; otherwise only once there is something to send. */
@@ -127,7 +125,7 @@ export function Composer({
         ref={textareaRef}
         value={text}
         disabled={Boolean(reason)}
-        placeholder={reason ?? placeholder}
+        placeholder={reason ?? "Ask anything"}
         rows={1}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={(event) => {
