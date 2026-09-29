@@ -13,6 +13,8 @@ export interface Connection {
   accountId: string;
   organizationId: string;
   name: string;
+  /** When its access token runs out, as of listing the connection. */
+  expiresAt: Date | null;
 }
 
 class ReconnectError extends Error {}
@@ -29,7 +31,11 @@ export function needsReconnect(error: unknown): boolean {
 /** The organizations `userId` connected, oldest first. */
 export async function listConnections(userId: string): Promise<Connection[]> {
   const rows = await db
-    .select({ id: account.id, key: account.accountId })
+    .select({
+      id: account.id,
+      key: account.accountId,
+      expiresAt: account.accessTokenExpiresAt,
+    })
     .from(account)
     .where(and(eq(account.userId, userId), eq(account.providerId, PROVIDER_ID)))
     .orderBy(asc(account.createdAt));
@@ -40,6 +46,7 @@ export async function listConnections(userId: string): Promise<Connection[]> {
       organizationId: organizationOfKey(row.key),
       // The platform shares no organization names yet.
       name: `Organization ${connections.length + 1}`,
+      expiresAt: row.expiresAt,
     });
   }
   return connections;
@@ -66,26 +73,19 @@ function fresh(expiresAt: Date | null): boolean {
   return (expiresAt?.getTime() ?? 0) - Date.now() > REFRESH_MARGIN;
 }
 
-async function expiryOf(
-  accountId: string,
-  from: Pick<typeof db, "select"> = db,
-) {
-  const [row] = await from
-    .select({ expiresAt: account.accessTokenExpiresAt })
-    .from(account)
-    .where(eq(account.id, accountId));
-  if (!row) throw new ReconnectError();
-  return row.expiresAt;
-}
-
 /**
- * Refresh tokens are single-use and reusing one revokes the grant, so
- * refreshes take a lock per account.
+ * An API client acting as `userId` in `connection`'s organization. Refresh
+ * tokens are single-use and reusing one revokes the grant, so refreshes take
+ * a lock per account.
  */
-async function accessToken(userId: string, { accountId }: Connection) {
+export async function clientFor(
+  userId: string,
+  { accountId, expiresAt }: Connection,
+): Promise<Mixedbread> {
   // Better Auth resolves its base URL, which varies by host, from the request.
   const call = { body: { accountId, userId }, headers: await headers() };
-  const token = fresh(await expiryOf(accountId))
+  // An expiry listed earlier can only be too early: refreshing moves it later.
+  const token = fresh(expiresAt)
     ? (await auth.api.getAccessToken(call)).accessToken
     : await db
         .transaction(async (tx) => {
@@ -93,22 +93,19 @@ async function accessToken(userId: string, { accountId }: Connection) {
             sql`select pg_advisory_xact_lock(hashtext(${accountId}))`,
           );
           // Another request may have refreshed it while this one waited.
-          if (fresh(await expiryOf(accountId, tx))) {
+          const [row] = await tx
+            .select({ expiresAt: account.accessTokenExpiresAt })
+            .from(account)
+            .where(eq(account.id, accountId));
+          if (!row) return undefined;
+          if (fresh(row.expiresAt)) {
             return (await auth.api.getAccessToken(call)).accessToken;
           }
           return (await auth.api.refreshToken(call)).accessToken;
         })
         .catch(() => undefined);
-  if (token) return token;
-  throw new ReconnectError();
-}
-
-/** An API client acting as `userId` in `connection`'s organization. */
-export async function clientFor(
-  userId: string,
-  connection: Connection,
-): Promise<Mixedbread> {
-  return new Mixedbread({ apiKey: await accessToken(userId, connection) });
+  if (!token) throw new ReconnectError();
+  return new Mixedbread({ apiKey: token });
 }
 
 /** The first page of an organization's stores, most recently changed first. */

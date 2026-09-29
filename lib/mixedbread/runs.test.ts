@@ -11,8 +11,18 @@ import {
 } from "./runs.ts";
 
 const connections = [
-  { organizationId: "org-a", accountId: "acc-a", name: "Organization 1" },
-  { organizationId: "org-b", accountId: "acc-b", name: "Organization 2" },
+  {
+    organizationId: "org-a",
+    accountId: "acc-a",
+    name: "Organization 1",
+    expiresAt: null,
+  },
+  {
+    organizationId: "org-b",
+    accountId: "acc-b",
+    name: "Organization 2",
+    expiresAt: null,
+  },
 ];
 
 function labels() {
