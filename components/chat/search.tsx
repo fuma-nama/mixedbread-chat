@@ -441,7 +441,11 @@ function SourceList({ files }: { files: SourceFile[] }) {
 
   return (
     <div className="flex flex-col gap-1">
-      <ol aria-label="Sources found" className="flex flex-col">
+      <ol
+        aria-label="Sources found"
+        data-card-group=""
+        className="flex flex-col"
+      >
         {shown.map((file, index) => (
           <FileRow key={file.key} file={file} index={index} />
         ))}

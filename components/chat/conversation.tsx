@@ -4,6 +4,7 @@ import { cn } from "cn";
 import { ArrowDownIcon } from "lucide-react";
 import { useEffectEvent, useLayoutEffect, useRef, useState } from "react";
 import { useReducedMotion } from "@/hooks/use-media";
+import { SourceCards } from "./citation";
 
 /** Where an asked question comes to rest: just clear of the top edge's fade. */
 const TOP = 32;
@@ -131,7 +132,7 @@ export function Conversation({
             aria-live="off"
             className="relative flex flex-col"
           >
-            {children}
+            <SourceCards>{children}</SourceCards>
           </div>
         </div>
       </div>

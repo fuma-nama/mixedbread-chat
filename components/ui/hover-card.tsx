@@ -3,15 +3,18 @@
 import { PreviewCard as PreviewCardPrimitive } from "@base-ui/react/preview-card";
 import { cn } from "cn";
 
-function HoverCard({ ...props }: PreviewCardPrimitive.Root.Props) {
-  return <PreviewCardPrimitive.Root data-slot="hover-card" {...props} />;
-}
+/** One card for many triggers: each passes its payload, and the card shows the active one's. */
+const HoverCard = PreviewCardPrimitive.Root;
 
-function HoverCardTrigger({
+const createHoverCardHandle = PreviewCardPrimitive.createHandle;
+
+type HoverCardHandle<Payload> = PreviewCardPrimitive.Handle<Payload>;
+
+function HoverCardTrigger<Payload>({
   delay = 250,
   closeDelay = 150,
   ...props
-}: PreviewCardPrimitive.Trigger.Props) {
+}: PreviewCardPrimitive.Trigger.Props<Payload>) {
   return (
     <PreviewCardPrimitive.Trigger
       data-slot="hover-card-trigger"
@@ -22,31 +25,38 @@ function HoverCardTrigger({
   );
 }
 
+/**
+ * Moving to another trigger, the card glides there and takes the new
+ * content's height, rather than closing and opening again.
+ */
 function HoverCardContent({
   className,
   side = "top",
   sideOffset = 8,
   align = "center",
   alignOffset = 0,
+  anchor,
   ...props
 }: PreviewCardPrimitive.Popup.Props &
   Pick<
     PreviewCardPrimitive.Positioner.Props,
-    "align" | "alignOffset" | "side" | "sideOffset"
+    "align" | "alignOffset" | "anchor" | "side" | "sideOffset"
   >) {
   return (
     <PreviewCardPrimitive.Portal data-slot="hover-card-portal">
       <PreviewCardPrimitive.Positioner
+        anchor={anchor}
         align={align}
         alignOffset={alignOffset}
         side={side}
         sideOffset={sideOffset}
-        className="isolate z-50"
+        // Sized to the card, so what the card lets through isn't caught here.
+        className="pointer-events-none isolate z-50 h-(--positioner-height) w-(--positioner-width) max-w-(--available-width) transition-[top,right,bottom,left] duration-240 ease-smooth data-instant:transition-none motion-reduce:transition-none"
       >
         <PreviewCardPrimitive.Popup
           data-slot="hover-card-content"
           className={cn(
-            "w-72 origin-(--transform-origin) rounded-xl bg-popover p-3 text-sm text-popover-foreground shadow-float transition-[opacity,scale] duration-150 ease-smooth outline-none data-ending-style:scale-[0.97] data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none",
+            "pointer-events-auto relative h-(--popup-height,auto) w-72 origin-(--transform-origin) rounded-xl bg-popover p-3 text-sm text-popover-foreground shadow-float transition-[opacity,scale,height] duration-[150ms,150ms,240ms] ease-smooth outline-none data-ending-style:scale-[0.97] data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none",
             className,
           )}
           {...props}
@@ -56,4 +66,31 @@ function HoverCardContent({
   );
 }
 
-export { HoverCard, HoverCardContent, HoverCardTrigger };
+/**
+ * Holds the card's content as it moves between triggers: the old content
+ * fades out as the new comes in from the side the pointer went.
+ */
+function HoverCardViewport({
+  className,
+  ...props
+}: PreviewCardPrimitive.Viewport.Props) {
+  return (
+    <PreviewCardPrimitive.Viewport
+      data-slot="hover-card-viewport"
+      className={cn(
+        "relative size-full overflow-clip [&>*]:transition-[translate,opacity] [&>*]:duration-200 [&>*]:ease-smooth motion-reduce:[&>*]:transition-none [&>[data-current][data-starting-style]]:opacity-0 data-[activation-direction~='down']:[&>[data-current][data-starting-style]]:translate-y-2 data-[activation-direction~='left']:[&>[data-current][data-starting-style]]:-translate-x-3 data-[activation-direction~='right']:[&>[data-current][data-starting-style]]:translate-x-3 data-[activation-direction~='up']:[&>[data-current][data-starting-style]]:-translate-y-2 [&>[data-previous]]:w-(--popup-width) [&>[data-previous][data-ending-style]]:opacity-0 data-[activation-direction~='down']:[&>[data-previous][data-ending-style]]:-translate-y-2 data-[activation-direction~='left']:[&>[data-previous][data-ending-style]]:translate-x-3 data-[activation-direction~='right']:[&>[data-previous][data-ending-style]]:-translate-x-3 data-[activation-direction~='up']:[&>[data-previous][data-ending-style]]:translate-y-2",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+export {
+  createHoverCardHandle,
+  HoverCard,
+  HoverCardContent,
+  type HoverCardHandle,
+  HoverCardTrigger,
+  HoverCardViewport,
+};
