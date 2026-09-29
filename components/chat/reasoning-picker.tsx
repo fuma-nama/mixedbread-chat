@@ -35,11 +35,11 @@ export const ReasoningPicker = memo(function ReasoningPicker({
 }: {
   value: Reasoning;
   /** The model's efforts, listed after Auto. */
-  efforts: Effort[];
+  efforts?: Effort[];
   onChange: (reasoning: Reasoning) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const hidden = efforts.length === 0;
+  const hidden = !efforts?.length;
   // Folding away, it keeps the level it had rather than turning to Auto.
   const [shown, setShown] = useState(value);
   if (!hidden && shown !== value) setShown(value);
@@ -89,7 +89,7 @@ export const ReasoningPicker = memo(function ReasoningPicker({
               <DropdownMenuLabel>Thinking effort</DropdownMenuLabel>
               {reasoningLevels.map(
                 (level) =>
-                  (level.id === "auto" || efforts.includes(level.id)) && (
+                  (level.id === "auto" || efforts?.includes(level.id)) && (
                     <DropdownMenuRadioItem
                       key={level.id}
                       value={level.id}

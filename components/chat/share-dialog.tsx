@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckIcon, CopyIcon, GlobeIcon, ShareIcon } from "lucide-react";
-import { memo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { setChatVisibility } from "@/app/(chat)/actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,7 +33,7 @@ export function searchedStores(messages: ChatMessage[]): boolean {
   return false;
 }
 
-export const ShareDialog = memo(function ShareDialog({
+export function ShareDialog({
   chatId,
   initialVisibility,
   stores,
@@ -145,7 +145,7 @@ export const ShareDialog = memo(function ShareDialog({
       </DialogContent>
     </Dialog>
   );
-});
+}
 
 function shareUrl(chatId: string) {
   return `${window.location.origin}/c/${chatId}`;

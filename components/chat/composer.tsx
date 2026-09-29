@@ -4,6 +4,7 @@ import type { ChatStatus } from "ai";
 import { cn } from "cn";
 import { ArrowUpIcon, SquareIcon } from "lucide-react";
 import {
+  memo,
   useEffect,
   useImperativeHandle,
   useRef,
@@ -33,7 +34,8 @@ function coarse() {
   return window.matchMedia("(pointer: coarse)").matches;
 }
 
-export function Composer({
+/** Memoized: its props hold still while an answer streams. */
+export const Composer = memo(function Composer({
   ref,
   status,
   model,
@@ -53,7 +55,7 @@ export function Composer({
   onModelChange: (model: string) => void;
   reasoning: Reasoning;
   /** The model's efforts; without any, it thinks on Auto. */
-  efforts: Effort[];
+  efforts?: Effort[];
   onReasoningChange: (reasoning: Reasoning) => void;
   onSubmit: (text: string) => void;
   onStop: () => void;
@@ -186,7 +188,7 @@ export function Composer({
       </div>
     </form>
   );
-}
+});
 
 function SendButton({
   busy,

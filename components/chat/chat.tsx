@@ -4,7 +4,14 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, generateId } from "ai";
 import { cn } from "cn";
 import { CornerDownRightIcon } from "lucide-react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { setChatLeaf } from "@/app/(chat)/actions";
 import { useChats, useChatTitle } from "@/components/sidebar/chats-provider";
 import { Button } from "@/components/ui/button";
@@ -168,6 +175,26 @@ export function Chat({
       : "auto";
   // Screen readers hear where a search is, not every token of it.
   const spoken = (busy && searchStatus(messages.at(-1))) || announcement;
+  const stores = searchedStores(messages);
+  // Made again only when it changes, not with every streamed update.
+  const header = useMemo(
+    () => (
+      <ChatHeader
+        title={empty ? undefined : title}
+        share={
+          !readonly &&
+          !empty && (
+            <ShareDialog
+              chatId={id}
+              initialVisibility={visibility}
+              stores={stores}
+            />
+          )
+        }
+      />
+    ),
+    [empty, title, readonly, id, visibility, stores],
+  );
 
   useEffect(() => {
     document.title = title ? `${title} · Bread Chat` : "Bread Chat";
@@ -218,22 +245,27 @@ export function Chat({
   });
 
   /** Brings `questionId` to the top, with room below for its answer. */
-  function answer(questionId: string) {
+  const answer = useCallback((questionId: string) => {
     setTurn((turn) => ({ id: questionId, key: (turn?.key ?? 0) + 1 }));
     setAnnouncement("");
-  }
+  }, []);
 
   /** Sends `text` as a new question. Its id is made here, so the view can
    * pin it in the same frame it appears. */
-  function sendQuestion(text: string) {
-    const question = generateId();
-    answer(question);
-    preloadMarkdown();
-    void sendMessage(
-      { id: question, role: "user", parts: [{ type: "text", text }] },
-      { body: { model, reasoning: effort, sources: sources.selection.get() } },
-    );
-  }
+  const sendQuestion = useCallback(
+    (text: string) => {
+      const question = generateId();
+      answer(question);
+      preloadMarkdown();
+      void sendMessage(
+        { id: question, role: "user", parts: [{ type: "text", text }] },
+        {
+          body: { model, reasoning: effort, sources: sources.selection.get() },
+        },
+      );
+    },
+    [answer, sendMessage, model, effort, sources],
+  );
 
   /** Answers the last question again, as after a failure or a closed tab. */
   function answerAgain() {
@@ -244,29 +276,33 @@ export function Chat({
     });
   }
 
-  function send(text: string) {
-    clearError();
-    lastSend.current = { text, first: empty };
-    if (empty) {
-      const hero = heroRef.current?.getBoundingClientRect();
-      const frame = frameRef.current?.getBoundingClientRect();
-      if (!reduced && hero && frame) {
-        glideFrom.current =
-          composer.current?.element()?.getBoundingClientRect() ?? null;
-        setLeaving({
-          top: hero.top - frame.top,
-          left: hero.left - frame.left,
-          width: hero.width,
+  // The same function while an answer streams, so the composer sits still.
+  const send = useCallback(
+    (text: string) => {
+      clearError();
+      lastSend.current = { text, first: empty };
+      if (empty) {
+        const hero = heroRef.current?.getBoundingClientRect();
+        const frame = frameRef.current?.getBoundingClientRect();
+        if (!reduced && hero && frame) {
+          glideFrom.current =
+            composer.current?.element()?.getBoundingClientRect() ?? null;
+          setLeaving({
+            top: hero.top - frame.top,
+            left: hero.left - frame.left,
+            width: hero.width,
+          });
+        }
+        window.history.replaceState(null, "", `/c/${id}`);
+        chats.update(id, {
+          title: text.split("\n")[0].slice(0, 80),
+          updatedAt: new Date(),
         });
       }
-      window.history.replaceState(null, "", `/c/${id}`);
-      chats.update(id, {
-        title: text.split("\n")[0].slice(0, 80),
-        updatedAt: new Date(),
-      });
-    }
-    sendQuestion(text);
-  }
+      sendQuestion(text);
+    },
+    [clearError, empty, reduced, id, chats, sendQuestion],
+  );
 
   function edit(messageId: string, text: string) {
     clearError();
@@ -330,19 +366,7 @@ export function Chat({
 
   return (
     <div ref={frameRef} className="relative flex min-h-0 flex-1 flex-col">
-      <ChatHeader
-        title={empty ? undefined : title}
-        share={
-          !readonly &&
-          !empty && (
-            <ShareDialog
-              chatId={id}
-              initialVisibility={visibility}
-              stores={searchedStores(messages)}
-            />
-          )
-        }
-      />
+      {header}
 
       {!empty && (
         <Conversation turn={turn} streaming={busy}>
@@ -423,10 +447,10 @@ export function Chat({
               model={model}
               onModelChange={setModel}
               reasoning={effort}
-              efforts={current?.efforts ?? []}
+              efforts={current?.efforts}
               onReasoningChange={setReasoning}
               onSubmit={send}
-              onStop={() => void stop()}
+              onStop={stop}
               placeholder={empty ? placeholders[scope] : "Ask a follow-up"}
               blocked={
                 current?.toast && scope === "none"
