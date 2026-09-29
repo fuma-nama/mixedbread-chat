@@ -42,18 +42,6 @@ const placeholders: Record<SearchScope, string> = {
   none: "Ask anything",
 };
 
-const transport = new DefaultChatTransport<ChatMessage>({
-  // New messages and retries both end with the user message to answer.
-  prepareSendMessagesRequest: ({ id, messages, body }) => ({
-    body: {
-      ...body,
-      id,
-      message: messages.at(-1),
-      parentId: messages.at(-2)?.id ?? null,
-    },
-  }),
-});
-
 // While waiting on a reply, a stand-in answer holds its place, so the real
 // one takes over the same view instead of popping in.
 const PENDING: ChatMessage = { id: "pending", role: "assistant", parts: [] };
@@ -113,6 +101,33 @@ export function Chat({
   // The question being answered this visit, brought to the top of the view.
   const [turn, setTurn] = useState<{ id: string; key: number }>();
   const reduced = useReducedMotion();
+  const current = useModels().find((entry) => entry.id === model);
+  // A model that doesn't take the effort picked for another thinks on Auto.
+  const effort =
+    reasoning !== "auto" && current?.efforts.includes(reasoning)
+      ? reasoning
+      : "auto";
+
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport<ChatMessage>({
+        body: () => ({
+          model,
+          reasoning: effort,
+          sources: sources.selection.get(),
+        }),
+        // New messages and retries both end with the user message to answer.
+        prepareSendMessagesRequest: ({ id, messages, body }) => ({
+          body: {
+            ...body,
+            id,
+            message: messages.at(-1),
+            parentId: messages.at(-2)?.id ?? null,
+          },
+        }),
+      }),
+    [model, effort, sources],
+  );
 
   const {
     messages,
@@ -166,12 +181,6 @@ export function Chat({
   const citations = citationsAlong(rendered);
   const children = useMemo(() => childrenOf(tree), [tree]);
   const failure = error ? failureOf(error) : undefined;
-  const current = useModels().find((entry) => entry.id === model);
-  // A model that doesn't take the effort picked for another thinks on Auto.
-  const effort =
-    reasoning !== "auto" && current?.efforts.includes(reasoning)
-      ? reasoning
-      : "auto";
   // Screen readers hear where a search is, not every token of it.
   const spoken = (busy && searchStatus(messages.at(-1))) || announcement;
   const stores = searchedStores(messages);
@@ -226,14 +235,13 @@ export function Chat({
       const question = generateId();
       answer(question);
       preloadMarkdown();
-      void sendMessage(
-        { id: question, role: "user", parts: [{ type: "text", text }] },
-        {
-          body: { model, reasoning: effort, sources: sources.selection.get() },
-        },
-      );
+      void sendMessage({
+        id: question,
+        role: "user",
+        parts: [{ type: "text", text }],
+      });
     },
-    [answer, sendMessage, model, effort, sources],
+    [answer, sendMessage],
   );
 
   /** Answers the last question again, as after a failure or a closed tab. */
@@ -242,9 +250,7 @@ export function Chat({
     lastSend.current = null;
     const question = messages.findLast((message) => message.role === "user");
     if (question) answer(question.id);
-    void regenerate({
-      body: { model, reasoning: effort, sources: sources.selection.get() },
-    });
+    void regenerate();
   }
 
   // The same function while an answer streams, so the composer sits still.
@@ -296,10 +302,7 @@ export function Chat({
     const index = messages.findIndex((message) => message.id === messageId);
     const question = messages[index - 1];
     if (question) answer(question.id);
-    void regenerate({
-      messageId,
-      body: { model, reasoning: effort, sources: sources.selection.get() },
-    });
+    void regenerate({ messageId });
     composer.current?.focus();
   }
 
