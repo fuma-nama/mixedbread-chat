@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { Proofing } from "@/components/brand/bakery";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import {
@@ -11,8 +12,11 @@ import {
 } from "./activity";
 import { LazyMarkdown } from "./lazy-markdown";
 
-/** The model's reasoning: a live line while it thinks, folded away after. */
-export function Reasoning({
+/**
+ * The model's reasoning: a live line while it thinks, folded away after.
+ * Memoized, so finished thoughts sit still while the answer streams.
+ */
+export const Reasoning = memo(function Reasoning({
   text,
   live,
   deferred,
@@ -55,7 +59,7 @@ export function Reasoning({
       </CollapsibleContent>
     </Collapsible>
   );
-}
+});
 
 /** The newest finished thought: a bold heading if the model writes them, else a sentence. */
 function latestThought(text: string): string | undefined {
