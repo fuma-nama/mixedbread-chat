@@ -1,3 +1,4 @@
+import type { Mixedbread } from "@mixedbread/sdk";
 import { type InferUITools, type ModelMessage, tool, type UIMessage } from "ai";
 import { z } from "zod";
 import type { Source } from "./mixedbread/citations";
@@ -49,14 +50,14 @@ type RunEvent =
 
 /** One Toast run; it reports how it ended instead of throwing, unless aborted. */
 async function* run(
-  userId: string,
+  clientOf: (connection: Connection) => Promise<Mixedbread>,
   entry: Run,
   turns: Turn[],
   signal: AbortSignal | undefined,
 ): AsyncGenerator<RunEvent> {
   const { connection, label, target } = entry;
   try {
-    const client = await clientFor(userId, connection);
+    const client = await clientOf(connection);
     const names = new Map<string, string>();
     const listing =
       target.kind === "stores"
@@ -134,8 +135,18 @@ export function searchTool(context: SearchContext) {
       const turns: Turn[] = context.toast
         ? turnsOf(messages)
         : [{ role: "user", content: query }];
+      // The web run borrows an organization's token, fetched once for both.
+      const clients = new Map<Connection, Promise<Mixedbread>>();
+      function clientOf(connection: Connection) {
+        let client = clients.get(connection);
+        if (!client) {
+          client = clientFor(context.userId, connection);
+          clients.set(connection, client);
+        }
+        return client;
+      }
       const events = merge(
-        runs.map((entry) => run(context.userId, entry, turns, abortSignal)),
+        runs.map((entry) => run(clientOf, entry, turns, abortSignal)),
       );
       for await (const { index, value } of events) {
         if (value.type === "end") {
