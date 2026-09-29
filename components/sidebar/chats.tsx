@@ -82,7 +82,13 @@ export function Chats({
   }
 
   function onKeyDown(event: React.KeyboardEvent) {
-    if (event.target instanceof HTMLInputElement) return;
+    // Menus and dialogs opened from here are portaled, yet their keys bubble here.
+    if (
+      event.target instanceof HTMLInputElement ||
+      !event.currentTarget.contains(event.target as Node)
+    ) {
+      return;
+    }
     // Space is the keyboard's Cmd-click, and Shift+Space its Shift-click.
     const id = event.target instanceof HTMLElement && event.target.dataset.id;
     if (event.key === " " && id) {
