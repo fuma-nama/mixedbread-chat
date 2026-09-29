@@ -3,7 +3,6 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, generateId } from "ai";
 import { cn } from "cn";
-import { CornerDownRightIcon } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -14,7 +13,6 @@ import {
 } from "react";
 import { setChatLeaf } from "@/app/(chat)/actions";
 import { useChats, useChatTitle } from "@/components/sidebar/chats-provider";
-import { Button } from "@/components/ui/button";
 import { useReducedMotion } from "@/hooks/use-media";
 import { childrenOf, latestLeaf, pathTo, withPath } from "@/lib/branches";
 import { citationsAlong } from "@/lib/messages";
@@ -28,7 +26,13 @@ import { EmptyState, Suggestions } from "./empty-state";
 import { preloadMarkdown } from "./lazy-markdown";
 import { type Appear, MessageView } from "./message";
 import { useModels } from "./models-provider";
-import { ErrorNotice, failureOf, SharedNotice, wasRejected } from "./notices";
+import {
+  ErrorNotice,
+  failureOf,
+  SharedNotice,
+  Unanswered,
+  wasRejected,
+} from "./notices";
 import { ShareDialog, searchedStores } from "./share-dialog";
 import { useSearchScope, useSources } from "./sources-provider";
 
@@ -181,6 +185,7 @@ export function Chat({
   const citations = citationsAlong(rendered);
   const children = useMemo(() => childrenOf(tree), [tree]);
   const failure = error ? failureOf(error) : undefined;
+  const retryLabel = current && `Try again with ${current.name}`;
   // Screen readers hear where a search is, not every token of it.
   const spoken = (busy && searchStatus(messages.at(-1))) || announcement;
   const stores = searchedStores(messages);
@@ -364,9 +369,7 @@ export function Chat({
                 version={known === -1 ? siblings.length : known}
                 versions={known === -1 ? siblings.length + 1 : siblings.length}
                 pinned={last && message.role === "assistant"}
-                retryLabel={
-                  current ? `Try again with ${current.name}` : undefined
-                }
+                retryLabel={retryLabel}
                 onEdit={idle ? edit : undefined}
                 onRetry={idle ? retry : undefined}
                 onSwitch={idle ? switchVersion : undefined}
@@ -382,11 +385,11 @@ export function Chat({
 
       {(empty || leaving) && (
         <div
-          className={cn(
+          className={
             leaving
               ? "pointer-events-none absolute z-10 motion-safe:animate-[fade_200ms_ease-out_reverse_both]"
-              : "flex flex-1 flex-col justify-center pb-6 md:justify-end md:pb-9",
-          )}
+              : "flex flex-1 flex-col justify-center pb-6 md:justify-end md:pb-9"
+          }
           style={leaving ?? undefined}
           onAnimationEnd={(event) => {
             if (event.target === event.currentTarget) setLeaving(null);
@@ -450,23 +453,6 @@ export function Chat({
       <p role="status" aria-live="polite" className="sr-only">
         {spoken}
       </p>
-    </div>
-  );
-}
-
-/** A question saved without its answer, as when the tab closed mid-way. */
-function Unanswered({ onAnswer }: { onAnswer: () => void }) {
-  return (
-    <div className="mt-8 motion-safe:animate-fade">
-      <Button
-        variant="ghost"
-        size="sm"
-        className="-ml-2.5 text-muted-foreground"
-        onClick={onAnswer}
-      >
-        <CornerDownRightIcon />
-        Answer
-      </Button>
     </div>
   );
 }

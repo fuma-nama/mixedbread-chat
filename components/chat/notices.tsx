@@ -1,7 +1,7 @@
 "use client";
 
 import { APICallError } from "ai";
-import { ArrowRightIcon } from "lucide-react";
+import { ArrowRightIcon, CornerDownRightIcon } from "lucide-react";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { answersPerDay } from "@/lib/limits";
@@ -71,6 +71,23 @@ export function ErrorNotice({
           {action}
         </Button>
       )}
+    </div>
+  );
+}
+
+/** A question saved without its answer, as when the tab closed mid-way. */
+export function Unanswered({ onAnswer }: { onAnswer: () => void }) {
+  return (
+    <div className="mt-8 motion-safe:animate-fade">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="-ml-2.5 text-muted-foreground"
+        onClick={onAnswer}
+      >
+        <CornerDownRightIcon />
+        Answer
+      </Button>
     </div>
   );
 }
