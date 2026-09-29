@@ -5,7 +5,7 @@ import { type Effort, reasoningLevels } from "./reasoning.ts";
 export interface Model {
   id: string;
   name: string;
-  /** Its name in the featured list, or the Gateway's ID for the rest. */
+  /** Its maker, as AI Gateway names it, e.g. "anthropic". */
   provider: string;
   /** Listed up front; the rest of the catalog is a search away. */
   featured: boolean;
@@ -17,23 +17,23 @@ export interface Model {
 
 const TOAST_MODEL = "mixedbread/toast-1";
 
-/** Featured models by provider, grouped in this order. */
-const featured = new Map([
-  [TOAST_MODEL, "Mixedbread"],
-  ["anthropic/claude-fable-5.1", "Anthropic"],
-  ["anthropic/claude-opus-5.5", "Anthropic"],
-  ["anthropic/claude-sonnet-5.5", "Anthropic"],
-  ["anthropic/claude-sonnet-5", "Anthropic"],
-  ["openai/gpt-6-sol", "OpenAI"],
-  ["openai/gpt-6-luna", "OpenAI"],
-  ["openai/gpt-5.6-terra", "OpenAI"],
-  ["google/gemini-3.8-flash", "Google"],
-  ["spacexai/grok-4.7", "xAI"],
-  ["meta/muse-spark-1.3", "Meta"],
-  ["mistral/mistral-medium-3.5", "Mistral"],
-  ["deepseek/deepseek-v4-pro", "DeepSeek"],
-  ["moonshotai/kimi-k3", "Moonshot AI"],
-  ["alibaba/qwen3.8-max", "Alibaba"],
+/** Featured models, listed first in this order. */
+const featured = new Set([
+  TOAST_MODEL,
+  "anthropic/claude-fable-5.1",
+  "anthropic/claude-opus-5.5",
+  "anthropic/claude-sonnet-5.5",
+  "anthropic/claude-sonnet-5",
+  "openai/gpt-6-sol",
+  "openai/gpt-6-luna",
+  "openai/gpt-5.6-terra",
+  "google/gemini-3.8-flash",
+  "spacexai/grok-4.7",
+  "meta/muse-spark-1.3",
+  "mistral/mistral-medium-3.5",
+  "deepseek/deepseek-v4-pro",
+  "moonshotai/kimi-k3",
+  "alibaba/qwen3.8-max",
 ]);
 
 export const defaultModel = "anthropic/claude-sonnet-5";
@@ -103,21 +103,20 @@ async function fetchCatalog(): Promise<Model[]> {
     if (!entry.success) continue;
     const { id, name, type, owned_by, released, tags } = entry.data;
     if (type !== "language" || !tags?.includes("tool-use")) continue;
-    const provider = featured.get(id);
     const model: Model = {
       id,
       name,
-      provider: provider ?? owned_by,
-      featured: provider !== undefined,
+      provider: owned_by,
+      featured: featured.has(id),
       efforts: effortsOf(entry.data.reasoning_options),
     };
     if (id === TOAST_MODEL) model.toast = true;
-    if (provider) picks.set(id, model);
+    if (model.featured) picks.set(id, model);
     else rest.push({ model, released: released ?? 0 });
   }
 
   const models: Model[] = [];
-  for (const id of featured.keys()) {
+  for (const id of featured) {
     const model = picks.get(id);
     if (model) models.push(model);
   }

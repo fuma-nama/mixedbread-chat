@@ -73,7 +73,7 @@ export type Citation = { at: number; excerpt?: string } & (
 );
 
 export type ResearchEvent =
-  | { type: "step"; step: Step; chunks: string[] }
+  | { type: "step"; step: Step }
   | { type: "answer"; text: string; citations: Citation[] };
 
 const resultSchema = z.object({
@@ -199,16 +199,14 @@ export async function* research(
     for (const raw of chunk.value.hosted_tool_calls ?? []) {
       const call = callSchema.safeParse(raw);
       if (!call.success) continue;
-      const chunks: string[] = [];
       for (const result of call.data.results ?? []) {
-        chunks.push(result.chunk_id);
         if (seen.has(result.chunk_id)) continue;
         seen.set(result.chunk_id, {
           excerpt: excerptOf(result),
           image: result.mime_type?.startsWith("image/") ?? false,
         });
       }
-      yield { type: "step", step: stepOf(call.data), chunks };
+      yield { type: "step", step: stepOf(call.data) };
     }
     for (const choice of chunk.value.choices) {
       text += choice.delta.content ?? "";
