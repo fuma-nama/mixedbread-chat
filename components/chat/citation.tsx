@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
 } from "react";
+import type { PageResult } from "@/app/(chat)/actions";
 import { SliceGlyph } from "@/components/brand/slice";
 import {
   createHoverCardHandle,
@@ -24,7 +25,7 @@ import { useCoarsePointer } from "@/hooks/use-media";
 import { createStore, type Store, useStore } from "@/hooks/use-store";
 import { type Source, sourceTitle } from "@/lib/mixedbread/citations";
 import type { Organization } from "@/lib/sources";
-import { PageView } from "./page-view";
+import { loadPage, PageView } from "./page-view";
 import { useOrganizations } from "./sources-provider";
 
 /** Where a source is from: the store it was found in, or its site. */
@@ -92,6 +93,7 @@ interface Preview {
 interface Page {
   source: FileSource;
   organization: Organization;
+  result: Promise<PageResult>;
   /** Where focus goes back to once it closes. */
   trigger: React.RefObject<HTMLElement | null>;
   open: boolean;
@@ -124,9 +126,10 @@ export function SourceCards({ children }: { children: React.ReactNode }) {
   );
 }
 
-function view(cards: Cards, page: Omit<Page, "open">) {
+function view(cards: Cards, page: Omit<Page, "result" | "open">) {
   cards.handle.close();
-  cards.page.set({ ...page, open: true });
+  const result = loadPage(page.source, page.organization);
+  cards.page.set({ ...page, result, open: true });
 }
 
 const Card = memo(function Card({ cards }: { cards: Cards }) {
@@ -208,6 +211,13 @@ const PageViews = memo(function PageViews({ cards }: { cards: Cards }) {
       key={page.source.label}
       source={page.source}
       organization={page.organization}
+      page={page.result}
+      onRetry={() =>
+        cards.page.set({
+          ...page,
+          result: loadPage(page.source, page.organization),
+        })
+      }
       origin={originOf(page.source)}
       open={page.open}
       onOpenChange={(open) => cards.page.set({ ...page, open })}

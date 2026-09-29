@@ -27,12 +27,15 @@ const pages = new Map<
   { expires: number; result: Promise<PageResult> }
 >();
 
-function pageOf(
+/**
+ * Starts loading a cited page. Call it from the event that opens the page,
+ * since a server action can't run while rendering.
+ */
+export function loadPage(
   source: FileSource,
   organization: Organization,
-  attempt: number,
 ): Promise<PageResult> {
-  const key = `${source.chunkId} ${source.claim} ${attempt}`;
+  const key = `${source.chunkId} ${source.claim}`;
   const cached = pages.get(key);
   if (cached && cached.expires > Date.now()) return cached.result;
   const result = openPage({
@@ -42,6 +45,8 @@ function pageOf(
     claim: source.claim,
   }).catch((): PageResult => ({ status: "error" }));
   pages.set(key, { expires: Date.now() + 10 * 60 * 1000, result });
+  // Only a page that opened is kept, so trying again loads it again.
+  void result.then(({ status }) => status === "ok" || pages.delete(key));
   return result;
 }
 
@@ -53,6 +58,8 @@ const frame = "h-[min(60vh,40rem)] rounded-lg bg-soft";
 export function PageView({
   source,
   organization,
+  page,
+  onRetry,
   origin,
   open,
   onOpenChange,
@@ -60,14 +67,15 @@ export function PageView({
 }: {
   source: FileSource;
   organization: Organization;
+  /** The page loading, from `loadPage`. */
+  page: Promise<PageResult>;
+  onRetry: () => void;
   origin: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Where focus goes back to once it closes. */
   finalFocus: React.RefObject<HTMLElement | null>;
 }) {
-  const [attempt, setAttempt] = useState(0);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent finalFocus={finalFocus} className="max-w-xl gap-4">
@@ -100,8 +108,8 @@ export function PageView({
           <PageBody
             source={source}
             organization={organization}
-            attempt={attempt}
-            onRetry={() => setAttempt(attempt + 1)}
+            page={page}
+            onRetry={onRetry}
           />
         </Suspense>
       </DialogContent>
@@ -112,37 +120,36 @@ export function PageView({
 const notice =
   "flex flex-col items-center justify-center gap-3 rounded-lg bg-soft px-4 py-12 text-center text-[13px] text-pretty text-muted-foreground";
 
-/** Rendered only while the dialog is open, so the page loads only then. */
 function PageBody({
   source,
   organization,
-  attempt,
+  page,
   onRetry,
 }: {
   source: FileSource;
   organization: Organization;
-  attempt: number;
+  page: Promise<PageResult>;
   onRetry: () => void;
 }) {
-  const page = use(pageOf(source, organization, attempt));
-  if (page.status === "ok") {
+  const result = use(page);
+  if (result.status === "ok") {
     return (
       <PageImage
-        page={page.page}
-        marked={page.marked}
+        page={result.page}
+        marked={result.marked}
         title={source.filename}
       />
     );
   }
-  if (page.status === "reconnect") {
+  if (result.status === "reconnect") {
     return <Reconnect organization={organization} />;
   }
   return (
     <div className={notice}>
-      {page.status === "missing"
+      {result.status === "missing"
         ? "This page isn’t available anymore."
         : "Couldn’t load the page."}
-      {page.status === "error" && (
+      {result.status === "error" && (
         <Button variant="outline" size="sm" onClick={onRetry}>
           Try again
         </Button>
