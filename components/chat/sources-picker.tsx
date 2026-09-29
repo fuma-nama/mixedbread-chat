@@ -2,38 +2,35 @@
 
 import { cn } from "cn";
 import {
-  ArrowUpRightIcon,
-  CheckIcon,
   ChevronDownIcon,
   GlobeIcon,
   LayersIcon,
   PlusIcon,
-  RotateCwIcon,
   SearchIcon,
   SearchSlashIcon,
 } from "lucide-react";
 import { useRef, useState } from "react";
-import { Toasting } from "@/components/brand/bakery";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Spinner } from "@/components/ui/spinner";
 import { useGlide } from "@/hooks/use-glide";
-import { PLATFORM_URL } from "@/lib/mixedbread/platform";
 import {
   choiceFor,
   type Organization,
   type SourceSelection,
-  type StoreChoice,
-  type StoreOption,
   searchesStores,
 } from "@/lib/sources";
 import {
+  ConnectButton,
+  OrganizationStores,
+  row,
+  separator,
+} from "./organization-stores";
+import {
   type StoresState,
   useAllStores,
-  useConnect,
   useOrganizations,
   useSelection,
   useSources,
@@ -41,8 +38,6 @@ import {
 
 /** From this many stores on, a field filters them. */
 const FILTER_FROM = 8;
-
-/** Where people create stores and upload files. */
 
 /**
  * Picks what the next question searches: the web, and the stores of each
@@ -197,13 +192,7 @@ function reachOf(
   return { web, docs, lapsed, label };
 }
 
-const row =
-  "group/row flex min-h-8 w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-[13.5px] text-foreground/90 transition-colors duration-100 outline-none select-none scroll-my-1 hover:bg-soft hover:text-foreground focus-visible:bg-soft focus-visible:text-foreground disabled:cursor-default disabled:opacity-60 [&_svg]:shrink-0";
-
 const heading = "px-2 pt-1.5 pb-1 text-xs text-muted-foreground";
-
-// Between sections; one that ends up first, as while filtering, has none.
-const separator = "-mx-1 my-1 h-px bg-soft first:hidden";
 
 /**
  * The web, each organization's stores, a filter when there are many, and a
@@ -345,377 +334,5 @@ function Panel({
         )}
       </div>
     </div>
-  );
-}
-
-/**
- * One organization's stores, on Auto, where Toast picks where to look for
- * each question, or Manual, where the stores ticked are searched: all of
- * them, stores made later included, or just some. Manual with none ticked
- * leaves the organization out. Ticking a store found by the filter on Auto
- * turns to Manual with just that one.
- */
-function OrganizationStores({
-  organization,
-  state,
-  named,
-  words,
-}: {
-  organization: Organization;
-  state: StoresState | undefined;
-  /** Several organizations are connected, so each names itself. */
-  named: boolean;
-  /** While filtering, only stores with every word show, and nothing else. */
-  words: string[] | undefined;
-}) {
-  const sources = useSources();
-  const selection = useSelection();
-  const choice = choiceFor(selection, organization.id);
-  const auto = choice === "auto";
-  // Rows ready as the panel opens are simply there; rows that load or unfold
-  // later slide in, one after another.
-  const [unfold, setUnfold] = useState(() => state?.status !== "ok" || auto);
-  const stores = state?.status === "ok" ? state.stores : undefined;
-  let shown = auto ? [] : (stores ?? []);
-  if (words) {
-    shown = [];
-    for (const store of stores ?? []) {
-      if (matches(store, words)) shown.push(store);
-    }
-    if (shown.length === 0) return null;
-  }
-  const picked = new Set(Array.isArray(choice) ? choice : []);
-  // Its grant lapsed, or it has no stores: nothing to pick from.
-  const searchable = state?.status !== "reconnect" && stores?.length !== 0;
-  const name = named ? organization.name : "Stores";
-
-  function choose(next: StoreChoice) {
-    if (next === "auto") setUnfold(true);
-    sources.select({
-      ...selection,
-      organizations: { ...selection.organizations, [organization.id]: next },
-    });
-  }
-
-  return (
-    <>
-      <div aria-hidden="true" className={separator} />
-      <div
-        role="group"
-        aria-label={name}
-        aria-busy={!state || state.status === "loading" || undefined}
-      >
-        {!words && (named || searchable) && (
-          <div className="sticky top-0 z-1 -mx-1 flex min-h-9 items-center gap-2.5 bg-popover px-3 py-1 text-[13.5px] text-foreground/90">
-            <LayersIcon className="size-4 shrink-0 text-muted-foreground" />
-            <span className="min-w-0 flex-1 truncate">{name}</span>
-            {/* Choosable before its list loads. */}
-            {searchable && (
-              <Mode
-                auto={auto}
-                label={name}
-                onChange={(next) => choose(next ? "auto" : [])}
-              />
-            )}
-          </div>
-        )}
-        {!words && !auto && searchable && (
-          <button
-            type="button"
-            role="checkbox"
-            aria-checked={choice === "all"}
-            data-row=""
-            onClick={() => choose(choice === "all" ? [] : "all")}
-            className={cn(row, unfold && "motion-safe:animate-swap-in")}
-          >
-            <Box />
-            <span className="flex-1 truncate">All stores</span>
-          </button>
-        )}
-        {shown.map((store, index) => (
-          <button
-            key={store.id}
-            type="button"
-            role="checkbox"
-            aria-checked={choice === "all" || picked.has(store.id)}
-            data-row=""
-            data-store=""
-            title={store.description ?? undefined}
-            onClick={() => choose(toggle(choice, store.id, stores))}
-            style={
-              unfold
-                ? {
-                    animationDelay: `${Math.min(index + 1, 8) * 16}ms`,
-                    animationFillMode: "backwards",
-                  }
-                : undefined
-            }
-            className={cn(row, unfold && "motion-safe:animate-swap-in")}
-          >
-            <Box />
-            <span className="min-w-0 flex-1 truncate">{store.name}</span>
-            <span className="ml-auto flex shrink-0 items-center gap-1.5 pl-2 text-[11.5px] text-muted-foreground/80 tabular-nums">
-              {storeStatus(store)}
-            </span>
-          </button>
-        ))}
-        {!words && (
-          <StoresNotice
-            organization={organization}
-            state={state}
-            manual={!auto}
-          />
-        )}
-      </div>
-    </>
-  );
-}
-
-/**
- * The stores searched once `id` is ticked or unticked. From Auto it is the
- * only one; from all of them, every other one stays.
- */
-function toggle(
-  choice: StoreChoice,
-  id: string,
-  stores: StoreOption[] | undefined,
-): string[] {
-  if (choice === "auto") return [id];
-  if (choice !== "all") {
-    return choice.includes(id)
-      ? choice.filter((picked) => picked !== id)
-      : [...choice, id];
-  }
-  const rest: string[] = [];
-  for (const store of stores ?? []) if (store.id !== id) rest.push(store.id);
-  return rest;
-}
-
-const segment =
-  "relative flex h-6 cursor-pointer items-center justify-center gap-1 rounded-full px-2.5 text-[12.5px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 hover:text-foreground focus-visible:outline-2 aria-checked:text-foreground";
-
-/**
- * Auto or Manual, as a pill that glides to the one picked; the slice pops up
- * while Toast gets to pick. Arrow keys switch, as in any set of radios.
- */
-function Mode({
-  auto,
-  label,
-  onChange,
-}: {
-  auto: boolean;
-  label: string;
-  onChange: (auto: boolean) => void;
-}) {
-  const pick = (next: boolean) => next !== auto && onChange(next);
-
-  return (
-    // oxlint-disable-next-line jsx-a11y/interactive-supports-focus -- its radios take focus
-    <div
-      role="radiogroup"
-      aria-label={label}
-      onKeyDown={(event) => {
-        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-        event.preventDefault();
-        const next = event.key === "ArrowLeft";
-        pick(next);
-        event.currentTarget.querySelectorAll("button")[next ? 0 : 1].focus();
-      }}
-      className="relative grid shrink-0 grid-cols-2 rounded-full bg-soft p-0.5"
-    >
-      <span
-        aria-hidden="true"
-        style={{ translate: auto ? "0 0" : "100% 0" }}
-        className="absolute inset-y-0.5 left-0.5 w-[calc(50%-0.125rem)] rounded-full bg-popover shadow-raised transition-[translate] duration-300 ease-smooth motion-reduce:transition-none"
-      />
-      <button
-        type="button"
-        role="radio"
-        aria-checked={auto}
-        tabIndex={auto ? 0 : -1}
-        data-row={auto ? "" : undefined}
-        onClick={() => pick(true)}
-        className={segment}
-      >
-        <Toasting state={auto ? "done" : "stopped"} />
-        Auto
-      </button>
-      <button
-        type="button"
-        role="radio"
-        aria-checked={!auto}
-        tabIndex={auto ? -1 : 0}
-        data-row={auto ? undefined : ""}
-        onClick={() => pick(false)}
-        className={segment}
-      >
-        Manual
-      </button>
-    </div>
-  );
-}
-
-function matches(store: StoreOption, words: string[]): boolean {
-  const text = `${store.name} ${store.description ?? ""}`.toLowerCase();
-  return words.every((word) => text.includes(word));
-}
-
-/** What a store holds, or why it may not answer in full. */
-function storeStatus(store: StoreOption): React.ReactNode {
-  switch (store.status) {
-    case "in_progress":
-      return (
-        <>
-          <span className="size-1.5 rounded-full bg-crust motion-safe:animate-breathe" />
-          Indexing
-        </>
-      );
-    case "failed":
-      return (
-        <>
-          <span className="size-1.5 rounded-full bg-destructive" />
-          Failed
-        </>
-      );
-    case "expired":
-      return "Expired";
-    default:
-      return store.files === 0
-        ? "No files"
-        : `${store.files.toLocaleString()} ${store.files === 1 ? "file" : "files"}`;
-  }
-}
-
-/**
- * Loading, failed, signed out, or empty: what stands in for the list. Toast
- * finds the stores itself on Auto, so only Manual waits for the list.
- */
-function StoresNotice({
-  organization,
-  state,
-  manual,
-}: {
-  organization: Organization;
-  state: StoresState | undefined;
-  manual: boolean;
-}) {
-  const sources = useSources();
-
-  if (!state || state.status === "loading") {
-    if (!manual) return null;
-    return (
-      <p
-        role="status"
-        className="flex h-8 items-center gap-2.5 px-2 text-[13px] text-muted-foreground"
-      >
-        <Spinner aria-hidden="true" />
-        Loading stores…
-      </p>
-    );
-  }
-  if (state.status === "error") {
-    if (!manual) return null;
-    return (
-      <button
-        type="button"
-        data-row=""
-        onClick={() => sources.load(organization.id, true)}
-        className={cn(row, "motion-safe:animate-swap-in")}
-      >
-        <RotateCwIcon className="size-4 text-muted-foreground" />
-        <span className="min-w-0 flex-1 truncate">{state.message}</span>
-        <span className="text-xs text-muted-foreground">Retry</span>
-      </button>
-    );
-  }
-  if (state.status === "reconnect") {
-    return (
-      <ConnectButton
-        icon={<RotateCwIcon />}
-        hint="Access ended. Sign in again to search it."
-      >
-        Reconnect {organization.name}
-      </ConnectButton>
-    );
-  }
-  if (state.stores.length > 0) return null;
-  return (
-    <a
-      href={PLATFORM_URL}
-      target="_blank"
-      rel="noreferrer"
-      data-row=""
-      className={cn(row, "items-start motion-safe:animate-swap-in")}
-    >
-      <PlusIcon className="mt-0.5 size-4 text-muted-foreground" />
-      <span className="flex min-w-0 flex-1 flex-col">
-        Create a store
-        <span className="text-xs text-muted-foreground">
-          No stores here yet. Add files on Mixedbread.
-        </span>
-      </span>
-      <ArrowUpRightIcon className="mt-0.5 size-3.5 text-muted-foreground" />
-    </a>
-  );
-}
-
-/**
- * Leaves for Mixedbread, which asks which organization to connect, and
- * comes back here. It stays pending while the browser goes.
- */
-function ConnectButton({
-  icon,
-  hint,
-  children,
-}: {
-  icon: React.ReactNode;
-  /** A line under the label, saying why. */
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  const { pending, connect } = useConnect();
-
-  return (
-    <button
-      type="button"
-      data-row=""
-      disabled={pending}
-      onClick={connect}
-      className={cn(
-        row,
-        "[&>svg]:size-4 [&>svg]:text-muted-foreground",
-        hint && "items-start [&>svg]:mt-0.5",
-      )}
-    >
-      {pending ? <Spinner aria-hidden="true" /> : icon}
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span
-          key={String(pending)}
-          className={cn("truncate", pending && "motion-safe:animate-swap-in")}
-        >
-          {pending ? "Opening Mixedbread…" : children}
-        </span>
-        {hint && (
-          <span className="text-xs text-pretty text-muted-foreground">
-            {hint}
-          </span>
-        )}
-      </span>
-    </button>
-  );
-}
-
-/** A checkbox's box, checked with the row it is in. The tick springs in. */
-function Box() {
-  return (
-    <span
-      aria-hidden="true"
-      className="grid size-3.5 shrink-0 place-items-center rounded-[4px] bg-card shadow-[inset_0_0_0_1.5px_var(--input)] transition-[background-color,box-shadow] duration-150 group-aria-checked/row:bg-primary group-aria-checked/row:shadow-none motion-reduce:transition-none"
-    >
-      <CheckIcon
-        strokeWidth={3}
-        className="size-2.5 scale-50 text-primary-foreground! opacity-0 transition-[scale,opacity] duration-200 ease-spring group-aria-checked/row:scale-100 group-aria-checked/row:opacity-100 motion-reduce:transition-none"
-      />
-    </span>
   );
 }
