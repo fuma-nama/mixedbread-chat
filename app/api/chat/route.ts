@@ -76,7 +76,8 @@ export async function POST(request: Request) {
   if (!chat) {
     let text = "";
     for (const part of message.parts) text += (text && "\n") + part.text;
-    await createChat({ id, userId: user.id, title: text.slice(0, 80) });
+    const title = text.split("\n", 1)[0].slice(0, 80);
+    await createChat({ id, userId: user.id, title });
     naming = nameChat(id, user.id, text);
   }
   await saveMessage({ ...message, chatId: id, parentId });
