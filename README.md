@@ -10,13 +10,14 @@ A ChatGPT-style chat template that answers from your documents and the web, with
 - Pick what each question searches: the web, all of an organization's stores (Toast picks among them), or just some
 - Chat history with titles, search, rename, delete and share links
 - Edit a message or retry an answer, then flip between versions
+- Citations preview the passage they quote, and sharing a chat says when it quotes your stores
 - Model picker over [AI Gateway](https://vercel.com/ai-gateway), a thinking effort dial, reasoning, code highlighting and math
 
 ## How it works
 
 1. A chat model on AI Gateway runs the conversation.
 2. When it needs facts, it calls one `search` tool, which hands the request to [Toast 1](https://www.mixedbread.com/docs/agent/models), Mixedbread's search agent, with the signed-in person's own access. Toast searches the picked stores and the web, reads what it finds, and answers with citations. A Mixedbread token reaches one organization, so a search over several runs one Toast search per organization, side by side.
-3. The tool labels each cited source `[S1]`, `[S2]` so the chat model can cite the same evidence, and the UI renders those labels as numbered citations.
+3. The tool labels each cited source `[S1]`, `[S2]` so the chat model can cite the same evidence, and the UI renders those labels as numbered citations, with the passage Toast read.
 
 People sign in with their Mixedbread account through OAuth, handled by [Better Auth](https://www.better-auth.com). Each organization they connect is stored as its own account, with its tokens encrypted. Chats live in Postgres. Each message stores its parent, so edits and retries become branches of one chat.
 

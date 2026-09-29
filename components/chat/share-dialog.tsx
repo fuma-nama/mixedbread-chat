@@ -16,13 +16,32 @@ import {
 import { IconSwap } from "@/components/ui/icon-swap";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
+import type { ChatMessage } from "@/lib/search-tool";
+
+/** Whether a search in the chat found files in the user's stores. */
+export function searchedStores(messages: ChatMessage[]): boolean {
+  for (const message of messages) {
+    for (const part of message.parts) {
+      if (part.type !== "tool-search" || part.state !== "output-available")
+        continue;
+      if (part.output.status !== "done") continue;
+      for (const source of part.output.sources) {
+        if (source.type === "file") return true;
+      }
+    }
+  }
+  return false;
+}
 
 export const ShareDialog = memo(function ShareDialog({
   chatId,
   initialVisibility,
+  stores,
 }: {
   chatId: string;
   initialVisibility: "private" | "public";
+  /** Its searches found files in the user's stores, which a shared chat quotes. */
+  stores: boolean;
 }) {
   const [visibility, setVisibility] = useState(initialVisibility);
   const [copied, setCopied] = useState(false);
@@ -72,7 +91,9 @@ export const ShareDialog = memo(function ShareDialog({
             {shared ? "This chat is shared" : "Share chat"}
           </DialogTitle>
           <DialogDescription>
-            Anyone with the link can read this chat.
+            {stores
+              ? "Anyone with the link can read this chat, including the passages it quotes from your stores."
+              : "Anyone with the link can read this chat."}
           </DialogDescription>
         </DialogHeader>
 

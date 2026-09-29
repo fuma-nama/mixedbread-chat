@@ -1,16 +1,17 @@
-import type { Annotation } from "./research";
+import type { Citation } from "./research";
 
-export type Source =
-  | { label: string; type: "url"; url: string; title: string }
+/** A cited page or chunk; `excerpt` is the text Toast read there. */
+export type Source = { label: string; excerpt?: string } & (
+  | { type: "url"; url: string; title: string }
   | {
-      label: string;
       type: "file";
       fileId: string;
       filename: string;
       chunkId: string;
       storeId: string;
       storeName?: string;
-    };
+    }
+);
 
 /**
  * Puts a `[label]` marker where each citation stood in Toast's answer, so
@@ -19,7 +20,7 @@ export type Source =
  */
 export function labelCitations(
   text: string,
-  annotations: Annotation[],
+  citations: Citation[],
   nextLabel: () => string,
 ): { text: string; sources: Source[] } {
   // Offsets count code points, as the server does; JS strings index UTF-16 units.
@@ -27,31 +28,32 @@ export function labelCitations(
   const sources = new Map<string, Source>();
   const markers = new Map<number, string>();
 
-  for (const annotation of annotations) {
-    const url = annotation.type === "url_citation";
-    const key = url ? annotation.url : annotation.chunk_id;
+  for (const citation of citations) {
+    const key = citation.type === "url" ? citation.url : citation.chunkId;
     let source = sources.get(key);
     if (!source) {
-      source = url
-        ? {
-            label: nextLabel(),
-            type: "url",
-            url: annotation.url,
-            title: annotation.title,
-          }
-        : {
-            label: nextLabel(),
-            type: "file",
-            fileId: annotation.file_id,
-            filename: annotation.filename,
-            chunkId: annotation.chunk_id,
-            storeId: annotation.store_id,
-          };
+      source =
+        citation.type === "url"
+          ? {
+              label: nextLabel(),
+              type: "url",
+              url: citation.url,
+              title: citation.title,
+            }
+          : {
+              label: nextLabel(),
+              type: "file",
+              fileId: citation.fileId,
+              filename: citation.filename,
+              chunkId: citation.chunkId,
+              storeId: citation.storeId,
+            };
+      // A page cited at several chunks previews the first.
+      if (citation.excerpt) source.excerpt = citation.excerpt;
       sources.set(key, source);
     }
 
-    const offset = url ? annotation.start_index : annotation.index;
-    const at = Math.min(Math.max(offset, 0), chars.length);
+    const at = Math.min(Math.max(citation.at, 0), chars.length);
     const marker = `[${source.label}]`;
     const existing = markers.get(at) ?? "";
     if (!existing.includes(marker)) markers.set(at, existing + marker);

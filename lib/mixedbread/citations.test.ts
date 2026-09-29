@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { labelCitations } from "./citations.ts";
-import type { Annotation } from "./research.ts";
+import type { Citation } from "./research.ts";
 
 function labels() {
   let next = 1;
@@ -9,40 +9,42 @@ function labels() {
 }
 
 test("marks every citation and labels each cited page or chunk once", () => {
-  const annotations: Annotation[] = [
+  const citations: Citation[] = [
     {
-      type: "url_citation",
+      type: "url",
+      at: 5,
       url: "https://example.com",
       title: "Example",
-      start_index: 5,
-      chunk_id: "web:0",
+      excerpt: "First passage",
     },
     {
-      type: "file_citation",
-      file_id: "file",
+      type: "file",
+      at: 11,
+      fileId: "file",
       filename: "report.pdf",
-      index: 11,
-      chunk_id: "file:2",
-      store_id: "store",
+      chunkId: "file:2",
+      storeId: "store",
     },
     {
-      type: "url_citation",
+      type: "url",
+      at: 11,
       url: "https://example.com",
       title: "Example",
-      start_index: 11,
-      chunk_id: "web:1",
+      excerpt: "Second passage",
     },
   ];
 
-  const { text, sources } = labelCitations(
-    "First. Then.",
-    annotations,
-    labels(),
-  );
+  const { text, sources } = labelCitations("First. Then.", citations, labels());
 
   assert.equal(text, "First[S1]. Then[S2][S1].");
   assert.deepEqual(sources, [
-    { label: "S1", type: "url", url: "https://example.com", title: "Example" },
+    {
+      label: "S1",
+      type: "url",
+      url: "https://example.com",
+      title: "Example",
+      excerpt: "First passage",
+    },
     {
       label: "S2",
       type: "file",
@@ -57,15 +59,7 @@ test("marks every citation and labels each cited page or chunk once", () => {
 test("counts offsets in code points", () => {
   const { text } = labelCitations(
     "👋 hi",
-    [
-      {
-        type: "url_citation",
-        url: "https://example.com",
-        title: "Example",
-        start_index: 4,
-        chunk_id: "web:0",
-      },
-    ],
+    [{ type: "url", at: 4, url: "https://example.com", title: "Example" }],
     labels(),
   );
 

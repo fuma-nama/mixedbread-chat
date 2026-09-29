@@ -1,6 +1,6 @@
 import { choiceFor, type SourceSelection, searchesStores } from "../sources.ts";
 import { labelCitations, type Source } from "./citations.ts";
-import type { Annotation, ResearchTarget } from "./research.ts";
+import type { Citation, ResearchTarget } from "./research.ts";
 
 /*
  * A token reaches one organization, so a search takes a Toast run per
@@ -40,7 +40,7 @@ export type RunResult =
   | {
       status: "done";
       text: string;
-      annotations: Annotation[];
+      citations: Citation[];
       /** By store ID. */
       storeNames: ReadonlyMap<string, string>;
     }
@@ -66,11 +66,7 @@ export function combine(
     if (!result || result.status === "failed") {
       text = `The search failed: ${result?.message ?? "it did not finish."}`;
     } else {
-      const labelled = labelCitations(
-        result.text,
-        result.annotations,
-        nextLabel,
-      );
+      const labelled = labelCitations(result.text, result.citations, nextLabel);
       text = labelled.text.trim() || "Nothing relevant found.";
       for (const source of labelled.sources) {
         if (source.type === "file") {

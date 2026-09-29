@@ -87,7 +87,7 @@ async function* run(
         result: {
           status: "done",
           text: event.text,
-          annotations: event.annotations,
+          citations: event.citations,
           storeNames: names,
         },
       };

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { SourceSelection } from "../sources.ts";
-import type { Annotation } from "./research.ts";
+import type { Citation } from "./research.ts";
 import { combine, merge, planRuns, type RunResult } from "./runs.ts";
 
 const connections = [
@@ -51,32 +51,31 @@ test("nothing picked means no runs", () => {
 });
 
 test("citations are labelled across runs in order, and files learn their store", () => {
-  const file: Annotation = {
-    type: "file_citation",
-    file_id: "file-1",
+  const file: Citation = {
+    type: "file",
+    at: 5,
+    fileId: "file-1",
     filename: "handbook.pdf",
-    index: 5,
-    chunk_id: "file-1:0",
-    store_id: "store-1",
+    chunkId: "file-1:0",
+    storeId: "store-1",
   };
-  const web: Annotation = {
-    type: "url_citation",
+  const web: Citation = {
+    type: "url",
+    at: 3,
     url: "https://example.com",
     title: "Example",
-    start_index: 3,
-    chunk_id: "web-0",
   };
   const results: RunResult[] = [
     {
       status: "done",
       text: "Leave is 30 days.",
-      annotations: [file],
+      citations: [file],
       storeNames: new Map([["store-1", "HR"]]),
     },
     {
       status: "done",
       text: "It is sunny.",
-      annotations: [web],
+      citations: [web],
       storeNames: new Map(),
     },
   ];

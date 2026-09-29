@@ -24,7 +24,7 @@ async function collect(client: Mixedbread): Promise<ResearchEvent[]> {
   return events;
 }
 
-test("normalizes steps, skips unknown shapes, and keeps the cited answer", async () => {
+test("normalizes steps, skips unknown shapes, and cites what Toast read", async () => {
   const events = await collect(
     streaming([
       {
@@ -36,7 +36,14 @@ test("normalizes steps, skips unknown shapes, and keeps the cited answer", async
             status: "completed",
             queries: ["leave"],
             store: "mixedbread/web",
-            results: [{ chunk_id: "a" }, { chunk_id: "b" }],
+            results: [
+              {
+                chunk_id: "a",
+                file_title: "Leave policy",
+                text: "Leave policy\n\n[truncated: chunk payload shortened]…take 30 days…[truncated: chunk payload shortened]a year.",
+              },
+              { chunk_id: "b", ocr_text: `${"word ".repeat(150)}end` },
+            ],
           },
           { id: "2", type: "rerank_call", status: "in_progress" },
           { id: "3", status: "completed" },
@@ -55,6 +62,13 @@ test("normalizes steps, skips unknown shapes, and keeps the cited answer", async
                   index: 0,
                   chunk_id: "a",
                   store_id: "s",
+                },
+                {
+                  type: "url_citation",
+                  url: "https://example.com",
+                  title: "Example",
+                  start_index: 3,
+                  chunk_id: "b",
                 },
                 { type: "image_citation", chunk_id: "x" },
               ],
@@ -85,14 +99,22 @@ test("normalizes steps, skips unknown shapes, and keeps the cited answer", async
     {
       type: "answer",
       text: "30 days.",
-      annotations: [
+      citations: [
         {
-          type: "file_citation",
-          file_id: "f",
+          type: "file",
+          at: 0,
+          fileId: "f",
           filename: "hr.pdf",
-          index: 0,
-          chunk_id: "a",
-          store_id: "s",
+          chunkId: "a",
+          storeId: "s",
+          excerpt: "…take 30 days…a year.",
+        },
+        {
+          type: "url",
+          at: 3,
+          url: "https://example.com",
+          title: "Example",
+          excerpt: `${"word ".repeat(119)}word…`,
         },
       ],
     },

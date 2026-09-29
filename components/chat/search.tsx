@@ -16,7 +16,7 @@ import {
   StatusDot,
   useElapsed,
 } from "./activity";
-import { originOf } from "./citation";
+import { originOf, SourcePreview } from "./citation";
 
 type SearchPart = Extract<
   ChatMessage["parts"][number],
@@ -284,37 +284,24 @@ function StepRow({ step }: { step: Step }) {
 }
 
 function SourceRow({ source, index }: { source: Source; index: number }) {
-  const content = (
-    <>
-      <SliceGlyph
-        className="size-3 text-berry motion-safe:animate-settle"
-        style={{ animationDelay: `${Math.min(index, 10) * 40}ms` }}
-      />
-      <span className="truncate text-foreground/80 transition-colors group-hover/source:text-foreground">
-        {sourceTitle(source)}
-      </span>
-      <span className="ml-auto max-w-[45%] shrink-0 truncate pl-3 font-mono text-[11px] text-muted-foreground/80">
-        {originOf(source)}
-      </span>
-    </>
-  );
-  const className =
-    "group/source flex h-6.5 min-w-0 items-center gap-2 rounded-md text-[12.5px] outline-offset-0 outline-ring focus-visible:outline-2";
-
   return (
     <li>
-      {source.type === "url" ? (
-        <a
-          href={source.url}
-          target="_blank"
-          rel="noreferrer"
-          className={className}
-        >
-          {content}
-        </a>
-      ) : (
-        <span className={className}>{content}</span>
-      )}
+      <SourcePreview
+        source={source}
+        align="start"
+        className="group/source flex h-6.5 w-full min-w-0 items-center gap-2 rounded-md text-left text-[12.5px] outline-offset-0 outline-ring focus-visible:outline-2"
+      >
+        <SliceGlyph
+          className="size-3 text-berry motion-safe:animate-settle"
+          style={{ animationDelay: `${Math.min(index, 10) * 40}ms` }}
+        />
+        <span className="truncate text-foreground/80 transition-colors group-hover/source:text-foreground group-data-[lit=true]/source:text-foreground">
+          {sourceTitle(source)}
+        </span>
+        <span className="ml-auto max-w-[45%] shrink-0 truncate pl-3 font-mono text-[11px] text-muted-foreground/80">
+          {originOf(source)}
+        </span>
+      </SourcePreview>
     </li>
   );
 }

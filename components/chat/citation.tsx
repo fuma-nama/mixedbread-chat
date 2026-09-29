@@ -68,7 +68,8 @@ export function SourcePreview({
   "data-citation": citation,
 }: {
   source: Source;
-  number: number;
+  /** As the answer numbers it; the search trace lists sources it may not cite. */
+  number?: number;
   side?: "top" | "bottom";
   align?: "start" | "center";
   className: string;
@@ -109,7 +110,9 @@ export function SourcePreview({
   );
 }
 
-function SourceCard({ source, number }: { source: Source; number: number }) {
+function SourceCard({ source, number }: { source: Source; number?: number }) {
+  const quote = source.excerpt && plain(source.excerpt);
+
   return (
     <div className="flex flex-col gap-2 p-3.5">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -120,6 +123,11 @@ function SourceCard({ source, number }: { source: Source; number: number }) {
       <p className="line-clamp-3 text-[13.5px] leading-snug font-medium text-pretty text-foreground">
         {sourceTitle(source)}
       </p>
+      {quote && (
+        <blockquote className="line-clamp-6 border-l-2 border-honey pl-2.5 text-[12.5px] leading-relaxed wrap-break-word whitespace-pre-line text-muted-foreground">
+          {quote}
+        </blockquote>
+      )}
       {source.type === "url" && (
         <a
           href={source.url}
@@ -135,4 +143,20 @@ function SourceCard({ source, number }: { source: Source; number: number }) {
       )}
     </div>
   );
+}
+
+// Images, and the marks around links, bold, headings, fences and code.
+const MARKS =
+  /!\[[^\]]*\]\([^)]*\)|\[([^\]]*)\]\([^)]*\)|\*\*(?=\S)([^*]*\S)\*\*|^#{1,6}\s+|^```.*|`/g;
+
+/** A passage as plain text, one line per block. */
+function plain(text: string): string {
+  let lines = "";
+  for (const line of text.split("\n")) {
+    const words = line
+      .replace(MARKS, (_, link?: string, bold?: string) => link ?? bold ?? "")
+      .trim();
+    if (words) lines += lines ? `\n${words}` : words;
+  }
+  return lines;
 }

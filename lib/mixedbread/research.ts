@@ -49,11 +49,30 @@ const annotationSchema = z.discriminatedUnion("type", [
   }),
 ]);
 
-export type Annotation = z.infer<typeof annotationSchema>;
+/** A marker in Toast's answer, at a code point offset, citing a chunk it read. */
+export type Citation = { at: number; excerpt?: string } & (
+  | { type: "url"; url: string; title: string }
+  | {
+      type: "file";
+      fileId: string;
+      filename: string;
+      chunkId: string;
+      storeId: string;
+    }
+);
 
 export type ResearchEvent =
   | { type: "step"; step: Step; chunks: string[] }
-  | { type: "answer"; text: string; annotations: Annotation[] };
+  | { type: "answer"; text: string; citations: Citation[] };
+
+const resultSchema = z.object({
+  chunk_id: z.string(),
+  file_title: z.string().nullish(),
+  text: z.string().nullish(),
+  ocr_text: z.string().nullish(),
+  transcription: z.string().nullish(),
+  summary: z.string().nullish(),
+});
 
 const callSchema = z.object({
   id: z.string(),
@@ -73,7 +92,7 @@ const callSchema = z.object({
       z.object({ name: z.string(), connectors: z.array(z.string()).nullish() }),
     )
     .nullish(),
-  results: z.array(z.object({ chunk_id: z.string() })).nullish(),
+  results: z.array(resultSchema).nullish(),
   error: z.object({ message: z.string() }).nullish(),
 });
 
@@ -175,7 +194,8 @@ export async function* research(
   if (!response.body) throw new Error("Mixedbread returned an empty stream.");
 
   let text = "";
-  const annotations: Annotation[] = [];
+  const annotations: z.infer<typeof annotationSchema>[] = [];
+  const excerpts = new Map<string, string>();
   let finished = false;
   for await (const chunk of parseJsonEventStream({
     stream: response.body,
@@ -184,7 +204,15 @@ export async function* research(
     if (!chunk.success) throw chunk.error;
     for (const raw of chunk.value.hosted_tool_calls ?? []) {
       const call = callSchema.safeParse(raw);
-      if (call.success) yield stepOf(call.data);
+      if (!call.success) continue;
+      const chunks: string[] = [];
+      for (const result of call.data.results ?? []) {
+        chunks.push(result.chunk_id);
+        if (excerpts.has(result.chunk_id)) continue;
+        const excerpt = excerptOf(result);
+        if (excerpt) excerpts.set(result.chunk_id, excerpt);
+      }
+      yield { type: "step", step: stepOf(call.data), chunks };
     }
     for (const choice of chunk.value.choices) {
       text += choice.delta.content ?? "";
@@ -198,10 +226,51 @@ export async function* research(
   if (!finished) {
     throw new Error("The Mixedbread stream ended before the answer finished.");
   }
-  yield { type: "answer", text, annotations };
+  const citations: Citation[] = [];
+  for (const annotation of annotations) {
+    const citation: Citation =
+      annotation.type === "url_citation"
+        ? {
+            type: "url",
+            at: annotation.start_index,
+            url: annotation.url,
+            title: annotation.title,
+          }
+        : {
+            type: "file",
+            at: annotation.index,
+            fileId: annotation.file_id,
+            filename: annotation.filename,
+            chunkId: annotation.chunk_id,
+            storeId: annotation.store_id,
+          };
+    const excerpt = excerpts.get(annotation.chunk_id);
+    if (excerpt) citation.excerpt = excerpt;
+    citations.push(citation);
+  }
+  yield { type: "answer", text, citations };
 }
 
-function stepOf(call: z.infer<typeof callSchema>): ResearchEvent {
+const EXCERPT_LENGTH = 600;
+// Where the harness shortened a chunk for Toast's context.
+const CUT = /…?\[(?:\.\.\. )?truncated: [^\]]*\]…?/g;
+
+/** The chunk's text as a citation preview shows it, cut at a word. */
+function excerptOf(result: z.infer<typeof resultSchema>): string | undefined {
+  let text =
+    result.text || result.ocr_text || result.transcription || result.summary;
+  if (!text) return;
+  // Web pages open with their title, which the citation shows already.
+  if (result.file_title && text.startsWith(result.file_title)) {
+    text = text.slice(result.file_title.length);
+  }
+  text = text.replaceAll(CUT, "…").trim();
+  if (text.length <= EXCERPT_LENGTH) return text;
+  const end = text.lastIndexOf(" ", EXCERPT_LENGTH);
+  return `${text.slice(0, end > 0 ? end : EXCERPT_LENGTH)}…`;
+}
+
+function stepOf(call: z.infer<typeof callSchema>): Step {
   const kind = kinds[call.type] ?? "other";
   const step: Step = { id: call.id, kind, status: statuses[call.status] };
   if (kind === "other") step.tool = call.type;
@@ -219,12 +288,10 @@ function stepOf(call: z.infer<typeof callSchema>): ResearchEvent {
       );
     }
   }
-  const chunks: string[] = [];
-  for (const result of call.results ?? []) chunks.push(result.chunk_id);
-  const results = call.results ? chunks.length : call.chunk_ids?.length;
+  const results = call.results?.length ?? call.chunk_ids?.length;
   if (results !== undefined) step.results = results;
   if (call.error) step.error = call.error.message;
-  return { type: "step", step, chunks };
+  return step;
 }
 
 // Any instructions replace Toast's default prompt, and without today's date

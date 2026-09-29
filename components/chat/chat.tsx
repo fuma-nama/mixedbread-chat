@@ -23,7 +23,7 @@ import { EmptyState, Suggestions } from "./empty-state";
 import { preloadMarkdown } from "./lazy-markdown";
 import { type Appear, MessageView } from "./message";
 import { ErrorNotice, failureOf, SharedNotice, wasRejected } from "./notices";
-import { ShareDialog } from "./share-dialog";
+import { ShareDialog, searchedStores } from "./share-dialog";
 import { useSearchScope, useSources } from "./sources-provider";
 
 /** A message with its place in the chat's branch tree. */
@@ -330,7 +330,13 @@ export function Chat({
         readonly={readonly}
         share={
           !readonly &&
-          !empty && <ShareDialog chatId={id} initialVisibility={visibility} />
+          !empty && (
+            <ShareDialog
+              chatId={id}
+              initialVisibility={visibility}
+              stores={searchedStores(messages)}
+            />
+          )
         }
       />
 
