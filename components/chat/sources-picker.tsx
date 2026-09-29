@@ -56,8 +56,8 @@ export function SourcesPicker() {
     useAllStores(),
   );
   const [query, setQuery] = useState("");
-  const glide = useGlide<HTMLSpanElement>("width", 320);
-  // The words roll in on a change, not on arrival.
+  const glide = useGlide<HTMLButtonElement>("width", 240);
+  // The words come in on a change, not on arrival.
   const [shown, setShown] = useState({ label, changed: false });
   if (shown.label !== label) setShown({ label, changed: true });
 
@@ -74,18 +74,15 @@ export function SourcesPicker() {
       }}
     >
       <PopoverTrigger
+        ref={glide}
         aria-label={`Sources: ${label}`}
         // Its label gives way when space runs out; on phones only the glyphs
         // show, and they keep their room.
-        className="flex h-8 min-w-0 cursor-pointer items-center gap-1 rounded-full px-2 text-[13px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 hover:bg-soft hover:text-foreground focus-visible:outline-2 aria-expanded:bg-soft aria-expanded:text-foreground max-sm:min-w-fit"
+        className="relative min-w-0 cursor-pointer rounded-full text-[13px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 hover:bg-soft hover:text-foreground focus-visible:outline-2 aria-expanded:bg-soft aria-expanded:text-foreground max-sm:min-w-fit"
       >
-        {/* A globe for the web and a stack for stores, side by side when both
-            are on. A change slides them into place and rolls the new words
-            in, while the width glides so the pickers beside it don't jump. */}
-        <span
-          ref={glide}
-          className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap"
-        >
+        {/* The width glides so the pickers beside it don't jump, while what
+            it holds takes its new place at once and is never squeezed. */}
+        <span className="flex h-8 w-(--glide-to) items-center gap-1.5 pr-6.5 pl-2 max-sm:pr-2">
           <span
             aria-hidden="true"
             className={cn(
@@ -104,17 +101,22 @@ export function SourcesPicker() {
             </span>
             <SearchSlashIcon data-on={!web && !docs} className={glyph} />
           </span>
+          {/* Waits for the glyphs to move and the width to all but land, so
+              the words never run into a glyph or past the edge. */}
           <span
             key={label}
             className={cn(
               "truncate max-sm:hidden",
-              shown.changed && "motion-safe:animate-swap-in",
+              shown.changed &&
+                "motion-safe:[animation:var(--animate-swap-in)_140ms_backwards]",
             )}
           >
             {label}
           </span>
         </span>
-        <ChevronDownIcon className="size-3.5 shrink-0 opacity-60 max-sm:hidden" />
+        {/* On the gliding edge rather than after the words, which may not
+            fit yet. */}
+        <ChevronDownIcon className="absolute inset-y-0 right-2 my-auto size-3.5 opacity-60 max-sm:hidden" />
       </PopoverTrigger>
       <PopoverContent
         side="top"
