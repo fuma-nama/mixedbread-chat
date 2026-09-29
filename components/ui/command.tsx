@@ -123,12 +123,14 @@ function CommandGroup({
   heading,
   children,
   ...props
-}: Autocomplete.Group.Props & { heading: React.ReactNode }) {
+}: Autocomplete.Group.Props & { heading?: string }) {
   return (
     <Autocomplete.Group data-slot="command-group" {...props}>
-      <Autocomplete.GroupLabel className="px-2.5 pt-2 pb-1.5 text-xs text-muted-foreground">
-        {heading}
-      </Autocomplete.GroupLabel>
+      {heading && (
+        <Autocomplete.GroupLabel className="px-2.5 pt-2 pb-1.5 text-xs text-muted-foreground">
+          {heading}
+        </Autocomplete.GroupLabel>
+      )}
       {children}
     </Autocomplete.Group>
   );

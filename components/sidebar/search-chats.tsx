@@ -105,7 +105,7 @@ function Palette({ onGo }: { onGo: () => void }) {
           </CommandItem>
         )}
         {shown.length > 0 && (
-          <CommandGroup heading={trimmed ? "Chats" : "Recent"}>
+          <CommandGroup heading={trimmed ? undefined : "Recent"}>
             {shown.map((chat) => (
               <CommandItem
                 key={chat.id}

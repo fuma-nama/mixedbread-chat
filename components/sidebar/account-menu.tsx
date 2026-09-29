@@ -223,19 +223,11 @@ function OrganizationRow({
         >
           {organization.name.charAt(0)}
         </span>
-        <span className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate">{organization.name}</span>
-          {lapsed && (
-            <span className="truncate text-xs text-muted-foreground">
-              Sign in again to search it
-            </span>
-          )}
-        </span>
+        <span className="min-w-0 flex-1 truncate">{organization.name}</span>
         {lapsed && (
-          <span
-            aria-hidden="true"
-            className="size-1.5 shrink-0 rounded-full bg-crust"
-          />
+          <span className="size-1.5 shrink-0 rounded-full bg-crust">
+            <span className="sr-only">Signed out</span>
+          </span>
         )}
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent className="w-56">
