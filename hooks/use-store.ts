@@ -2,6 +2,8 @@ import { useSyncExternalStore } from "react";
 
 /** A value that components subscribe to, outside React state. */
 export interface Store<T> {
+  /** The value it was created with, which the server rendered. */
+  initial: T;
   get: () => T;
   set: (value: T) => void;
   subscribe: (listener: () => void) => () => void;
@@ -11,6 +13,7 @@ export function createStore<T>(value: T): Store<T> {
   const listeners = new Set<() => void>();
 
   return {
+    initial: value,
     get: () => value,
     set(next) {
       value = next;
@@ -25,8 +28,15 @@ export function createStore<T>(value: T): Store<T> {
   };
 }
 
-/** The part of the store `select` picks: re-renders only when that changes. */
+/**
+ * The part of the store `select` picks: re-renders only when that changes.
+ * A part of the page that hydrates late starts from what the server saw,
+ * even if the store changed before then.
+ */
 export function useStore<T, S>(store: Store<T>, select: (value: T) => S): S {
-  const get = () => select(store.get());
-  return useSyncExternalStore(store.subscribe, get, get);
+  return useSyncExternalStore(
+    store.subscribe,
+    () => select(store.get()),
+    () => select(store.initial),
+  );
 }
