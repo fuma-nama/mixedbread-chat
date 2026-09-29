@@ -8,6 +8,8 @@ export type Source = { label: string; excerpt?: string } & (
       fileId: string;
       filename: string;
       chunkId: string;
+      /** Its place in the file, from 0: for a visually parsed PDF, its page. */
+      chunkIndex: number;
       storeId: string;
       storeName?: string;
       /** Whose store it is, for showing its page. */
