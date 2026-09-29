@@ -3,34 +3,43 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { themeColors } from "@/lib/theme";
+import { selectedTheme } from "./theme";
 import "./globals.css";
 
 const sans = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
 const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
 
 export const metadata: Metadata = {
-  title: { default: "Mixedbread Chat", template: "%s · Mixedbread Chat" },
+  title: { default: "Bread Chat", template: "%s · Bread Chat" },
   description:
     "A chat app that searches your data and the web, powered by Mixedbread.",
 };
 
-export const viewport: Viewport = {
-  viewportFit: "cover",
-  interactiveWidget: "resizes-content",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fefcf9" },
-    { media: "(prefers-color-scheme: dark)", color: "#18120f" },
-  ],
-};
+export async function generateViewport(): Promise<Viewport> {
+  const theme = await selectedTheme();
+  return {
+    viewportFit: "cover",
+    interactiveWidget: "resizes-content",
+    // One color per device scheme; a picked theme sets both.
+    themeColor: (["light", "dark"] as const).map((scheme) => ({
+      media: `(prefers-color-scheme: ${scheme})`,
+      color: themeColors[theme === "system" ? scheme : theme],
+    })),
+  };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const theme = await selectedTheme();
+
   return (
     <html
       lang="en"
+      data-theme={theme === "system" ? undefined : theme}
       className={cn(
         sans.variable,
         mono.variable,

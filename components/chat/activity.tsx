@@ -52,7 +52,7 @@ export function StatusDot({
       key={state}
       aria-hidden="true"
       className={cn(
-        "size-1.5 rounded-full",
+        "size-1.5 shrink-0 rounded-full",
         state === "running" && "bg-crust motion-safe:animate-breathe",
         state === "done" && "bg-muted-foreground/45 motion-safe:animate-pop",
         state === "failed" && "bg-destructive motion-safe:animate-pop",

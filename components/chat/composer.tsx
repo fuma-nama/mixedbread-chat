@@ -12,7 +12,10 @@ import {
 } from "react";
 import { IconSwap } from "@/components/ui/icon-swap";
 import type { ModelId } from "@/lib/models";
+import type { Reasoning } from "@/lib/reasoning";
 import { ModelPicker } from "./model-picker";
+import { ReasoningPicker } from "./reasoning-picker";
+import { SourcesPicker } from "./sources-picker";
 
 /** The server takes up to this many characters in one message. */
 const MAX_LENGTH = 20_000;
@@ -36,6 +39,8 @@ export function Composer({
   status,
   model,
   onModelChange,
+  reasoning,
+  onReasoningChange,
   onSubmit,
   onStop,
   placeholder,
@@ -46,6 +51,8 @@ export function Composer({
   status: ChatStatus;
   model: ModelId;
   onModelChange: (model: ModelId) => void;
+  reasoning: Reasoning;
+  onReasoningChange: (reasoning: Reasoning) => void;
   onSubmit: (text: string) => void;
   onStop: () => void;
   placeholder: string;
@@ -140,12 +147,17 @@ export function Composer({
         }}
         className="field-sizing-content max-h-[min(40vh,22rem)] min-h-[3.25rem] w-full resize-none scrollbar-thin bg-transparent px-4.5 pt-4 pb-1 text-base leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/70 disabled:cursor-not-allowed md:text-[15px]"
       />
+      {/* Three pickers and Send share one line down to a 375px phone: the
+          pickers sit close, their labels never wrap, and only the sources
+          picker gives way when the line runs short. */}
       <div
         data-slot="composer-bar"
-        className="flex cursor-text items-center gap-2 px-2.5 pb-2.5"
+        className="flex cursor-text items-center gap-0.5 px-2.5 pb-2.5 whitespace-nowrap"
       >
+        <SourcesPicker />
         <ModelPicker value={model} onChange={onModelChange} />
-        <div className="ml-auto flex items-center gap-3">
+        <ReasoningPicker value={reasoning} onChange={onReasoningChange} />
+        <div className="ml-auto flex shrink-0 items-center gap-3 pl-1.5">
           {text.length > WARN_LENGTH && (
             <span
               className={cn(

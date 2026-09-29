@@ -1,9 +1,11 @@
 "use client";
 
 import { cn } from "cn";
+import { useState } from "react";
 import { HalftoneMark } from "@/components/brand/halftone-mark";
-import type { SearchScope } from "@/lib/search-tool";
-import { suggestions } from "@/lib/suggestions";
+import type { SearchScope } from "@/lib/sources";
+import { suggestionsFor } from "@/lib/suggestions";
+import { usePickedStores } from "./sources-provider";
 
 /** The greeting above the composer on a new chat. */
 export function EmptyState({ ref }: { ref?: React.Ref<HTMLDivElement> }) {
@@ -19,7 +21,11 @@ export function EmptyState({ ref }: { ref?: React.Ref<HTMLDivElement> }) {
   );
 }
 
-/** Example questions that send on click. */
+/**
+ * Example questions that send on click, true to the sources picked. They
+ * rise in after the greeting on arrival; picking other sources swaps the
+ * new ones in at once, while those that still fit stay put.
+ */
 export function Suggestions({
   scope,
   onPick,
@@ -29,6 +35,10 @@ export function Suggestions({
   onPick: (question: string) => void;
   className?: string;
 }) {
+  const questions = suggestionsFor(scope, usePickedStores());
+  const [first] = useState(() => new Set(questions));
+  let fresh = 0;
+
   return (
     <ul
       aria-label="Suggestions"
@@ -37,21 +47,34 @@ export function Suggestions({
         className,
       )}
     >
-      {suggestions[scope].map((question, index) => (
-        <li
-          key={question}
-          className="shrink-0 motion-safe:animate-rise"
-          style={{ animationDelay: `${240 + index * 50}ms` }}
-        >
-          <button
-            type="button"
-            onClick={() => onPick(question)}
-            className="cursor-pointer rounded-full px-3.5 py-1.5 text-[13px] whitespace-nowrap text-muted-foreground ring-1 ring-soft outline-offset-1 outline-ring transition-[color,background-color,box-shadow] duration-150 hover:bg-card hover:text-foreground hover:shadow-raised hover:ring-foreground/15 focus-visible:outline-2"
+      {questions.map((question, index) => {
+        const arrival = first.has(question);
+        return (
+          <li
+            key={question}
+            className={cn(
+              "shrink-0",
+              arrival
+                ? "motion-safe:animate-rise"
+                : "motion-safe:animate-swap-in",
+            )}
+            style={{
+              animationDelay: arrival
+                ? `${240 + index * 50}ms`
+                : `${fresh++ * 40}ms`,
+              animationFillMode: arrival ? undefined : "backwards",
+            }}
           >
-            {question}
-          </button>
-        </li>
-      ))}
+            <button
+              type="button"
+              onClick={() => onPick(question)}
+              className="cursor-pointer rounded-full px-3.5 py-1.5 text-[13px] whitespace-nowrap text-muted-foreground ring-1 ring-soft outline-offset-1 outline-ring transition-[color,background-color,box-shadow] duration-150 hover:bg-card hover:text-foreground hover:shadow-raised hover:ring-foreground/15 focus-visible:outline-2"
+            >
+              {question}
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
 }

@@ -76,11 +76,15 @@ function dataOf(table: HTMLTableElement): TableData {
 }
 
 function htmlOf({ headers, rows }: TableData): string {
-  const row = (cells: string[], tag: "th" | "td") =>
-    `<tr>${cells.map((cell) => `<${tag}>${escapeHtml(cell)}</${tag}>`).join("")}</tr>`;
-  return `<table><thead>${row(headers, "th")}</thead><tbody>${rows
-    .map((cells) => row(cells, "td"))
-    .join("")}</tbody></table>`;
+  let html = `<table><thead>${rowOf(headers, "th")}</thead><tbody>`;
+  for (const cells of rows) html += rowOf(cells, "td");
+  return `${html}</tbody></table>`;
+}
+
+function rowOf(cells: string[], tag: "th" | "td"): string {
+  let html = "<tr>";
+  for (const cell of cells) html += `<${tag}>${escapeHtml(cell)}</${tag}>`;
+  return `${html}</tr>`;
 }
 
 function escapeHtml(text: string): string {

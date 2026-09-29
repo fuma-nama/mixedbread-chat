@@ -8,7 +8,6 @@ import {
   toUIMessageStream,
 } from "ai";
 import { z } from "zod";
-import { getSession } from "@/lib/auth";
 import { pathTo } from "@/lib/branches";
 import {
   countAnswers,
@@ -21,7 +20,10 @@ import {
 import { languageModel } from "@/lib/language-model";
 import { answersPerDay } from "@/lib/limits";
 import { isModelId, type ModelId, titleModel } from "@/lib/models";
+import { isReasoning, type Reasoning } from "@/lib/reasoning";
 import { type ChatMessage, nextLabel, searchTool } from "@/lib/search-tool";
+import { scopeOf, sourceSelectionSchema } from "@/lib/sources";
+import { getViewer } from "@/lib/viewer";
 
 const requestSchema = z.object({
   id: z.string(),
@@ -40,31 +42,28 @@ const requestSchema = z.object({
   }),
   parentId: z.string().nullable(),
   model: z.custom<ModelId>(isModelId),
+  reasoning: z.custom<Reasoning>(isReasoning),
+  /** What the picker says to search. */
+  sources: sourceSelectionSchema,
 });
 
 export async function POST(request: Request) {
-  const session = await getSession();
-  if (!session) return new Response("Please reload the page.", { status: 401 });
-  const { user } = session;
+  const viewer = await getViewer();
+  if (!viewer) return new Response("Please reload the page.", { status: 401 });
+  const { user } = viewer;
 
   const body = requestSchema.safeParse(await request.json());
   if (!body.success) return new Response("Invalid request.", { status: 400 });
-  const { id, message, parentId, model } = body.data;
+  const { id, message, parentId, model, reasoning, sources } = body.data;
 
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const limit = user.isAnonymous ? answersPerDay.guest : answersPerDay.member;
   const [answers, chat, saved] = await Promise.all([
     countAnswers(user.id, since),
     getChat(id),
     getMessages(id),
   ]);
-  if (answers >= limit) {
-    return new Response(
-      user.isAnonymous
-        ? "You reached today's limit for guests. Sign up to keep chatting."
-        : "You reached today's message limit.",
-      { status: 429 },
-    );
+  if (answers >= answersPerDay) {
+    return new Response("You reached today's message limit.", { status: 429 });
   }
   if (chat && chat.userId !== user.id) {
     return new Response("Chat not found.", { status: 404 });
@@ -72,7 +71,8 @@ export async function POST(request: Request) {
 
   let naming: Promise<string | undefined> | undefined;
   if (!chat) {
-    const text = message.parts.map((part) => part.text).join("\n");
+    let text = "";
+    for (const part of message.parts) text += (text && "\n") + part.text;
     await createChat({ id, userId: user.id, title: text.slice(0, 80) });
     naming = nameChat(id, user.id, text);
   }
@@ -83,13 +83,28 @@ export async function POST(request: Request) {
     [{ ...message, parentId }, ...saved],
     message.id,
   );
-  const tools = { search: searchTool(nextLabel(history)) };
+  const tools = {
+    search: searchTool({
+      userId: user.id,
+      connections: viewer.connections,
+      selection: sources,
+      firstLabel: nextLabel(history),
+    }),
+  };
+  // Earlier searches in the history still need the tool, even when it is off.
+  const searching = scopeOf(sources, viewer.organizations) !== "none";
 
   const result = streamText({
     model: languageModel(model),
+    // Auto leaves the effort to the model's provider.
+    reasoning: reasoning === "auto" ? "provider-default" : reasoning,
     instructions: `You are a helpful assistant.
 
-Use the search tool when an answer depends on facts you are not sure of: the user's documents, recent events, or anything specific you might misremember.
+${
+  searching
+    ? "Use the search tool when an answer depends on facts you are not sure of: the user's documents, recent events, or anything specific you might misremember."
+    : "The user turned search off for this question, so answer from what you know and say when you are unsure."
+}
 
 Search findings mark their evidence with labels like [S1]. When you use a finding, cite its label as a markdown link right after the claim, like [S1](#S1). Only cite labels that search returned. If search finds nothing relevant, say so instead of guessing.
 
@@ -98,6 +113,7 @@ Write math between double dollar signs, inline like $$E = mc^2$$ or on lines of 
 Today is ${new Date().toISOString().slice(0, 10)}.`,
     messages: await convertToModelMessages(history, { tools }),
     tools,
+    activeTools: searching ? ["search"] : [],
     stopWhen: isStepCount(8),
     abortSignal: request.signal,
   });

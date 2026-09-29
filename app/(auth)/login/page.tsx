@@ -1,20 +1,30 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { AuthPage } from "@/components/auth-form";
-import { getSession } from "@/lib/auth";
+import { SignIn } from "@/components/sign-in";
+import { clientId } from "@/lib/auth";
 import { safeNext } from "@/lib/safe-next";
+import { getViewer } from "@/lib/viewer";
 
-export const metadata: Metadata = { title: "Log in" };
+export const metadata: Metadata = { title: "Sign in" };
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string | string[] }>;
+  searchParams: Promise<{
+    next?: string | string[];
+    error?: string | string[];
+  }>;
 }) {
-  const next = safeNext((await searchParams).next);
+  const params = await searchParams;
+  const next = safeNext(params.next);
   // Already signed in: nothing to do here.
-  const session = await getSession();
-  if (session && !session.user.isAnonymous) redirect(next);
+  if (await getViewer()) redirect(next);
 
-  return <AuthPage mode="login" next={next} />;
+  return (
+    <SignIn
+      next={next}
+      error={typeof params.error === "string" ? params.error : undefined}
+      configured={Boolean(clientId)}
+    />
+  );
 }

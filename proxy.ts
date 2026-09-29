@@ -1,13 +1,13 @@
 import { getSessionCookie } from "better-auth/cookies";
 import { type NextRequest, NextResponse } from "next/server";
 
-/** Gives every visitor a guest session, so chats can be saved from the first message. */
+/** Signed-out visitors sign in first, except on chat links, which may be shared. */
 export function proxy(request: NextRequest) {
-  if (getSessionCookie(request)) return NextResponse.next();
-
-  const url = new URL("/api/auth/guest", request.url);
-  url.searchParams.set("redirect", request.nextUrl.pathname);
-  return NextResponse.redirect(url);
+  const { pathname } = request.nextUrl;
+  if (getSessionCookie(request) || pathname.startsWith("/c/")) {
+    return NextResponse.next();
+  }
+  return NextResponse.redirect(new URL("/login", request.url));
 }
 
 export const config = { matcher: ["/", "/c/:path*"] };

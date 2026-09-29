@@ -20,9 +20,9 @@ function ComboboxTrigger({ ...props }: ComboboxPrimitive.Trigger.Props) {
 }
 
 /**
- * A popup with its own search field, for a searchable select. Opening
- * upward it keeps its height while filtering, so the search field at its
- * top stays put instead of sliding down as results shrink.
+ * A popup with its own search field, for a searchable select. It is only as
+ * tall as its results, with the field on the edge by the trigger, which
+ * stays put while results come and go.
  */
 function ComboboxContent({
   align = "start",
@@ -48,7 +48,7 @@ function ComboboxContent({
         <ComboboxPrimitive.Popup
           data-slot="combobox-content"
           className={cn(
-            "flex max-h-[min(22rem,var(--available-height))] w-72 max-w-(--available-width) origin-(--transform-origin) flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-float transition-[opacity,scale] duration-150 ease-smooth outline-none data-ending-style:scale-[0.97] data-ending-style:opacity-0 data-ending-style:duration-100 data-starting-style:scale-95 data-starting-style:opacity-0 data-[side=top]:h-[min(22rem,var(--available-height))] motion-reduce:transition-none",
+            "flex max-h-[min(22rem,var(--available-height))] w-72 max-w-(--available-width) origin-(--transform-origin) flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-float transition-[opacity,scale] duration-150 ease-smooth outline-none data-ending-style:scale-[0.97] data-ending-style:opacity-0 data-ending-style:duration-100 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none",
             className,
           )}
           {...props}
@@ -58,12 +58,12 @@ function ComboboxContent({
   );
 }
 
-/** A quiet search row across the top of the popup, like the ⌘K palette's. */
+/** A quiet search row like the ⌘K palette's, on the edge by the trigger. */
 function ComboboxInput({ className, ...props }: ComboboxPrimitive.Input.Props) {
   return (
     <div
       data-slot="combobox-input-wrapper"
-      className="flex h-10 shrink-0 items-center gap-2 border-b border-soft px-3"
+      className="flex h-10 shrink-0 items-center gap-2 border-b border-soft px-3 in-data-[side=top]:order-last in-data-[side=top]:border-t in-data-[side=top]:border-b-0"
     >
       <SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
       <ComboboxPrimitive.Input
@@ -84,7 +84,7 @@ function ComboboxEmpty({ className, ...props }: ComboboxPrimitive.Empty.Props) {
     <ComboboxPrimitive.Empty
       data-slot="combobox-empty"
       className={cn(
-        "flex items-center justify-center px-3 py-6 text-center text-[13px] text-muted-foreground not-empty:flex-1 empty:p-0",
+        "px-3 py-6 text-center text-[13px] text-muted-foreground empty:p-0",
         className,
       )}
       {...props}
@@ -97,7 +97,7 @@ function ComboboxList({ className, ...props }: ComboboxPrimitive.List.Props) {
     <ComboboxPrimitive.List
       data-slot="combobox-list"
       className={cn(
-        "min-h-0 flex-1 scroll-py-1 scrollbar-thin overflow-y-auto overscroll-contain p-1 outline-none data-empty:flex-none data-empty:p-0",
+        "min-h-0 flex-1 scroll-py-1 scrollbar-thin overflow-y-auto overscroll-contain p-1 outline-none data-empty:p-0",
         className,
       )}
       {...props}

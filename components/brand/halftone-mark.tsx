@@ -1,5 +1,6 @@
 "use client";
 
+import { subscribeTheme } from "@/hooks/use-theme";
 import {
   clamp01,
   type Dot,
@@ -98,6 +99,7 @@ function animate(canvas: HTMLCanvasElement | null) {
   if (!canvas || !context) return;
 
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+  // Either can change the inks: the device's scheme, or a theme picked here.
   const scheme = window.matchMedia("(prefers-color-scheme: dark)");
   const batches = new Map<number, Path2D>();
   let image: HTMLImageElement | undefined;
@@ -283,6 +285,7 @@ function animate(canvas: HTMLCanvasElement | null) {
   canvas.addEventListener("pointermove", onMove);
   canvas.addEventListener("pointerleave", onLeave);
   scheme.addEventListener("change", paint);
+  const stopTheme = subscribeTheme(paint);
   reduced.addEventListener("change", schedule);
   document.addEventListener("visibilitychange", schedule);
 
@@ -295,6 +298,7 @@ function animate(canvas: HTMLCanvasElement | null) {
     canvas.removeEventListener("pointermove", onMove);
     canvas.removeEventListener("pointerleave", onLeave);
     scheme.removeEventListener("change", paint);
+    stopTheme();
     reduced.removeEventListener("change", schedule);
     document.removeEventListener("visibilitychange", schedule);
   };

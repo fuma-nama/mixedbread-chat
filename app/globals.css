@@ -4,6 +4,22 @@
 @source "../node_modules/streamdown/dist/*.js";
 @source "../node_modules/@streamdown/code/dist/*.js";
 
+/*
+ * Dark when picked in the theme menu, or when the device is dark and light
+ * was not picked. The menu sets `data-theme` on the page; without it, the
+ * device decides.
+ */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:not([data-theme="light"], [data-theme="light"] *)) {
+      @slot;
+    }
+  }
+}
+
 @theme inline {
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
@@ -36,7 +52,6 @@
   /* The bakery: crumb, crust and the berry that marks what was cited. */
   --color-honey: var(--honey);
   --color-crust: var(--crust);
-  --color-crust-ink: var(--crust-ink);
   --color-berry: var(--berry);
   --color-shade: var(--shade);
 
@@ -71,6 +86,9 @@
   --animate-swap-in: swap-in 180ms var(--ease-smooth);
   --animate-count-back: count-back 220ms var(--ease-smooth);
   --animate-count-forward: count-forward 220ms var(--ease-smooth);
+  --animate-roll-in: roll-in 320ms var(--ease-smooth) both;
+  --animate-roll-out: roll-out 180ms cubic-bezier(0.55, 0, 1, 0.45) both;
+  --animate-theme-turn: theme-turn 520ms var(--ease-spring);
   --animate-nudge: nudge 1.6s var(--ease-glide) infinite;
   --animate-toast-bob: toast-bob 1.6s var(--ease-glide) infinite;
   --animate-toast-heat: toast-heat 1.2s var(--ease-glide) infinite;
@@ -150,6 +168,33 @@
     from {
       opacity: 0;
       translate: 6px 0;
+    }
+  }
+
+  /*
+   * A dial's word turning over: the old one rolls out as the new one rolls
+   * in, the way the dial turned (`--roll`: 1 up, -1 down).
+   */
+  @keyframes roll-in {
+    from {
+      opacity: 0;
+      translate: 0 calc(var(--roll, 1) * 0.6em);
+      filter: blur(2px);
+    }
+  }
+  @keyframes roll-out {
+    to {
+      opacity: 0;
+      translate: 0 calc(var(--roll, 1) * -0.6em);
+      filter: blur(2px);
+    }
+  }
+
+  /* A theme's icon turning into place when picked, from its own `--turn`. */
+  @keyframes theme-turn {
+    from {
+      rotate: var(--turn, 0deg);
+      scale: 0.6;
     }
   }
 
@@ -248,7 +293,6 @@
 
   --honey: oklch(0.8 0.13 78);
   --crust: oklch(0.67 0.15 50);
-  --crust-ink: oklch(0.52 0.13 45);
   --berry: oklch(0.66 0.19 15);
   /* The ink shadows are printed in: halftone blue on paper. */
   --shade: oklch(0.52 0.09 258);
@@ -266,10 +310,8 @@
     0 24px 48px -24px oklch(0.235 0.02 48 / 0.14);
 
   color-scheme: light;
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
+  @variant dark {
     --background: oklch(0.165 0.011 52);
     --panel: oklch(0.19 0.012 52);
     --foreground: oklch(0.95 0.014 82);
@@ -289,7 +331,6 @@
 
     --honey: oklch(0.82 0.12 80);
     --crust: oklch(0.72 0.14 52);
-    --crust-ink: oklch(0.78 0.12 55);
     --berry: oklch(0.74 0.16 15);
     --shade: oklch(0.42 0.05 260);
 
@@ -304,6 +345,20 @@
 
     color-scheme: dark;
   }
+}
+
+/*
+ * Switching themes crossfades the whole page at once, rather than each color
+ * easing at its own transition's pace. Clicks go through while it plays, so
+ * themes can be flicked between.
+ */
+::view-transition {
+  pointer-events: none;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 320ms;
+  animation-timing-function: var(--ease-smooth);
 }
 
 /* Text that is still happening: a band of light sweeps across it with `animate-shimmer`. */
@@ -322,9 +377,10 @@
 }
 
 /*
- * Scrollers that fade out toward the edges they can scroll past. Without
- * scroll-driven animations, both edges fade. A scroll timeline stretches the
- * 1ms duration over the scroll range (the build turns `auto` into 0s).
+ * Scrollers that fade out toward the edges they can scroll past. Only scroll
+ * timelines can tell those edges, so without them nothing fades. A timeline
+ * stretches the 1ms duration over the scroll range (the build turns `auto`
+ * into 0s).
  */
 @property --scroll-fade-size {
   syntax: "<length-percentage>";
@@ -357,14 +413,14 @@
 }
 
 @utility scroll-fade-y {
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    #000 var(--scroll-fade-start),
-    #000 calc(100% - var(--scroll-fade-end)),
-    transparent 100%
-  );
   @supports (animation-timeline: scroll()) {
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0,
+      #000 var(--scroll-fade-start),
+      #000 calc(100% - var(--scroll-fade-end)),
+      transparent 100%
+    );
     animation:
       scroll-fade-start 1ms ease-in-out both,
       scroll-fade-end 1ms ease-in-out both;
@@ -373,21 +429,17 @@
       0 6rem,
       calc(100% - 6rem) 100%;
   }
-  @supports not (animation-timeline: scroll()) {
-    --scroll-fade-start: var(--scroll-fade-size);
-    --scroll-fade-end: var(--scroll-fade-size);
-  }
 }
 
 @utility scroll-fade-x {
-  mask-image: linear-gradient(
-    to right,
-    transparent 0,
-    #000 var(--scroll-fade-start),
-    #000 calc(100% - var(--scroll-fade-end)),
-    transparent 100%
-  );
   @supports (animation-timeline: scroll()) {
+    mask-image: linear-gradient(
+      to right,
+      transparent 0,
+      #000 var(--scroll-fade-start),
+      #000 calc(100% - var(--scroll-fade-end)),
+      transparent 100%
+    );
     animation:
       scroll-fade-start 1ms ease-in-out both,
       scroll-fade-end 1ms ease-in-out both;
@@ -395,10 +447,6 @@
     animation-range:
       0 6rem,
       calc(100% - 6rem) 100%;
-  }
-  @supports not (animation-timeline: scroll()) {
-    --scroll-fade-start: var(--scroll-fade-size);
-    --scroll-fade-end: var(--scroll-fade-size);
   }
 }
 

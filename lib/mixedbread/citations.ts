@@ -1,20 +1,4 @@
-export type Annotation =
-  | {
-      type: "file_citation";
-      file_id: string;
-      filename: string;
-      index: number;
-      chunk_id: string;
-      store_id: string;
-    }
-  | {
-      type: "url_citation";
-      url: string;
-      title: string;
-      start_index: number;
-      end_index: number;
-      chunk_id: string;
-    };
+import type { Annotation } from "./research";
 
 export type Source =
   | { label: string; type: "url"; url: string; title: string }
@@ -25,6 +9,7 @@ export type Source =
       filename: string;
       chunkId: string;
       storeId: string;
+      storeName?: string;
     };
 
 /**
@@ -43,18 +28,29 @@ export function labelCitations(
   const markers = new Map<number, string>();
 
   for (const annotation of annotations) {
-    const key =
-      annotation.type === "url_citation" ? annotation.url : annotation.chunk_id;
+    const url = annotation.type === "url_citation";
+    const key = url ? annotation.url : annotation.chunk_id;
     let source = sources.get(key);
     if (!source) {
-      source = toSource(annotation, nextLabel());
+      source = url
+        ? {
+            label: nextLabel(),
+            type: "url",
+            url: annotation.url,
+            title: annotation.title,
+          }
+        : {
+            label: nextLabel(),
+            type: "file",
+            fileId: annotation.file_id,
+            filename: annotation.filename,
+            chunkId: annotation.chunk_id,
+            storeId: annotation.store_id,
+          };
       sources.set(key, source);
     }
 
-    const offset =
-      annotation.type === "url_citation"
-        ? annotation.start_index
-        : annotation.index;
+    const offset = url ? annotation.start_index : annotation.index;
     const at = Math.min(Math.max(offset, 0), chars.length);
     const marker = `[${source.label}]`;
     const existing = markers.get(at) ?? "";
@@ -70,33 +66,4 @@ export function labelCitations(
 
 export function sourceTitle(source: Source): string {
   return source.type === "url" ? source.title || source.url : source.filename;
-}
-
-/** Where a source is from: the site, or the reader's own documents. */
-export function sourceOrigin(source: Source): string {
-  if (source.type === "file") return "Your documents";
-  try {
-    return new URL(source.url).hostname.replace(/^www\./, "");
-  } catch {
-    return source.url;
-  }
-}
-
-function toSource(annotation: Annotation, label: string): Source {
-  if (annotation.type === "url_citation") {
-    return {
-      label,
-      type: "url",
-      url: annotation.url,
-      title: annotation.title,
-    };
-  }
-  return {
-    label,
-    type: "file",
-    fileId: annotation.file_id,
-    filename: annotation.filename,
-    chunkId: annotation.chunk_id,
-    storeId: annotation.store_id,
-  };
 }

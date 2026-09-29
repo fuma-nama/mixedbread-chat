@@ -1,0 +1,114 @@
+import { choiceFor, type SourceSelection, searchesStores } from "../sources.ts";
+import { labelCitations, type Source } from "./citations.ts";
+import type { Annotation, ResearchTarget } from "./research.ts";
+
+/*
+ * A token reaches one organization, so a search takes a Toast run per
+ * organization with stores picked, plus one for the web, side by side.
+ */
+
+export interface Run<C> {
+  /** "Web" or the organization's name. */
+  label: string;
+  /** Whose token the run uses; the web run borrows one, which it bills. */
+  connection: C;
+  target: ResearchTarget;
+}
+
+export function planRuns<C extends { organizationId: string; name: string }>(
+  selection: SourceSelection,
+  connections: C[],
+): Run<C>[] {
+  const runs: Run<C>[] = [];
+  for (const connection of connections) {
+    const choice = choiceFor(selection, connection.organizationId);
+    if (!searchesStores(choice)) continue;
+    runs.push({
+      label: connection.name,
+      connection,
+      target: { kind: "stores", stores: choice },
+    });
+  }
+  const payer = runs[0]?.connection ?? connections[0];
+  if (selection.web && payer) {
+    runs.push({ label: "Web", connection: payer, target: { kind: "web" } });
+  }
+  return runs;
+}
+
+export type RunResult =
+  | {
+      status: "done";
+      text: string;
+      annotations: Annotation[];
+      /** By store ID. */
+      storeNames: ReadonlyMap<string, string>;
+    }
+  | { status: "failed"; message: string };
+
+/**
+ * Labels every run's citations in run order, so labels stay unique across
+ * the search, and puts the findings under a heading per run when there are
+ * several. `nextLabel` continues the conversation's labels.
+ */
+export function combine(
+  runs: { label: string }[],
+  results: RunResult[],
+  nextLabel: () => string,
+): { findings: string; sources: Source[] } {
+  const several = runs.length > 1;
+  const sections: string[] = [];
+  const sources: Source[] = [];
+
+  runs.forEach((run, index) => {
+    const result = results[index];
+    let text: string;
+    if (!result || result.status === "failed") {
+      text = `The search failed: ${result?.message ?? "it did not finish."}`;
+    } else {
+      const labelled = labelCitations(
+        result.text,
+        result.annotations,
+        nextLabel,
+      );
+      text = labelled.text.trim() || "Nothing relevant found.";
+      for (const source of labelled.sources) {
+        if (source.type === "file") {
+          const name = result.storeNames.get(source.storeId);
+          if (name) source.storeName = name;
+        }
+        sources.push(source);
+      }
+    }
+    sections.push(several ? `### ${run.label}\n\n${text}` : text);
+  });
+
+  return { findings: sections.join("\n\n"), sources };
+}
+
+/**
+ * Runs `generators` side by side, yielding each value as it comes with the
+ * index of the generator it came from. A generator that throws stops them all.
+ */
+export async function* merge<T>(
+  generators: AsyncGenerator<T>[],
+): AsyncGenerator<{ index: number; value: T }> {
+  const next = (index: number) =>
+    generators[index].next().then((result) => ({ index, result }));
+  const pending = new Map(generators.map((_, index) => [index, next(index)]));
+  try {
+    while (pending.size > 0) {
+      const { index, result } = await Promise.race(pending.values());
+      if (result.done) {
+        pending.delete(index);
+        continue;
+      }
+      pending.set(index, next(index));
+      yield { index, value: result.value };
+    }
+  } finally {
+    // Stopped early, as on an abort: let the others clean up too.
+    for (const index of pending.keys())
+      void generators[index].return(undefined);
+  }
+}

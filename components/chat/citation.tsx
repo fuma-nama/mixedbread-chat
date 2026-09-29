@@ -10,11 +10,13 @@ import {
 } from "@/components/ui/hover-card";
 import { useCoarsePointer } from "@/hooks/use-media";
 import { createStore, useStore } from "@/hooks/use-store";
-import {
-  type Source,
-  sourceOrigin,
-  sourceTitle,
-} from "@/lib/mixedbread/citations";
+import { type Source, sourceTitle } from "@/lib/mixedbread/citations";
+
+/** Where a source is from: the store it was found in, or its site. */
+export function originOf(source: Source): string {
+  if (source.type === "file") return source.storeName ?? "Your files";
+  return URL.parse(source.url)?.hostname.replace(/^www\./, "") ?? source.url;
+}
 
 /** The label of the source being pointed at, in citations or in the list. */
 const HighlightContext = createContext(
@@ -42,7 +44,7 @@ export function Citation({
       source={source}
       number={number}
       data-citation={number}
-      aria-label={`Source ${number}: ${sourceTitle(source)}, ${sourceOrigin(source)}`}
+      aria-label={`Source ${number}: ${sourceTitle(source)}, ${originOf(source)}`}
       className="relative -top-[0.1em] mx-[0.2em] inline-flex h-[1.2rem] min-w-[1.2rem] cursor-pointer items-center justify-center rounded-[0.35rem] bg-soft px-[0.3rem] align-middle font-mono text-[0.69rem] font-medium text-muted-foreground tabular-nums no-underline outline-offset-1 outline-ring transition-[background-color,color] duration-150 ease-smooth hover:bg-berry/15 hover:text-berry focus-visible:outline-2 data-popup-open:bg-berry/15 data-popup-open:text-berry data-[lit=true]:bg-berry/15 data-[lit=true]:text-berry"
     >
       {number}
@@ -112,7 +114,7 @@ function SourceCard({ source, number }: { source: Source; number: number }) {
     <div className="flex flex-col gap-2 p-3.5">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <SliceGlyph className="size-3 text-berry" />
-        <span className="truncate font-mono">{sourceOrigin(source)}</span>
+        <span className="truncate font-mono">{originOf(source)}</span>
         <span className="ml-auto font-mono tabular-nums">{number}</span>
       </div>
       <p className="line-clamp-3 text-[13.5px] leading-snug font-medium text-pretty text-foreground">

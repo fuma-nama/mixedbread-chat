@@ -27,8 +27,8 @@ export function AppSidebar({
   now,
   timeZone,
 }: {
-  /** Undefined for guests. */
-  user?: { name: string; email: string };
+  /** Undefined when signed out, as on someone else's shared chat. */
+  user?: { name: string; email: string; image?: string | null };
   /** When the server rendered, so both sides group chats by the same day. */
   now: number;
   timeZone: string;
@@ -69,7 +69,7 @@ export function AppSidebar({
           className="-ml-1 flex items-center gap-2 rounded-md px-1 py-0.5 text-[14px] font-medium tracking-[-0.01em] outline-offset-2 outline-ring focus-visible:outline-2"
         >
           <Logo />
-          Mixedbread
+          Bread Chat
         </Link>
         <SidebarTrigger className="max-md:hidden" />
       </div>

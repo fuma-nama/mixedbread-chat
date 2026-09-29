@@ -1,35 +1,55 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
-import { anonymous } from "better-auth/plugins";
-import { eq } from "drizzle-orm";
+import { genericOAuth } from "better-auth/plugins/generic-oauth";
 import { headers } from "next/headers";
 import { cache } from "react";
 import { db } from "./db";
-import { chat } from "./db/schema";
+import {
+  accountKey,
+  organizationOfToken,
+  PLATFORM_URL,
+  PROVIDER_ID,
+  SCOPES,
+} from "./mixedbread/platform";
+
+/** Created with `pnpm mixedbread:register`. */
+export const clientId = process.env.MXBAI_CLIENT_ID;
 
 export const auth = betterAuth({
-  // Set BETTER_AUTH_URL for a custom domain; Vercel URLs and localhost work as is.
+  // Set BETTER_AUTH_URL on a custom domain.
   baseURL: process.env.BETTER_AUTH_URL || {
     allowedHosts: ["localhost:*", "*.vercel.app"],
   },
   database: drizzleAdapter(db, { provider: "pg" }),
-  emailAndPassword: { enabled: true },
+  account: {
+    encryptOAuthTokens: true,
+    // Signing in to another organization adds it to the same person.
+    accountLinking: { trustedProviders: [PROVIDER_ID] },
+  },
   plugins: [
-    anonymous({
-      // A guest keeps their chats when they sign up or log in.
-      async onLinkAccount({ anonymousUser, newUser }) {
-        await db
-          .update(chat)
-          .set({ userId: newUser.user.id })
-          .where(eq(chat.userId, anonymousUser.user.id));
-      },
+    genericOAuth({
+      config: [
+        {
+          providerId: PROVIDER_ID,
+          name: "Mixedbread",
+          discoveryUrl: `${PLATFORM_URL}/.well-known/openid-configuration`,
+          clientId: clientId ?? "",
+          pkce: true,
+          scopes: SCOPES,
+          accountSubject: ({ tokens, profile }) =>
+            accountKey(
+              String(profile.sub),
+              organizationOfToken(tokens.accessToken ?? ""),
+            ),
+          overrideUserInfo: true,
+        },
+      ],
     }),
     nextCookies(),
   ],
 });
 
-/** The visitor's session, looked up once per request. */
 export const getSession = cache(async () =>
   auth.api.getSession({ headers: await headers() }),
 );

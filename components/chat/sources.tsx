@@ -3,8 +3,7 @@
 import { cn } from "cn";
 import { SliceGlyph } from "@/components/brand/slice";
 import type { Citations } from "@/lib/messages";
-import { sourceOrigin } from "@/lib/mixedbread/citations";
-import { SourcePreview } from "./citation";
+import { originOf, SourcePreview } from "./citation";
 
 /** The sources a message cited, numbered like its inline citations. */
 export function Sources({
@@ -39,7 +38,7 @@ export function Sources({
               )}
               style={{ animationDelay: `${150 + number * 60}ms` }}
             />
-            <span className="truncate">{sourceOrigin(source)}</span>
+            <span className="truncate">{originOf(source)}</span>
             <span className="font-mono text-[10.5px] text-muted-foreground tabular-nums">
               {number}
             </span>

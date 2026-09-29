@@ -3,11 +3,47 @@
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
 import * as queries from "@/lib/db/queries";
+import {
+  disconnect,
+  listConnections,
+  listStores,
+} from "@/lib/mixedbread/organizations";
+import type { StoresResult } from "@/lib/sources";
 
 async function currentUser() {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
   return session.user;
+}
+
+export async function listOrganizationStores(
+  organizationId: string,
+): Promise<StoresResult> {
+  const user = await currentUser();
+  for (const connection of await listConnections(user.id)) {
+    if (connection.organizationId === organizationId) {
+      return listStores(user.id, connection);
+    }
+  }
+  return { status: "reconnect" };
+}
+
+/** One action for every organization, since a client runs server actions one at a time. */
+export async function listAllStores(): Promise<Record<string, StoresResult>> {
+  const user = await currentUser();
+  const connections = await listConnections(user.id);
+  const results = await Promise.all(
+    connections.map((connection) => listStores(user.id, connection)),
+  );
+  const byOrganization: Record<string, StoresResult> = {};
+  for (let i = 0; i < connections.length; i++) {
+    byOrganization[connections[i].organizationId] = results[i];
+  }
+  return byOrganization;
+}
+
+export async function disconnectOrganization(organizationId: string) {
+  await disconnect((await currentUser()).id, organizationId);
 }
 
 export async function listChats() {

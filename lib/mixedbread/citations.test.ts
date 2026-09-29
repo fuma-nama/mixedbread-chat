@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { type Annotation, labelCitations } from "./citations.ts";
+import { labelCitations } from "./citations.ts";
+import type { Annotation } from "./research.ts";
 
 function labels() {
   let next = 1;
@@ -14,7 +15,6 @@ test("marks every citation and labels each cited page or chunk once", () => {
       url: "https://example.com",
       title: "Example",
       start_index: 5,
-      end_index: 5,
       chunk_id: "web:0",
     },
     {
@@ -30,7 +30,6 @@ test("marks every citation and labels each cited page or chunk once", () => {
       url: "https://example.com",
       title: "Example",
       start_index: 11,
-      end_index: 11,
       chunk_id: "web:1",
     },
   ];
@@ -64,7 +63,6 @@ test("counts offsets in code points", () => {
         url: "https://example.com",
         title: "Example",
         start_index: 4,
-        end_index: 4,
         chunk_id: "web:0",
       },
     ],

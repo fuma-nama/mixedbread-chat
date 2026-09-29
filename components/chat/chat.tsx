@@ -13,29 +13,27 @@ import { useWindowEvent } from "@/hooks/use-window-event";
 import { childrenOf, latestLeaf, pathTo, withPath } from "@/lib/branches";
 import { citationsAlong } from "@/lib/messages";
 import { type ModelId, models } from "@/lib/models";
-import type { ChatMessage, SearchScope } from "@/lib/search-tool";
+import type { Reasoning } from "@/lib/reasoning";
+import type { ChatMessage } from "@/lib/search-tool";
+import type { SearchScope } from "@/lib/sources";
 import { ChatHeader } from "./chat-header";
 import { Composer, type ComposerHandle } from "./composer";
 import { Conversation } from "./conversation";
 import { EmptyState, Suggestions } from "./empty-state";
 import { preloadMarkdown } from "./lazy-markdown";
 import { type Appear, MessageView } from "./message";
-import {
-  ErrorNotice,
-  failureOf,
-  LimitNotice,
-  SharedNotice,
-  wasRejected,
-} from "./notices";
+import { ErrorNotice, failureOf, SharedNotice, wasRejected } from "./notices";
 import { ShareDialog } from "./share-dialog";
+import { useSearchScope, useSources } from "./sources-provider";
 
 /** A message with its place in the chat's branch tree. */
 export type TreeMessage = ChatMessage & { parentId: string | null };
 
 const placeholders: Record<SearchScope, string> = {
   web: "Ask anything",
-  docs: "Ask about your documents",
-  both: "Ask about your documents or the web",
+  docs: "Ask about your stores",
+  both: "Ask your stores or the web",
+  none: "Ask anything",
 };
 
 const transport = new DefaultChatTransport<ChatMessage>({
@@ -59,25 +57,28 @@ export function Chat({
   initialMessages,
   initialLeafId,
   initialModel,
+  initialReasoning,
   initialTitle,
   visibility,
-  scope,
   readonly = false,
 }: {
   id: string;
   initialMessages: TreeMessage[];
   initialLeafId: string | null;
   initialModel: ModelId;
+  initialReasoning: Reasoning;
   initialTitle?: string;
   visibility: "private" | "public";
-  scope: SearchScope;
   /** Someone else's shared chat. */
   readonly?: boolean;
 }) {
   const chats = useChats();
+  const sources = useSources();
+  const scope = useSearchScope();
   const title = useChatTitle(id) ?? initialTitle;
   const [tree, setTree] = useState(initialMessages);
   const [model, setModel] = useState(initialModel);
+  const [reasoning, setReasoning] = useState(initialReasoning);
   const [stopped, setStopped] = useState<ReadonlySet<string>>(() => new Set());
   const [announcement, setAnnouncement] = useState("");
   const [initial] = useState(() => {
@@ -158,14 +159,13 @@ export function Chat({
       : messages;
   const citations = citationsAlong(rendered);
   const children = useMemo(() => childrenOf(tree), [tree]);
-  const failure = error ? failureOf(error, chats.guest) : undefined;
-  const limited = failure?.kind === "limit" && failure.guest;
+  const failure = error ? failureOf(error) : undefined;
   const modelName = models.find((entry) => entry.id === model)?.name;
   // Screen readers hear where a search is, not every token of it.
   const spoken = (busy && searchStatus(messages.at(-1))) || announcement;
 
   useEffect(() => {
-    document.title = title ? `${title} · Mixedbread Chat` : "Mixedbread Chat";
+    document.title = title ? `${title} · Bread Chat` : "Bread Chat";
   }, [title]);
 
   // The first message glides the composer from the middle of the page to its dock.
@@ -226,7 +226,7 @@ export function Chat({
     preloadMarkdown();
     void sendMessage(
       { id: question, role: "user", parts: [{ type: "text", text }] },
-      { body: { model } },
+      { body: { model, reasoning, sources: sources.selection.get() } },
     );
   }
 
@@ -234,7 +234,9 @@ export function Chat({
   function answerAgain() {
     const question = messages.findLast((message) => message.role === "user");
     if (question) answer(question.id);
-    void regenerate({ body: { model } });
+    void regenerate({
+      body: { model, reasoning, sources: sources.selection.get() },
+    });
   }
 
   function send(text: string) {
@@ -282,7 +284,10 @@ export function Chat({
     const index = messages.findIndex((message) => message.id === messageId);
     const question = messages[index - 1];
     if (question) answer(question.id);
-    void regenerate({ messageId, body: { model } });
+    void regenerate({
+      messageId,
+      body: { model, reasoning, sources: sources.selection.get() },
+    });
     composer.current?.focus();
   }
 
@@ -360,9 +365,7 @@ export function Chat({
               />
             );
           })}
-          {failure && !limited && (
-            <ErrorNotice failure={failure} onRetry={answerAgain} />
-          )}
+          {failure && <ErrorNotice failure={failure} onRetry={answerAgain} />}
           {idle && !failure && rendered.at(-1)?.role === "user" && (
             <Unanswered onAnswer={answerAgain} />
           )}
@@ -395,8 +398,7 @@ export function Chat({
           <SharedNotice />
         ) : (
           <>
-            {limited && <LimitNotice chatId={empty ? undefined : id} />}
-            {failure && !limited && empty && (
+            {failure && empty && (
               <ErrorNotice
                 failure={failure}
                 onRetry={() => {
@@ -410,17 +412,18 @@ export function Chat({
               status={status}
               model={model}
               onModelChange={setModel}
+              reasoning={reasoning}
+              onReasoningChange={setReasoning}
               onSubmit={send}
               onStop={() => void stop()}
               placeholder={empty ? placeholders[scope] : "Ask a follow-up"}
-              blocked={limited ? "Sign up to keep chatting" : undefined}
               inviting={empty}
             />
           </>
         )}
       </div>
 
-      {empty && !readonly && !limited && (
+      {empty && !readonly && (
         <div className="max-md:order-1 max-md:pb-3 md:flex-[1.2] md:pt-2">
           <Suggestions
             scope={scope}
@@ -462,5 +465,6 @@ function searchStatus(message: ChatMessage | undefined): string | undefined {
     return "Searching.";
   }
   const count = part.output.sources.length;
+  if (count === 0) return "Searched, no sources cited.";
   return `Found ${count} ${count === 1 ? "source" : "sources"}.`;
 }

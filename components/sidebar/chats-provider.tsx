@@ -12,8 +12,6 @@ export interface ChatSummary {
 
 interface Chats {
   list: Store<ChatSummary[]>;
-  /** Signed in anonymously: chats live in this browser only. */
-  guest: boolean;
   /** Replaces the list with the saved one. */
   refresh: () => void;
   /** Shows a change right away: `null` removes the chat, and a new id lists it first. */
@@ -29,22 +27,19 @@ const ChatsContext = createContext<Chats | null>(null);
  */
 export function ChatsProvider({
   initialChats,
-  guest,
   children,
 }: {
   initialChats: ChatSummary[];
-  guest: boolean;
   children: React.ReactNode;
 }) {
-  const [chats] = useState(() => createChats(initialChats, guest));
+  const [chats] = useState(() => createChats(initialChats));
   return <ChatsContext value={chats}>{children}</ChatsContext>;
 }
 
-function createChats(initial: ChatSummary[], guest: boolean): Chats {
+function createChats(initial: ChatSummary[]): Chats {
   const list = createStore(initial);
   return {
     list,
-    guest,
     refresh: () => void listChats().then(list.set),
     update(id, change) {
       const chats = list.get();
