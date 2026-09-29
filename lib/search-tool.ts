@@ -19,7 +19,7 @@ import {
 } from "./mixedbread/runs";
 import type { SourceSelection } from "./sources";
 
-export type SearchOutput =
+type SearchOutput =
   | { status: "searching"; calls: Step[] }
   | {
       status: "done";
