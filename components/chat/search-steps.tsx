@@ -1,14 +1,12 @@
 "use client";
 
 import { cn } from "cn";
-import { ChevronRightIcon, GlobeIcon, LayersIcon } from "lucide-react";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { GlobeIcon, LayersIcon } from "lucide-react";
 import type { Step } from "@/lib/mixedbread/research";
-import { plural, StatusDot } from "./activity";
+import { More, plural, StatusDot, useFirst } from "./activity";
+
+/** Listed until the rest are asked for, in each run. */
+const FIRST_STEPS = 6;
 
 /** Steps by the run they came from, in the order the runs first spoke up. */
 export function runsOf(steps: Step[]): Map<string, Step[]> {
@@ -41,64 +39,16 @@ function line(step: Step, tense: "live" | "done"): string {
   return text;
 }
 
-const nouns: Record<Step["kind"], [string, string]> = {
-  search: ["search", "searches"],
-  grep: ["scan", "scans"],
-  filter: ["filter", "filters"],
-  metadata: ["metadata check", "metadata checks"],
-  read: ["read", "reads"],
-  stores: ["store lookup", "store lookups"],
-  other: ["step", "steps"],
-};
-
-/**
- * The steps, under each run when several ran side by side. Folded, they
- * are one line, "12 searches · 3 reads", that unfolds into all of them.
- */
-export function StepList({
-  steps,
-  folded,
-}: {
-  steps: Step[];
-  folded: boolean;
-}) {
+/** The steps, under each run when several ran side by side. */
+export function StepList({ steps }: { steps: Step[] }) {
   const runs = runsOf(steps);
-  const list =
-    runs.size > 1 ? (
-      <ol className="flex flex-col gap-3">
-        {Array.from(runs, ([name, steps]) => (
-          <Group key={name} name={name} steps={steps} />
-        ))}
-      </ol>
-    ) : (
-      <Steps steps={steps} />
-    );
-  if (!folded) return list;
-
-  const counts = new Map<Step["kind"], number>();
-  let failed = 0;
-  for (const step of steps) {
-    // Steps saved before they had kinds count as plain steps.
-    const kind = step.kind in nouns ? step.kind : "other";
-    counts.set(kind, (counts.get(kind) ?? 0) + 1);
-    if (step.status === "failed") failed++;
-  }
-  let summary = "";
-  for (const [kind, count] of counts) {
-    summary += `${summary && " · "}${count} ${nouns[kind][count === 1 ? 0 : 1]}`;
-  }
-  if (failed > 0) summary += ` · ${failed} failed`;
-
+  if (runs.size < 2) return <Steps steps={steps} />;
   return (
-    <Collapsible>
-      <CollapsibleTrigger className="group/steps -ml-1 flex max-w-full cursor-pointer items-center gap-1 rounded-md px-1 text-[12.5px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 hover:text-foreground focus-visible:outline-2">
-        <span className="truncate">{summary}</span>
-        <ChevronRightIcon className="size-3 shrink-0 opacity-60 transition-transform duration-300 ease-smooth group-data-panel-open/steps:rotate-90 motion-reduce:transition-none" />
-      </CollapsibleTrigger>
-      <CollapsibleContent hiddenUntilFound>
-        <div className="pt-2">{list}</div>
-      </CollapsibleContent>
-    </Collapsible>
+    <ol className="flex flex-col gap-3">
+      {Array.from(runs, ([name, steps]) => (
+        <Group key={name} name={name} steps={steps} />
+      ))}
+    </ol>
   );
 }
 
@@ -121,13 +71,19 @@ function Group({ name, steps }: { name: string; steps: Step[] }) {
   );
 }
 
+/** Steps: the first few, and the rest on request. */
 function Steps({ steps, className }: { steps: Step[]; className?: string }) {
+  const { shown, more, showAll } = useFirst(steps, FIRST_STEPS);
+
   return (
-    <ol className={cn("flex flex-col gap-1.5", className)}>
-      {steps.map((step) => (
-        <StepRow key={step.id} step={step} />
-      ))}
-    </ol>
+    <div className={cn("flex flex-col gap-1.5", className)}>
+      <ol className="flex flex-col gap-1.5">
+        {shown.map((step) => (
+          <StepRow key={step.id} step={step} />
+        ))}
+      </ol>
+      {more > 0 && <More count={more} onClick={showAll} />}
+    </div>
   );
 }
 
@@ -218,7 +174,7 @@ function describe(step: Step): { live: string; done: string; detail?: string } {
         detail: detail || undefined,
       };
     }
-    default:
+    case "other":
       return {
         live: "Running",
         done: "Ran",

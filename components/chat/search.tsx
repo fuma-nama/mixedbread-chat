@@ -31,8 +31,6 @@ type State = "running" | "done" | "failed" | "stopped";
 const LIVE_TASKS = 4;
 /** Listed until the rest are asked for. */
 const FIRST_TASKS = 6;
-/** From this many on, one search's steps fold into one line. */
-const MANY_STEPS = 9;
 
 /** One search the model asked for. */
 interface Task {
@@ -161,12 +159,7 @@ export const Search = memo(
         <CollapsibleContent hiddenUntilFound>
           <ActivityPanel>
             {several && <TaskList tasks={tasks} />}
-            {calls.length > 0 && (
-              <StepList
-                steps={calls}
-                folded={several || calls.length >= MANY_STEPS}
-              />
-            )}
+            {calls.length > 0 && <StepList steps={calls} />}
             {files.length > 0 && <SourceList files={files} />}
           </ActivityPanel>
         </CollapsibleContent>
