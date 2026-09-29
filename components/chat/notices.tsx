@@ -6,22 +6,15 @@ import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { answersPerDay } from "@/lib/limits";
 
-type Failure =
-  | { kind: "limit" }
-  | { kind: "session" }
-  | { kind: "network" }
-  | { kind: "other" };
+type Failure = "limit" | "session" | "network" | "other";
 
 /** What went wrong with a request, in the terms the reader can act on. */
 export function failureOf(error: Error): Failure {
   if (APICallError.isInstance(error)) {
-    if (error.statusCode === 429) return { kind: "limit" };
-    if (error.statusCode === 401) return { kind: "session" };
-    return { kind: "other" };
+    if (error.statusCode === 429) return "limit";
+    return error.statusCode === 401 ? "session" : "other";
   }
-  if (error.name === "TypeError" || !navigator.onLine)
-    return { kind: "network" };
-  return { kind: "other" };
+  return error.name === "TypeError" || !navigator.onLine ? "network" : "other";
 }
 
 /** The request never reached the chat: nothing was saved, so it can be undone. */
@@ -33,6 +26,16 @@ export function wasRejected(error: Error): boolean {
   );
 }
 
+/** What each failure says, and its button, if it has one. */
+const notices: Record<Failure, [text: string, action?: string]> = {
+  network: ["Connection lost. Check your network.", "Try again"],
+  session: ["Your session ended.", "Reload"],
+  limit: [
+    `You’ve reached today’s limit of ${answersPerDay} answers. Try again later.`,
+  ],
+  other: ["Something went wrong.", "Try again"],
+};
+
 /** An answer that did not come, in place of the answer. */
 export function ErrorNotice({
   failure,
@@ -41,17 +44,7 @@ export function ErrorNotice({
   failure: Failure;
   onRetry: () => void;
 }) {
-  const [text, action] =
-    failure.kind === "network"
-      ? ["Connection lost. Check your network.", "Try again"]
-      : failure.kind === "session"
-        ? ["Your session ended.", "Reload"]
-        : failure.kind === "limit"
-          ? [
-              `You’ve reached today’s limit of ${answersPerDay} answers. Try again later.`,
-              undefined,
-            ]
-          : ["Something went wrong.", "Try again"];
+  const [text, action] = notices[failure];
 
   return (
     <div
@@ -65,7 +58,7 @@ export function ErrorNotice({
           variant="outline"
           size="sm"
           onClick={() =>
-            failure.kind === "session" ? window.location.reload() : onRetry()
+            failure === "session" ? window.location.reload() : onRetry()
           }
         >
           {action}
