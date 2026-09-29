@@ -159,7 +159,17 @@ function SignedIn({ user }: { user: User }) {
               disabled={pending}
               onClick={connect}
             >
-              {pending ? <Spinner aria-hidden="true" /> : <PlusIcon />}
+              {/* A tile like the organizations', so the names line up. */}
+              <span
+                aria-hidden="true"
+                className="flex size-6 shrink-0 items-center justify-center rounded-md bg-soft"
+              >
+                {pending ? (
+                  <Spinner className="size-3.5" />
+                ) : (
+                  <PlusIcon className="size-3.5" />
+                )}
+              </span>
               {pending ? "Opening Mixedbread…" : "Connect another organization"}
             </DropdownMenuItem>
           </DropdownMenuGroup>
