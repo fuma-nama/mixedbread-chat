@@ -13,7 +13,6 @@ import {
   SearchSlashIcon,
 } from "lucide-react";
 import { useId, useRef, useState } from "react";
-import { Toasting } from "@/components/brand/bakery";
 import {
   Popover,
   PopoverContent,
@@ -42,8 +41,6 @@ import {
 /** From this many stores on, a field filters them. */
 const FILTER_FROM = 8;
 
-/** Where people create stores and upload files. */
-
 /**
  * Picks what the next question searches: the web, and the stores of each
  * connected organization. Changes apply at once and the panel stays open,
@@ -56,8 +53,8 @@ export function SourcesPicker() {
     useAllStores(),
   );
   const [query, setQuery] = useState("");
-  const glide = useGlide<HTMLSpanElement>("width", 320);
-  // The words roll in on a change, not on arrival.
+  const glide = useGlide<HTMLButtonElement>("width", 240);
+  // The words come in on a change, not on arrival.
   const [shown, setShown] = useState({ label, changed: false });
   if (shown.label !== label) setShown({ label, changed: true });
 
@@ -74,18 +71,15 @@ export function SourcesPicker() {
       }}
     >
       <PopoverTrigger
+        ref={glide}
         aria-label={`Sources: ${label}`}
         // Its label gives way when space runs out; on phones only the glyphs
         // show, and they keep their room.
-        className="flex h-8 min-w-0 cursor-pointer items-center gap-1 rounded-full px-2 text-[13px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 hover:bg-soft hover:text-foreground focus-visible:outline-2 aria-expanded:bg-soft aria-expanded:text-foreground max-sm:min-w-fit"
+        className="relative min-w-0 cursor-pointer rounded-full text-[13px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 hover:bg-soft hover:text-foreground focus-visible:outline-2 aria-expanded:bg-soft aria-expanded:text-foreground max-sm:min-w-fit"
       >
-        {/* A globe for the web and a stack for stores, side by side when both
-            are on. A change slides them into place and rolls the new words
-            in, while the width glides so the pickers beside it don't jump. */}
-        <span
-          ref={glide}
-          className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap"
-        >
+        {/* The width glides so the pickers beside it don't jump, while what
+            it holds takes its new place at once and is never squeezed. */}
+        <span className="flex h-8 w-(--glide-to) items-center gap-1.5 pr-6.5 pl-2 max-sm:pr-2">
           <span
             aria-hidden="true"
             className={cn(
@@ -104,17 +98,22 @@ export function SourcesPicker() {
             </span>
             <SearchSlashIcon data-on={!web && !docs} className={glyph} />
           </span>
+          {/* Waits for the glyphs to move and the width to all but land, so
+              the words never run into a glyph or past the edge. */}
           <span
             key={label}
             className={cn(
               "truncate max-sm:hidden",
-              shown.changed && "motion-safe:animate-swap-in",
+              shown.changed &&
+                "motion-safe:[animation:var(--animate-swap-in)_140ms_backwards]",
             )}
           >
             {label}
           </span>
         </span>
-        <ChevronDownIcon className="size-3.5 shrink-0 opacity-60 max-sm:hidden" />
+        {/* On the gliding edge rather than after the words, which may not
+            fit yet. */}
+        <ChevronDownIcon className="absolute inset-y-0 right-2 my-auto size-3.5 opacity-60 max-sm:hidden" />
       </PopoverTrigger>
       <PopoverContent
         side="top"
@@ -190,16 +189,13 @@ function reachOf(
 const row =
   "group/row flex min-h-8 w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-[13.5px] text-foreground/90 transition-colors duration-100 outline-none select-none scroll-my-1 hover:bg-soft hover:text-foreground focus-visible:bg-soft focus-visible:text-foreground disabled:cursor-default disabled:opacity-60 [&_svg]:shrink-0";
 
-const heading = "px-2 pt-1.5 pb-1 text-xs text-muted-foreground";
-
 // Between sections; one that ends up first, as while filtering, has none.
 const separator = "-mx-1 my-1 h-px bg-soft first:hidden";
 
 /**
- * The web, each organization's stores, a filter when there are many, and a
- * way to connect another. The panel is only as tall as what it holds and
- * glides when that changes, with the filter on the edge by the trigger,
- * which stays put. Arrow keys move between rows, and typing on one filters.
+ * Only as tall as what it holds, gliding when that changes, with the filter
+ * on the edge by the trigger so it stays put. Arrow keys move between rows,
+ * and typing on one filters.
  */
 function Panel({
   query,
@@ -293,28 +289,25 @@ function Panel({
         )}
       >
         {!words && (
-          <>
-            <div className={heading}>Search in</div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={selection.web}
-              data-row=""
-              onClick={() =>
-                sources.select({ ...selection, web: !selection.web })
-              }
-              className={row}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={selection.web}
+            data-row=""
+            onClick={() =>
+              sources.select({ ...selection, web: !selection.web })
+            }
+            className={row}
+          >
+            <GlobeIcon className="size-4 text-muted-foreground" />
+            <span className="flex-1 truncate">Web</span>
+            <span
+              aria-hidden="true"
+              className="flex h-4 w-7 shrink-0 items-center rounded-full bg-input p-0.5 transition-colors duration-200 group-aria-checked/row:bg-primary motion-reduce:transition-none"
             >
-              <GlobeIcon className="size-4 text-muted-foreground" />
-              <span className="flex-1 truncate">Web</span>
-              <span
-                aria-hidden="true"
-                className="flex h-4 w-7 shrink-0 items-center rounded-full bg-input p-0.5 transition-colors duration-200 group-aria-checked/row:bg-primary motion-reduce:transition-none"
-              >
-                <span className="size-3 rounded-full bg-card shadow-raised transition-[translate] duration-200 ease-spring group-aria-checked/row:translate-x-3 motion-reduce:transition-none" />
-              </span>
-            </button>
-          </>
+              <span className="size-3 rounded-full bg-card shadow-raised transition-[translate] duration-200 ease-spring group-aria-checked/row:translate-x-3 motion-reduce:transition-none" />
+            </span>
+          </button>
         )}
         {organizations.map((organization) => (
           <OrganizationStores
@@ -328,13 +321,13 @@ function Panel({
         {words ? (
           // Shows once no organization has a match.
           <p className="hidden px-3 py-2.5 text-center text-[13px] text-muted-foreground only:block">
-            No stores match “{text}”
+            No stores
           </p>
         ) : (
           <>
             <div aria-hidden="true" className={separator} />
             <ConnectButton icon={<PlusIcon />}>
-              Connect another organization
+              Connect organization
             </ConnectButton>
           </>
         )}
@@ -344,9 +337,9 @@ function Panel({
 }
 
 /**
- * One organization's stores: every one (Toast picks), some, or none.
- * Picking a store narrows the organization to the picked ones; "All stores"
- * widens it again, and unticking the last pick turns it off.
+ * One organization's stores: every one, some, or none. Picking a store
+ * narrows the organization to the picked ones; "All stores" widens it
+ * again, and unticking the last pick turns it off.
  */
 function OrganizationStores({
   organization,
@@ -364,7 +357,6 @@ function OrganizationStores({
   const sources = useSources();
   const selection = useSelection();
   const headerId = useId();
-  const hintId = useId();
   // Rows that load while the panel is open slide in; rows ready as it opens
   // are simply there.
   const [arrived] = useState(() => state?.status !== "ok");
@@ -379,7 +371,6 @@ function OrganizationStores({
   }
   const choice = choiceFor(selection, organization.id);
   const picked = new Set(choice === "all" ? [] : choice);
-  const everything = stores ? `All ${stores.length} stores` : "All stores";
 
   function choose(next: StoreChoice) {
     sources.select({
@@ -400,7 +391,7 @@ function OrganizationStores({
         {header && (
           <div
             id={headerId}
-            className={cn(heading, "sticky top-0 z-1 -mx-1 bg-popover px-3")}
+            className="sticky top-0 z-1 -mx-1 bg-popover px-3 pt-1.5 pb-1 text-xs text-muted-foreground"
           >
             {organization.name}
           </div>
@@ -411,26 +402,12 @@ function OrganizationStores({
             type="button"
             role="checkbox"
             aria-checked={choice === "all"}
-            aria-label={everything}
-            aria-describedby={hintId}
             data-row=""
             onClick={() => choose(choice === "all" ? [] : "all")}
-            className={cn(row, "items-start")}
+            className={row}
           >
-            <Box className="mt-0.75" />
-            <span className="flex min-w-0 flex-1 flex-col">
-              <span className="truncate">{everything}</span>
-              <span
-                id={hintId}
-                className="text-xs text-balance text-muted-foreground"
-              >
-                Toast, Mixedbread’s search&nbsp;agent, picks where to look
-              </span>
-            </span>
-            {/* The slice pops up while Toast gets to pick. */}
-            <span className="mt-px flex">
-              <Toasting state={choice === "all" ? "done" : "stopped"} />
-            </span>
+            <Box />
+            <span className="flex-1 truncate">All stores</span>
           </button>
         )}
         {shown.map((store) => (
@@ -455,7 +432,7 @@ function OrganizationStores({
           >
             <Box />
             <span className="min-w-0 flex-1 truncate">{store.name}</span>
-            <span className="ml-auto flex shrink-0 items-center gap-1.5 pl-2 text-[11.5px] text-muted-foreground/80 tabular-nums">
+            <span className="flex shrink-0 items-center gap-1.5 pl-2 text-[11.5px] text-muted-foreground/80 empty:hidden">
               {storeStatus(store)}
             </span>
           </button>
@@ -471,7 +448,7 @@ function matches(store: StoreOption, words: string[]): boolean {
   return words.every((word) => text.includes(word));
 }
 
-/** What a store holds, or why it may not answer in full. */
+/** Why a store may not answer in full, if it may not. */
 function storeStatus(store: StoreOption): React.ReactNode {
   switch (store.status) {
     case "in_progress":
@@ -491,9 +468,7 @@ function storeStatus(store: StoreOption): React.ReactNode {
     case "expired":
       return "Expired";
     default:
-      return store.files === 0
-        ? "No files"
-        : `${store.files.toLocaleString()} ${store.files === 1 ? "file" : "files"}`;
+      return store.files === 0 ? "Empty" : null;
   }
 }
 
@@ -509,13 +484,9 @@ function StoresNotice({
 
   if (!state || state.status === "loading") {
     return (
-      <p
-        role="status"
-        className="flex h-8 items-center gap-2.5 px-2 text-[13px] text-muted-foreground"
-      >
-        <Spinner aria-hidden="true" />
-        Loading stores…
-      </p>
+      <div className="flex h-8 items-center px-2 text-muted-foreground">
+        <Spinner aria-label="Loading stores" />
+      </div>
     );
   }
   if (state.status === "error") {
@@ -534,10 +505,7 @@ function StoresNotice({
   }
   if (state.status === "reconnect") {
     return (
-      <ConnectButton
-        icon={<RotateCwIcon />}
-        hint="Access ended. Sign in again to search it."
-      >
+      <ConnectButton icon={<RotateCwIcon />}>
         Reconnect {organization.name}
       </ConnectButton>
     );
@@ -549,16 +517,11 @@ function StoresNotice({
       target="_blank"
       rel="noreferrer"
       data-row=""
-      className={cn(row, "items-start motion-safe:animate-swap-in")}
+      className={cn(row, "motion-safe:animate-swap-in")}
     >
-      <PlusIcon className="mt-0.5 size-4 text-muted-foreground" />
-      <span className="flex min-w-0 flex-1 flex-col">
-        Create a store
-        <span className="text-xs text-muted-foreground">
-          No stores here yet. Add files on Mixedbread.
-        </span>
-      </span>
-      <ArrowUpRightIcon className="mt-0.5 size-3.5 text-muted-foreground" />
+      <PlusIcon className="size-4 text-muted-foreground" />
+      <span className="flex-1 truncate">Create a store</span>
+      <ArrowUpRightIcon className="size-3.5 text-muted-foreground" />
     </a>
   );
 }
@@ -569,12 +532,9 @@ function StoresNotice({
  */
 function ConnectButton({
   icon,
-  hint,
   children,
 }: {
   icon: React.ReactNode;
-  /** A line under the label, saying why. */
-  hint?: string;
   children: React.ReactNode;
 }) {
   const { pending, connect } = useConnect();
@@ -585,39 +545,20 @@ function ConnectButton({
       data-row=""
       disabled={pending}
       onClick={connect}
-      className={cn(
-        row,
-        "[&>svg]:size-4 [&>svg]:text-muted-foreground",
-        hint && "items-start [&>svg]:mt-0.5",
-      )}
+      className={cn(row, "[&>svg]:size-4 [&>svg]:text-muted-foreground")}
     >
       {pending ? <Spinner aria-hidden="true" /> : icon}
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span
-          key={String(pending)}
-          className={cn("truncate", pending && "motion-safe:animate-swap-in")}
-        >
-          {pending ? "Opening Mixedbread…" : children}
-        </span>
-        {hint && (
-          <span className="text-xs text-pretty text-muted-foreground">
-            {hint}
-          </span>
-        )}
-      </span>
+      <span className="flex-1 truncate">{children}</span>
     </button>
   );
 }
 
 /** A checkbox's box, checked with the row it is in. The tick springs in. */
-function Box({ className }: { className?: string }) {
+function Box() {
   return (
     <span
       aria-hidden="true"
-      className={cn(
-        "grid size-3.5 shrink-0 place-items-center rounded-[4px] bg-card shadow-[inset_0_0_0_1.5px_var(--input)] transition-[background-color,box-shadow] duration-150 group-aria-checked/row:bg-primary group-aria-checked/row:shadow-none motion-reduce:transition-none",
-        className,
-      )}
+      className="grid size-3.5 shrink-0 place-items-center rounded-[4px] bg-card shadow-[inset_0_0_0_1.5px_var(--input)] transition-[background-color,box-shadow] duration-150 group-aria-checked/row:bg-primary group-aria-checked/row:shadow-none motion-reduce:transition-none"
     >
       <CheckIcon
         strokeWidth={3}
