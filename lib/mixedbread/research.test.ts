@@ -15,7 +15,7 @@ function streaming(chunks: unknown[]): Mixedbread {
 
 async function collect(client: Mixedbread): Promise<ResearchEvent[]> {
   const events: ResearchEvent[] = [];
-  for await (const event of research(client, "q", {
+  for await (const event of research(client, [{ role: "user", content: "q" }], {
     kind: "stores",
     stores: "all",
   })) {

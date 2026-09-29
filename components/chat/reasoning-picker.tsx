@@ -16,66 +16,100 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useGlide } from "@/hooks/use-glide";
-import { isReasoning, type Reasoning, reasoningLevels } from "@/lib/reasoning";
+import {
+  type Effort,
+  isReasoning,
+  type Reasoning,
+  reasoningLevels,
+} from "@/lib/reasoning";
 
-/** Picks how hard the model thinks; the choice is kept for the next visit. */
+/**
+ * Picks how hard the model thinks; the choice is kept for the next visit.
+ * For a model that takes no effort it folds away, and unfolds again for one
+ * that does.
+ */
 export const ReasoningPicker = memo(function ReasoningPicker({
   value,
+  efforts,
   onChange,
 }: {
   value: Reasoning;
+  /** The model's efforts, listed after Auto. */
+  efforts: Effort[];
   onChange: (reasoning: Reasoning) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const rank = reasoningLevels.findIndex((level) => level.id === value);
+  const hidden = efforts.length === 0;
+  // Folding away, it keeps the level it had rather than turning to Auto.
+  const [shown, setShown] = useState(value);
+  if (!hidden && shown !== value) setShown(value);
+  const rank = reasoningLevels.findIndex((level) => level.id === shown);
   const level = reasoningLevels[rank];
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      {/* It would cover the open menu, so it waits for the menu to close. */}
-      <Tooltip disabled={open}>
-        <TooltipTrigger
-          render={
-            <DropdownMenuTrigger
-              aria-label={`Thinking effort: ${level.name}`}
-              className="group/reasoning flex h-8 cursor-pointer items-center gap-1.5 rounded-full px-2 text-[13px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 hover:bg-soft hover:text-foreground focus-visible:outline-2 aria-expanded:bg-soft aria-expanded:text-foreground"
-            />
-          }
-        >
-          <Dial level={value} />
-          <Rolling text={level.name} rank={rank} />
-        </TooltipTrigger>
-        <TooltipContent>Thinking effort</TooltipContent>
-      </Tooltip>
-      <DropdownMenuContent side="top" sideOffset={8} className="w-64">
-        <DropdownMenuRadioGroup
-          value={value}
-          onValueChange={(id) => {
-            if (!isReasoning(id)) return;
-            // Read by the server to preselect the level on the next visit.
-            void cookieStore.set({
-              name: "reasoning",
-              value: id,
-              expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
-            });
-            onChange(id);
-          }}
-        >
-          <DropdownMenuLabel>Thinking effort</DropdownMenuLabel>
-          {reasoningLevels.map((level) => (
-            <DropdownMenuRadioItem key={level.id} value={level.id} closeOnClick>
-              <Dial level={level.id} />
-              <span className="flex flex-col">
-                {level.name}
-                <span className="text-xs text-muted-foreground">
-                  {level.description}
-                </span>
-              </span>
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div
+      inert={hidden}
+      className={cn(
+        "grid transition-[grid-template-columns,opacity] duration-240 ease-smooth motion-reduce:transition-none",
+        hidden ? "grid-cols-[0fr] opacity-0" : "grid-cols-[1fr]",
+      )}
+    >
+      {/* Clipped only while folded, so the focus ring shows in full. */}
+      <div className={cn("min-w-0", hidden && "overflow-hidden")}>
+        <DropdownMenu open={open} onOpenChange={setOpen}>
+          {/* It would cover the open menu, so it waits for the menu to close. */}
+          <Tooltip disabled={open}>
+            <TooltipTrigger
+              render={
+                <DropdownMenuTrigger
+                  aria-label={`Thinking effort: ${level.name}`}
+                  className="group/reasoning flex h-8 cursor-pointer items-center gap-1.5 rounded-full px-2 text-[13px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 hover:bg-soft hover:text-foreground focus-visible:outline-2 aria-expanded:bg-soft aria-expanded:text-foreground"
+                />
+              }
+            >
+              <Dial level={shown} />
+              <Rolling text={level.name} rank={rank} />
+            </TooltipTrigger>
+            <TooltipContent>Thinking effort</TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent side="top" sideOffset={8} className="w-64">
+            <DropdownMenuRadioGroup
+              value={value}
+              onValueChange={(id) => {
+                if (!isReasoning(id)) return;
+                // Read by the server to preselect the level on the next visit.
+                void cookieStore.set({
+                  name: "reasoning",
+                  value: id,
+                  expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
+                });
+                onChange(id);
+              }}
+            >
+              <DropdownMenuLabel>Thinking effort</DropdownMenuLabel>
+              {reasoningLevels.map(
+                (level) =>
+                  (level.id === "auto" || efforts.includes(level.id)) && (
+                    <DropdownMenuRadioItem
+                      key={level.id}
+                      value={level.id}
+                      closeOnClick
+                    >
+                      <Dial level={level.id} />
+                      <span className="flex flex-col">
+                        {level.name}
+                        <span className="text-xs text-muted-foreground">
+                          {level.description}
+                        </span>
+                      </span>
+                    </DropdownMenuRadioItem>
+                  ),
+              )}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
   );
 });
 
@@ -86,16 +120,27 @@ export const ReasoningPicker = memo(function ReasoningPicker({
  */
 const ARC = "M3.93 12.97A5.75 5.75 0 1 1 12.07 12.97";
 
+// Off to Extra high in even steps round the arc, each a shade more toasted,
+// so a level sits in the same place whichever model offers it.
 const settings: Record<Reasoning, { turn: number; heat: string }> = {
   auto: { turn: 0.5, heat: "var(--honey)" },
-  low: {
-    turn: 1 / 3,
-    heat: "color-mix(in oklch, var(--crust) 35%, var(--honey))",
+  none: { turn: 0, heat: "var(--honey)" },
+  minimal: {
+    turn: 0.2,
+    heat: "color-mix(in oklch, var(--crust) 20%, var(--honey))",
   },
-  medium: { turn: 2 / 3, heat: "var(--crust)" },
-  high: {
+  low: {
+    turn: 0.4,
+    heat: "color-mix(in oklch, var(--crust) 45%, var(--honey))",
+  },
+  medium: {
+    turn: 0.6,
+    heat: "color-mix(in oklch, var(--crust) 75%, var(--honey))",
+  },
+  high: { turn: 0.8, heat: "var(--crust)" },
+  xhigh: {
     turn: 1,
-    heat: "oklch(from var(--crust) calc(l - 0.06) calc(c + 0.03) calc(h - 8))",
+    heat: "oklch(from var(--crust) calc(l - 0.08) calc(c + 0.04) calc(h - 10))",
   },
 };
 
@@ -107,6 +152,8 @@ const settings: Record<Reasoning, { turn: number; heat: string }> = {
 function Dial({ level }: { level: Reasoning }) {
   const { turn, heat } = settings[level];
   const auto = level === "auto";
+  // Off has nothing to fill; a round cap would still paint a dot at the start.
+  const filled = !auto && turn > 0;
 
   return (
     <svg
@@ -137,18 +184,18 @@ function Dial({ level }: { level: Reasoning }) {
         d={ARC}
         pathLength={1}
         strokeDasharray="1 1"
-        style={{ strokeDashoffset: auto ? 1 : 1 - turn, stroke: heat }}
+        style={{ strokeDashoffset: filled ? 1 - turn : 1, stroke: heat }}
         className={cn(
           "transition-[stroke-dashoffset,stroke,opacity] duration-500 ease-smooth motion-reduce:transition-none",
-          auto && "opacity-0",
+          !filled && "opacity-0",
         )}
       />
       <g
         style={
           {
             "--turn": `${-135 + 270 * turn}deg`,
-            // Away from the end stop, so High twitches back.
-            "--twitch": level === "high" ? "-9deg" : "9deg",
+            // Away from the end stop, so Extra high twitches back.
+            "--twitch": turn === 1 ? "-9deg" : "9deg",
           } as React.CSSProperties
         }
         className="origin-[8px_8.9px] [rotate:var(--turn)] transition-[rotate] duration-600 ease-spring group-hover/reasoning:[rotate:calc(var(--turn)_+_var(--twitch))] motion-reduce:transition-none"

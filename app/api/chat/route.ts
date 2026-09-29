@@ -19,10 +19,11 @@ import {
 } from "@/lib/db/queries";
 import { languageModel } from "@/lib/language-model";
 import { answersPerDay } from "@/lib/limits";
-import { isModelId, type ModelId, titleModel } from "@/lib/models";
+import { listModels, titleModel } from "@/lib/models";
 import { isReasoning, type Reasoning } from "@/lib/reasoning";
 import { type ChatMessage, nextLabel, searchTool } from "@/lib/search-tool";
 import { scopeOf, sourceSelectionSchema } from "@/lib/sources";
+import { toastModel } from "@/lib/toast-model";
 import { getViewer } from "@/lib/viewer";
 
 const requestSchema = z.object({
@@ -41,7 +42,7 @@ const requestSchema = z.object({
       .min(1),
   }),
   parentId: z.string().nullable(),
-  model: z.custom<ModelId>(isModelId),
+  model: z.string(),
   reasoning: z.custom<Reasoning>(isReasoning),
   /** What the picker says to search. */
   sources: sourceSelectionSchema,
@@ -55,6 +56,8 @@ export async function POST(request: Request) {
   const body = requestSchema.safeParse(await request.json());
   if (!body.success) return new Response("Invalid request.", { status: 400 });
   const { id, message, parentId, model, reasoning, sources } = body.data;
+  const chosen = (await listModels()).find((entry) => entry.id === model);
+  if (!chosen) return new Response("Invalid request.", { status: 400 });
 
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const [answers, chat, saved] = await Promise.all([
@@ -83,21 +86,26 @@ export async function POST(request: Request) {
     [{ ...message, parentId }, ...saved],
     message.id,
   );
+  const toast = chosen.toast === true;
   const tools = {
     search: searchTool({
       userId: user.id,
       connections: viewer.connections,
       selection: sources,
       firstLabel: nextLabel(history),
+      toast,
     }),
   };
   // Earlier searches in the history still need the tool, even when it is off.
   const searching = scopeOf(sources, viewer.organizations) !== "none";
 
   const result = streamText({
-    model: languageModel(model),
-    // Auto leaves the effort to the model's provider.
-    reasoning: reasoning === "auto" ? "provider-default" : reasoning,
+    model: toast ? toastModel : languageModel(model),
+    // Auto, or an effort the model doesn't take, is left to its provider.
+    reasoning:
+      reasoning !== "auto" && chosen.efforts.includes(reasoning)
+        ? reasoning
+        : "provider-default",
     instructions: `You are a helpful assistant.
 
 ${

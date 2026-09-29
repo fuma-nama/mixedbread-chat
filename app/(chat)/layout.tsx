@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { ModelsProvider } from "@/components/chat/models-provider";
 import { SourcesProvider } from "@/components/chat/sources-provider";
 import { AppSidebar, NewChatShortcut } from "@/components/sidebar/app-sidebar";
 import { ChatsProvider } from "@/components/sidebar/chats-provider";
@@ -9,6 +10,7 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar";
 import { getChats } from "@/lib/db/queries";
+import { listModels } from "@/lib/models";
 import { getViewer } from "@/lib/viewer";
 import { selectedSources } from "./model";
 
@@ -17,10 +19,11 @@ export default async function ChatLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [viewer, cookieStore, selection] = await Promise.all([
+  const [viewer, cookieStore, selection, models] = await Promise.all([
     getViewer(),
     cookies(),
     selectedSources(),
+    listModels(),
   ]);
   const chats = viewer ? await getChats(viewer.user.id) : [];
 
@@ -33,24 +36,26 @@ export default async function ChatLayout({
           organizations={viewer?.organizations ?? []}
           initialSelection={selection}
         >
-          <SearchChats>
-            <NewChatShortcut />
-            <Sidebar>
-              <AppSidebar
-                user={
-                  viewer && {
-                    name: viewer.user.name,
-                    email: viewer.user.email,
-                    image: viewer.user.image,
+          <ModelsProvider models={models}>
+            <SearchChats>
+              <NewChatShortcut />
+              <Sidebar>
+                <AppSidebar
+                  user={
+                    viewer && {
+                      name: viewer.user.name,
+                      email: viewer.user.email,
+                      image: viewer.user.image,
+                    }
                   }
-                }
-                // oxlint-disable-next-line react/purity -- rendered once per request
-                now={Date.now()}
-                timeZone={timeZoneOf(cookieStore.get("tz")?.value)}
-              />
-            </Sidebar>
-            <SidebarInset>{children}</SidebarInset>
-          </SearchChats>
+                  // oxlint-disable-next-line react/purity -- rendered once per request
+                  now={Date.now()}
+                  timeZone={timeZoneOf(cookieStore.get("tz")?.value)}
+                />
+              </Sidebar>
+              <SidebarInset>{children}</SidebarInset>
+            </SearchChats>
+          </ModelsProvider>
         </SourcesProvider>
       </ChatsProvider>
     </SidebarProvider>

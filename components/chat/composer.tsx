@@ -11,8 +11,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { IconSwap } from "@/components/ui/icon-swap";
-import type { ModelId } from "@/lib/models";
-import type { Reasoning } from "@/lib/reasoning";
+import type { Effort, Reasoning } from "@/lib/reasoning";
 import { ModelPicker } from "./model-picker";
 import { ReasoningPicker } from "./reasoning-picker";
 import { SourcesPicker } from "./sources-picker";
@@ -40,6 +39,7 @@ export function Composer({
   model,
   onModelChange,
   reasoning,
+  efforts,
   onReasoningChange,
   onSubmit,
   onStop,
@@ -49,9 +49,11 @@ export function Composer({
 }: {
   ref?: React.Ref<ComposerHandle>;
   status: ChatStatus;
-  model: ModelId;
-  onModelChange: (model: ModelId) => void;
+  model: string;
+  onModelChange: (model: string) => void;
   reasoning: Reasoning;
+  /** The model's efforts; without any, it thinks on Auto. */
+  efforts: Effort[];
   onReasoningChange: (reasoning: Reasoning) => void;
   onSubmit: (text: string) => void;
   onStop: () => void;
@@ -148,15 +150,19 @@ export function Composer({
         className="field-sizing-content max-h-[min(40vh,22rem)] min-h-[3.25rem] w-full resize-none scrollbar-thin bg-transparent px-4.5 pt-4 pb-1 text-base leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/70 disabled:cursor-not-allowed md:text-[15px]"
       />
       {/* Three pickers and Send share one line down to a 375px phone: the
-          pickers sit close, their labels never wrap, and only the sources
-          picker gives way when the line runs short. */}
+          pickers sit close, their labels never wrap, and the sources and
+          model labels give way when the line runs short. */}
       <div
         data-slot="composer-bar"
         className="flex cursor-text items-center gap-0.5 px-2.5 pb-2.5 whitespace-nowrap"
       >
         <SourcesPicker />
         <ModelPicker value={model} onChange={onModelChange} />
-        <ReasoningPicker value={reasoning} onChange={onReasoningChange} />
+        <ReasoningPicker
+          value={reasoning}
+          efforts={efforts}
+          onChange={onReasoningChange}
+        />
         <div className="ml-auto flex shrink-0 items-center gap-3 pl-1.5">
           {text.length > WARN_LENGTH && (
             <span

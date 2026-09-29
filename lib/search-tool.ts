@@ -1,4 +1,4 @@
-import { type InferUITools, tool, type UIMessage } from "ai";
+import { type InferUITools, type ModelMessage, tool, type UIMessage } from "ai";
 import { z } from "zod";
 import type { Source } from "./mixedbread/citations";
 import {
@@ -7,7 +7,7 @@ import {
   fetchStores,
   needsReconnect,
 } from "./mixedbread/organizations";
-import { research, type Step } from "./mixedbread/research";
+import { research, type Step, type Turn } from "./mixedbread/research";
 import {
   combine,
   merge,
@@ -35,6 +35,11 @@ export interface SearchContext {
   selection: SourceSelection;
   /** Continues the conversation's source labels, see {@link nextLabel}. */
   firstLabel: number;
+  /**
+   * Toast answers the chat itself: it reads the whole conversation, and its
+   * findings are the answer, see `lib/toast-model.ts`.
+   */
+  toast: boolean;
 }
 
 type RunEvent =
@@ -45,7 +50,7 @@ type RunEvent =
 async function* run(
   userId: string,
   { connection, label, target }: Run<Connection>,
-  query: string,
+  turns: Turn[],
   signal: AbortSignal | undefined,
 ): AsyncGenerator<RunEvent> {
   try {
@@ -74,7 +79,7 @@ async function* run(
       }
       target = { kind: "stores", stores };
     }
-    for await (const event of research(client, query, target, signal)) {
+    for await (const event of research(client, turns, target, signal)) {
       if (event.type === "step") {
         const { step } = event;
         if (step.store) step.store = names.get(step.store) ?? step.store;
@@ -115,15 +120,21 @@ export function searchTool(context: SearchContext) {
     inputSchema: z.object({
       query: z.string().describe("What to find out, with all needed context"),
     }),
-    async *execute({ query }, { abortSignal }): AsyncGenerator<SearchOutput> {
+    async *execute(
+      { query },
+      { abortSignal, messages },
+    ): AsyncGenerator<SearchOutput> {
       const started = Date.now();
       const several = runs.length > 1;
       const steps = new Map<string, Step>();
       const read = new Set<string>();
       const results: RunResult[] = [];
 
+      const turns: Turn[] = context.toast
+        ? turnsOf(messages)
+        : [{ role: "user", content: query }];
       const events = merge(
-        runs.map((entry) => run(context.userId, entry, query, abortSignal)),
+        runs.map((entry) => run(context.userId, entry, turns, abortSignal)),
       );
       for await (const { index, value } of events) {
         if (value.type === "end") {
@@ -154,6 +165,7 @@ export function searchTool(context: SearchContext) {
       if (output.status !== "done") {
         return { type: "text", value: "The search did not finish." };
       }
+      if (context.toast) return { type: "text", value: output.findings };
       let value = output.findings;
       if (output.sources.length > 0) value += "\n\nSources:";
       for (const source of output.sources) {
@@ -166,6 +178,21 @@ export function searchTool(context: SearchContext) {
       return { type: "text", value };
     },
   });
+}
+
+/** The conversation's text, for Toast answering the chat itself. */
+function turnsOf(messages: ModelMessage[]): Turn[] {
+  const turns: Turn[] = [];
+  for (const { role, content } of messages) {
+    if (role !== "user" && role !== "assistant") continue;
+    let text = "";
+    if (typeof content === "string") text = content;
+    else {
+      for (const part of content) if (part.type === "text") text += part.text;
+    }
+    if (text) turns.push({ role, content: text });
+  }
+  return turns;
 }
 
 function describe(runs: Run<Connection>[]): string {

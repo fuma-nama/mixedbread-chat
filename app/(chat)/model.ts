@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { defaultModel, isModelId, type ModelId } from "@/lib/models";
+import { defaultModel, listModels } from "@/lib/models";
 import { defaultReasoning, isReasoning, type Reasoning } from "@/lib/reasoning";
 import {
   defaultSelection,
@@ -15,9 +15,10 @@ export async function selectedSources(): Promise<SourceSelection> {
 }
 
 /** The model picked last, remembered in a cookie by the model picker. */
-export async function selectedModel(): Promise<ModelId> {
-  const model = (await cookies()).get("model")?.value;
-  return isModelId(model) ? model : defaultModel;
+export async function selectedModel(): Promise<string> {
+  const [cookieStore, models] = await Promise.all([cookies(), listModels()]);
+  const id = cookieStore.get("model")?.value;
+  return id && models.some((model) => model.id === id) ? id : defaultModel;
 }
 
 /** The thinking effort picked last, remembered in a cookie by its picker. */

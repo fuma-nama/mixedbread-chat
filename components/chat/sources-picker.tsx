@@ -75,9 +75,9 @@ export function SourcesPicker() {
     >
       <PopoverTrigger
         aria-label={`Sources: ${label}`}
-        // The bar's most flexible part: its label gives way first when space
-        // runs out, and on phones only the glyphs show.
-        className="flex h-8 min-w-0 cursor-pointer items-center gap-1 rounded-full px-2 text-[13px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 hover:bg-soft hover:text-foreground focus-visible:outline-2 aria-expanded:bg-soft aria-expanded:text-foreground"
+        // Its label gives way when space runs out; on phones only the glyphs
+        // show, and they keep their room.
+        className="flex h-8 min-w-0 cursor-pointer items-center gap-1 rounded-full px-2 text-[13px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 hover:bg-soft hover:text-foreground focus-visible:outline-2 aria-expanded:bg-soft aria-expanded:text-foreground max-sm:min-w-fit"
       >
         {/* A globe for the web and a stack for stores, side by side when both
             are on. A change slides them into place and rolls the new words

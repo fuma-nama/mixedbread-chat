@@ -12,7 +12,6 @@ import { useReducedMotion } from "@/hooks/use-media";
 import { useWindowEvent } from "@/hooks/use-window-event";
 import { childrenOf, latestLeaf, pathTo, withPath } from "@/lib/branches";
 import { citationsAlong } from "@/lib/messages";
-import { type ModelId, models } from "@/lib/models";
 import type { Reasoning } from "@/lib/reasoning";
 import type { ChatMessage } from "@/lib/search-tool";
 import type { SearchScope } from "@/lib/sources";
@@ -22,6 +21,7 @@ import { Conversation } from "./conversation";
 import { EmptyState, Suggestions } from "./empty-state";
 import { preloadMarkdown } from "./lazy-markdown";
 import { type Appear, MessageView } from "./message";
+import { useModels } from "./models-provider";
 import { ErrorNotice, failureOf, SharedNotice, wasRejected } from "./notices";
 import { ShareDialog, searchedStores } from "./share-dialog";
 import { useSearchScope, useSources } from "./sources-provider";
@@ -65,7 +65,7 @@ export function Chat({
   id: string;
   initialMessages: TreeMessage[];
   initialLeafId: string | null;
-  initialModel: ModelId;
+  initialModel: string;
   initialReasoning: Reasoning;
   initialTitle?: string;
   visibility: "private" | "public";
@@ -160,7 +160,12 @@ export function Chat({
   const citations = citationsAlong(rendered);
   const children = useMemo(() => childrenOf(tree), [tree]);
   const failure = error ? failureOf(error) : undefined;
-  const modelName = models.find((entry) => entry.id === model)?.name;
+  const current = useModels().find((entry) => entry.id === model);
+  // A model that doesn't take the effort picked for another thinks on Auto.
+  const effort =
+    reasoning !== "auto" && current?.efforts.includes(reasoning)
+      ? reasoning
+      : "auto";
   // Screen readers hear where a search is, not every token of it.
   const spoken = (busy && searchStatus(messages.at(-1))) || announcement;
 
@@ -226,7 +231,7 @@ export function Chat({
     preloadMarkdown();
     void sendMessage(
       { id: question, role: "user", parts: [{ type: "text", text }] },
-      { body: { model, reasoning, sources: sources.selection.get() } },
+      { body: { model, reasoning: effort, sources: sources.selection.get() } },
     );
   }
 
@@ -235,7 +240,7 @@ export function Chat({
     const question = messages.findLast((message) => message.role === "user");
     if (question) answer(question.id);
     void regenerate({
-      body: { model, reasoning, sources: sources.selection.get() },
+      body: { model, reasoning: effort, sources: sources.selection.get() },
     });
   }
 
@@ -286,7 +291,7 @@ export function Chat({
     if (question) answer(question.id);
     void regenerate({
       messageId,
-      body: { model, reasoning, sources: sources.selection.get() },
+      body: { model, reasoning: effort, sources: sources.selection.get() },
     });
     composer.current?.focus();
   }
@@ -363,7 +368,7 @@ export function Chat({
                 versions={known === -1 ? siblings.length + 1 : siblings.length}
                 pinned={last && message.role === "assistant"}
                 retryLabel={
-                  modelName ? `Try again with ${modelName}` : undefined
+                  current ? `Try again with ${current.name}` : undefined
                 }
                 onEdit={idle ? edit : undefined}
                 onRetry={idle ? retry : undefined}
@@ -418,11 +423,17 @@ export function Chat({
               status={status}
               model={model}
               onModelChange={setModel}
-              reasoning={reasoning}
+              reasoning={effort}
+              efforts={current?.efforts ?? []}
               onReasoningChange={setReasoning}
               onSubmit={send}
               onStop={() => void stop()}
               placeholder={empty ? placeholders[scope] : "Ask a follow-up"}
+              blocked={
+                current?.toast && scope === "none"
+                  ? "Pick a source for Toast to answer from"
+                  : undefined
+              }
               inviting={empty}
             />
           </>
