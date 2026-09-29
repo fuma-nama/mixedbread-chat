@@ -1,5 +1,6 @@
 import { Mixedbread } from "@mixedbread/sdk";
 import { and, asc, eq, sql } from "drizzle-orm";
+import { headers } from "next/headers";
 import { auth } from "../auth";
 import { db } from "../db";
 import { account } from "../db/schema";
@@ -83,9 +84,10 @@ async function expiryOf(
  * refreshes take a lock per account.
  */
 async function accessToken(userId: string, { accountId }: Connection) {
-  const body = { accountId, userId };
+  // Better Auth resolves its base URL, which varies by host, from the request.
+  const call = { body: { accountId, userId }, headers: await headers() };
   if (fresh(await expiryOf(accountId))) {
-    const { accessToken } = await auth.api.getAccessToken({ body });
+    const { accessToken } = await auth.api.getAccessToken(call);
     if (accessToken) return accessToken;
     throw new ReconnectError();
   }
@@ -96,9 +98,9 @@ async function accessToken(userId: string, { accountId }: Connection) {
       );
       // Another request may have refreshed it while this one waited.
       if (fresh(await expiryOf(accountId, tx))) {
-        return (await auth.api.getAccessToken({ body })).accessToken;
+        return (await auth.api.getAccessToken(call)).accessToken;
       }
-      return (await auth.api.refreshToken({ body })).accessToken;
+      return (await auth.api.refreshToken(call)).accessToken;
     })
     .catch(() => undefined);
   if (token) return token;
