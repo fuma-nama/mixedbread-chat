@@ -5,7 +5,7 @@ import { useRender } from "@base-ui/react/use-render";
 import { SearchIcon, SquarePenIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { startTransition, useOptimistic } from "react";
+import { startTransition, useCallback, useOptimistic } from "react";
 import { Logo } from "@/components/brand/logo";
 import { Kbd, KbdGroup, ModKey } from "@/components/ui/kbd";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -32,13 +32,16 @@ export function AppSidebar({
   // The chat being opened shows as open from the click, not from its arrival.
   const [activeId, setActiveId] = useOptimistic(chatIdOf(pathname));
 
-  function open(event: { preventDefault: () => void }, href: string) {
-    event.preventDefault();
-    startTransition(() => {
-      setActiveId(chatIdOf(href));
-      router.push(href);
-    });
-  }
+  const open = useCallback(
+    (event: { preventDefault: () => void }, href: string) => {
+      event.preventDefault();
+      startTransition(() => {
+        setActiveId(chatIdOf(href));
+        router.push(href);
+      });
+    },
+    [router, setActiveId],
+  );
 
   return (
     <>

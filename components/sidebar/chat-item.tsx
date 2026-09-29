@@ -3,7 +3,7 @@
 import { cn } from "cn";
 import { EllipsisIcon, PencilIcon, TrashIcon } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { memo, useState } from "react";
 import { renameChat } from "@/app/(chat)/actions";
 import {
   DropdownMenu,
@@ -16,7 +16,8 @@ import { toast } from "@/components/ui/toast";
 import { TypedText } from "@/components/ui/typed-text";
 import { type ChatSummary, useChats } from "./chats-provider";
 
-export function ChatItem({
+/** Memoized, so a click re-renders only the rows it changes. */
+export const ChatItem = memo(function ChatItem({
   chat,
   active,
   fresh,
@@ -31,7 +32,7 @@ export function ChatItem({
   /** Whether it is selected; undefined while no chat is. */
   selected?: boolean;
   onOpen: (event: { preventDefault: () => void }, href: string) => void;
-  onDelete: (chat: ChatSummary) => void;
+  onDelete: (chats: ChatSummary[]) => void;
 }) {
   const { update } = useChats();
   const [renaming, setRenaming] = useState(false);
@@ -126,7 +127,7 @@ export function ChatItem({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 variant="destructive"
-                onClick={() => onDelete(chat)}
+                onClick={() => onDelete([chat])}
               >
                 <TrashIcon />
                 Delete
@@ -137,4 +138,4 @@ export function ChatItem({
       </div>
     </li>
   );
-}
+});

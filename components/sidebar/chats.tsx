@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { deleteChats } from "@/app/(chat)/actions";
 import { toast } from "@/components/ui/toast";
 import { ChatList } from "./chat-list";
@@ -103,10 +103,10 @@ export function Chats({
     }
   }
 
-  function askToDelete(targets: ChatSummary[]) {
+  const askToDelete = useCallback((targets: ChatSummary[]) => {
     landing.current = null;
     setDeleting(targets);
-  }
+  }, []);
 
   async function deleteForGood(targets: ChatSummary[]) {
     setDeleting(undefined);
@@ -147,7 +147,7 @@ export function Chats({
             activeId={activeId}
             selection={selecting ? selection.selection : undefined}
             onOpen={onOpen}
-            onDelete={(chat) => askToDelete([chat])}
+            onDelete={askToDelete}
           />
         </div>
 

@@ -22,7 +22,7 @@ export function ChatList({
   /** The selected chats, while some are. */
   selection?: ReadonlySet<string>;
   onOpen: (event: { preventDefault: () => void }, href: string) => void;
-  onDelete: (chat: ChatSummary) => void;
+  onDelete: (chats: ChatSummary[]) => void;
 }) {
   const groups = useMemo(
     () => groupByDay(chats, now, timeZone),
