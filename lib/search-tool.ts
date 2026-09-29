@@ -14,6 +14,7 @@ import {
   planRuns,
   type Run,
   type RunResult,
+  resolveTarget,
 } from "./mixedbread/runs";
 import type { SourceSelection } from "./sources";
 
@@ -49,37 +50,37 @@ type RunEvent =
 /** One Toast run; it reports how it ended instead of throwing, unless aborted. */
 async function* run(
   userId: string,
-  { connection, label, target }: Run,
+  entry: Run,
   turns: Turn[],
   signal: AbortSignal | undefined,
 ): AsyncGenerator<RunEvent> {
+  const { connection, label, target } = entry;
   try {
     const client = await clientFor(userId, connection);
     const names = new Map<string, string>();
     const listing =
-      target.kind === "stores" &&
-      fetchStores(client).then(
-        (stores) => {
-          for (const store of stores) names.set(store.id, store.name);
-          return true;
-        },
-        // Without names, citations and steps show IDs.
-        () => false,
-      );
-    // A deleted store fails the whole run, and picks outlive their stores.
-    if (
-      target.kind === "stores" &&
-      target.stores !== "all" &&
-      (await listing)
-    ) {
-      const stores = target.stores.filter((id) => names.has(id));
-      if (stores.length === 0) {
-        yield failed(`The stores picked in ${label} no longer exist.`);
-        return;
-      }
-      target = { kind: "stores", stores };
+      target.kind === "stores"
+        ? fetchStores(client).then(
+            (stores) => {
+              for (const store of stores) names.set(store.id, store.name);
+              return names;
+            },
+            // Without names, citations and steps show IDs.
+            () => undefined,
+          )
+        : undefined;
+    // On auto, Toast searches while the names load; picks need them first.
+    const resolved = resolveTarget(
+      entry,
+      target.kind === "stores" && target.stores !== "auto"
+        ? await listing
+        : undefined,
+    );
+    if ("error" in resolved) {
+      yield failed(resolved.error);
+      return;
     }
-    for await (const event of research(client, turns, target, signal)) {
+    for await (const event of research(client, turns, resolved, signal)) {
       if (event.type === "step") {
         const { step } = event;
         if (step.store) step.store = names.get(step.store) ?? step.store;

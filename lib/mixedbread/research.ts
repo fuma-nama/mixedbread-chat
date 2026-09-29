@@ -33,10 +33,10 @@ export interface Turn {
   content: string;
 }
 
-/** What a run searches: the web, or its organization's stores, all ("all") or some. */
+/** What a run searches: the web, or its organization's stores, where Toast picks ("auto") or these. */
 export type ResearchTarget =
   | { kind: "web" }
-  | { kind: "stores"; stores: "all" | string[] };
+  | { kind: "stores"; stores: "auto" | string[] };
 
 const annotationSchema = z.discriminatedUnion("type", [
   z.object({
@@ -153,7 +153,8 @@ function toolsFor(target: ResearchTarget): ChatCreateCompletionParams.Tool[] {
     ];
   }
   // Without store IDs, Toast picks a store per step from what list_stores shows it.
-  const store_identifiers = target.stores === "all" ? undefined : target.stores;
+  const store_identifiers =
+    target.stores === "auto" ? undefined : target.stores;
   const tools: ChatCreateCompletionParams.Tool[] = [
     { type: "search_corpus", store_identifiers, citations: true },
     { type: "grep", store_identifiers, citations: true },

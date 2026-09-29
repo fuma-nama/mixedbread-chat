@@ -1,4 +1,9 @@
-import { choiceFor, type SourceSelection, searchesStores } from "../sources.ts";
+import {
+  choiceFor,
+  type SourceSelection,
+  type StoreChoice,
+  searchesStores,
+} from "../sources.ts";
 import { labelCitations, type Source } from "./citations.ts";
 import type { Connection } from "./organizations.ts";
 import type { Citation, ResearchTarget } from "./research.ts";
@@ -13,7 +18,7 @@ export interface Run {
   label: string;
   /** Whose token the run uses; the web run borrows one, which it bills. */
   connection: Connection;
-  target: ResearchTarget;
+  target: { kind: "web" } | { kind: "stores"; stores: StoreChoice };
 }
 
 export function planRuns(
@@ -35,6 +40,31 @@ export function planRuns(
     runs.push({ label: "Web", connection: payer, target: { kind: "web" } });
   }
   return runs;
+}
+
+/**
+ * What a run searches, once its organization's stores are listed (`listed`
+ * is missing when listing failed): "all" becomes every store there is now,
+ * and picks drop stores deleted since, as a deleted one fails the whole run.
+ * An error says why the run can't search.
+ */
+export function resolveTarget(
+  { label, target }: Run,
+  listed: ReadonlyMap<string, string> | undefined,
+): ResearchTarget | { error: string } {
+  if (target.kind === "web") return target;
+  const { stores } = target;
+  if (stores === "auto") return { kind: "stores", stores };
+  if (stores === "all") {
+    return listed?.size
+      ? { kind: "stores", stores: Array.from(listed.keys()) }
+      : { error: `No stores to search in ${label}.` };
+  }
+  if (!listed) return { kind: "stores", stores };
+  const kept = stores.filter((id) => listed.has(id));
+  return kept.length > 0
+    ? { kind: "stores", stores: kept }
+    : { error: `The stores picked in ${label} no longer exist.` };
 }
 
 export type RunResult =

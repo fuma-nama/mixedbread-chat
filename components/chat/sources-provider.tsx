@@ -188,7 +188,7 @@ export function useConnect(): { pending: boolean; connect: () => void } {
   };
 }
 
-/** The stores picked one by one; an organization searched whole adds none. */
+/** The stores picked one by one; an organization on Auto or searched whole adds none. */
 export function usePickedStores(): StoreOption[] {
   const organizations = useOrganizations();
   const selection = useSelection();
@@ -198,7 +198,7 @@ export function usePickedStores(): StoreOption[] {
     for (const organization of organizations) {
       const choice = choiceFor(selection, organization.id);
       const state = all[organization.id];
-      if (choice === "all" || state?.status !== "ok") continue;
+      if (typeof choice === "string" || state?.status !== "ok") continue;
       const ids = new Set(choice);
       for (const store of state.stores) {
         if (ids.has(store.id)) picked.push(store);

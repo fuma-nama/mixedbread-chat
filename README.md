@@ -7,7 +7,7 @@ A ChatGPT-style chat template that answers from your documents and the web, with
 ## Features
 
 - Sign in with Mixedbread, then search the web and the stores of every organization you connect
-- Pick what each question searches: the web, all of an organization's stores (Toast picks among them), or just some
+- Pick what each question searches: the web, and each organization's stores on Auto (Toast picks where to look) or Manual (all of them, or just some)
 - Numbered citations that preview the passage they quote; a cited PDF page opens with it marked
 - Any tool-calling model on [AI Gateway](https://vercel.com/ai-gateway), with the thinking efforts it takes, or Toast 1 answering straight from your sources
 - Chat history with titles, search, rename, delete and share links, which say when a chat quotes your stores

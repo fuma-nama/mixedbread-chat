@@ -2,7 +2,13 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { SourceSelection } from "../sources.ts";
 import type { Citation } from "./research.ts";
-import { combine, merge, planRuns, type RunResult } from "./runs.ts";
+import {
+  combine,
+  merge,
+  planRuns,
+  resolveTarget,
+  type RunResult,
+} from "./runs.ts";
 
 const connections = [
   { organizationId: "org-a", accountId: "acc-a", name: "Organization 1" },
@@ -14,16 +20,74 @@ function labels() {
   return () => `S${next++}`;
 }
 
-test("an organization missing from the selection searches every store", () => {
+test("an organization missing from the selection is on auto", () => {
   const selection: SourceSelection = { web: true, organizations: {} };
   const runs = planRuns(selection, connections);
   assert.deepEqual(
     runs.map((run) => [run.label, run.target]),
     [
-      ["Organization 1", { kind: "stores", stores: "all" }],
-      ["Organization 2", { kind: "stores", stores: "all" }],
+      ["Organization 1", { kind: "stores", stores: "auto" }],
+      ["Organization 2", { kind: "stores", stores: "auto" }],
       ["Web", { kind: "web" }],
     ],
+  );
+});
+
+test("each organization's choice passes through to its run", () => {
+  const selection: SourceSelection = {
+    web: false,
+    organizations: { "org-a": "all", "org-b": ["store-1"] },
+  };
+  assert.deepEqual(
+    planRuns(selection, connections).map((run) => run.target),
+    [
+      { kind: "stores", stores: "all" },
+      { kind: "stores", stores: ["store-1"] },
+    ],
+  );
+});
+
+test("a run resolves its stores once they are listed", () => {
+  const [run] = planRuns({ web: false, organizations: {} }, connections);
+  const listed = new Map([
+    ["store-1", "HR"],
+    ["store-2", "Legal"],
+  ]);
+  const on = (stores: SourceSelection["organizations"][string]) => ({
+    ...run,
+    target: { kind: "stores" as const, stores },
+  });
+
+  // Auto leaves the pick to Toast, listed or not.
+  assert.deepEqual(resolveTarget(on("auto"), undefined), {
+    kind: "stores",
+    stores: "auto",
+  });
+  // "all" is every store there is now, stores made since the pick included.
+  assert.deepEqual(resolveTarget(on("all"), listed), {
+    kind: "stores",
+    stores: ["store-1", "store-2"],
+  });
+  // Without a listing, or with nothing in it, "all" can't search.
+  const none = { error: "No stores to search in Organization 1." };
+  assert.deepEqual(resolveTarget(on("all"), undefined), none);
+  assert.deepEqual(resolveTarget(on("all"), new Map()), none);
+  // Picks drop stores deleted since; with all of them gone, the run fails.
+  assert.deepEqual(resolveTarget(on(["store-2", "gone"]), listed), {
+    kind: "stores",
+    stores: ["store-2"],
+  });
+  assert.deepEqual(resolveTarget(on(["gone"]), listed), {
+    error: "The stores picked in Organization 1 no longer exist.",
+  });
+  // A failed listing keeps the picks as they are.
+  assert.deepEqual(resolveTarget(on(["gone"]), undefined), {
+    kind: "stores",
+    stores: ["gone"],
+  });
+  assert.deepEqual(
+    resolveTarget({ ...run, target: { kind: "web" } }, undefined),
+    { kind: "web" },
   );
 });
 

@@ -1,24 +1,35 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Mixedbread } from "@mixedbread/sdk";
-import { type ResearchEvent, research } from "./research.ts";
+import {
+  type ResearchEvent,
+  type ResearchTarget,
+  research,
+} from "./research.ts";
 
-function streaming(chunks: unknown[]): Mixedbread {
+/** A client that streams `chunks`, keeping each request in `requests`. */
+function streaming(chunks: unknown[], requests: unknown[] = []): Mixedbread {
   let body = "";
   for (const chunk of chunks) body += `data: ${JSON.stringify(chunk)}\n\n`;
   body += "data: [DONE]\n\n";
   const response = async () => new Response(body);
   return {
-    chat: { createCompletion: () => ({ asResponse: response }) },
+    chat: {
+      createCompletion(request: unknown) {
+        requests.push(request);
+        return { asResponse: response };
+      },
+    },
   } as unknown as Mixedbread;
 }
 
-async function collect(client: Mixedbread): Promise<ResearchEvent[]> {
+async function collect(
+  client: Mixedbread,
+  target: ResearchTarget = { kind: "stores", stores: "auto" },
+): Promise<ResearchEvent[]> {
   const events: ResearchEvent[] = [];
-  for await (const event of research(client, [{ role: "user", content: "q" }], {
-    kind: "stores",
-    stores: "all",
-  })) {
+  const turns = [{ role: "user" as const, content: "q" }];
+  for await (const event of research(client, turns, target)) {
     events.push(event);
   }
   return events;
@@ -122,6 +133,23 @@ test("normalizes steps, skips unknown shapes, and cites what Toast read", async 
       ],
     },
   ]);
+});
+
+test("on auto Toast lists the stores and picks per step; picks go as they are", async () => {
+  const requests: {
+    tools: { type: string; store_identifiers?: string[] }[];
+  }[] = [];
+  const client = streaming(
+    [{ choices: [{ delta: {}, finish_reason: "stop" }] }],
+    requests,
+  );
+  await collect(client, { kind: "stores", stores: "auto" });
+  await collect(client, { kind: "stores", stores: ["store-1"] });
+  const [auto, picked] = requests;
+  assert.deepEqual(auto.tools.at(-1), { type: "list_stores" });
+  assert.equal(auto.tools[0].store_identifiers, undefined);
+  assert.deepEqual(picked.tools[0].store_identifiers, ["store-1"]);
+  assert.ok(!picked.tools.some((tool) => tool.type === "list_stores"));
 });
 
 test("a stream that ends before the answer finishes fails", async () => {

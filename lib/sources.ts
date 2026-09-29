@@ -23,12 +23,16 @@ export type StoresResult =
   | { status: "reconnect" }
   | { status: "error"; message: string };
 
-/** Every store of an organization (Toast picks among them), some, or none. */
-export type StoreChoice = "all" | string[];
+/**
+ * How an organization's stores are searched: Toast picks among them each
+ * time ("auto"), every store there is at search time ("all"), or exactly
+ * these, where none means the organization isn't searched.
+ */
+export type StoreChoice = "auto" | "all" | string[];
 
 export interface SourceSelection {
   web: boolean;
-  /** By organization ID; a missing organization searches every store. */
+  /** By organization ID; a missing organization is on auto. */
   organizations: Record<string, StoreChoice>;
 }
 
@@ -38,11 +42,11 @@ export function choiceFor(
   selection: SourceSelection,
   organizationId: string,
 ): StoreChoice {
-  return selection.organizations[organizationId] ?? "all";
+  return selection.organizations[organizationId] ?? "auto";
 }
 
 export function searchesStores(choice: StoreChoice): boolean {
-  return choice === "all" || choice.length > 0;
+  return typeof choice === "string" || choice.length > 0;
 }
 
 export function scopeOf(
@@ -63,13 +67,17 @@ export const sourceSelectionSchema = z.object({
   web: z.boolean(),
   organizations: z.record(
     z.string().max(100),
-    z.union([z.literal("all"), z.array(z.string().max(100)).max(MAX_STORES)]),
+    z.union([
+      z.literal("auto"),
+      z.literal("all"),
+      z.array(z.string().max(100)).max(MAX_STORES),
+    ]),
   ),
 });
 
 export const SELECTION_COOKIE = "sources";
 
-/** The selection the picker's cookie holds; by default, the web and every store. */
+/** The selection the picker's cookie holds; by default, the web and Toast picking stores. */
 export function parseSelection(value = ""): SourceSelection {
   try {
     return sourceSelectionSchema.parse(JSON.parse(decodeURIComponent(value)));

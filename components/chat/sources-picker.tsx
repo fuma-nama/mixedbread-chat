@@ -12,7 +12,7 @@ import {
   SearchIcon,
   SearchSlashIcon,
 } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Toasting } from "@/components/brand/bakery";
 import {
   Popover,
@@ -145,7 +145,9 @@ function reachOf(
   const { web } = selection;
   let docs = false;
   let lapsed = false;
-  // Organizations searched whole, and whether one's stores are still loading.
+  // Whether Toast picks for one, organizations searched whole, and whether
+  // one's stores are still loading.
+  let auto = false;
   let whole = 0;
   let loading = false;
   // Stores in reach, and the name of the first one picked.
@@ -159,6 +161,10 @@ function reachOf(
     const state = all[id];
     const stores = state?.status === "ok" ? state.stores : undefined;
     lapsed ||= state?.status === "reconnect";
+    if (choice === "auto") {
+      auto = true;
+      continue;
+    }
     if (choice === "all") {
       whole++;
       count += stores?.length ?? 0;
@@ -178,8 +184,10 @@ function reachOf(
     }
   }
 
+  // Where Toast picks, how many it looks through is up to it.
   let phrase = `${count} ${count === 1 ? "store" : "stores"}`;
-  if (whole === organizations.length)
+  if (auto) phrase = web ? "stores" : "Stores";
+  else if (whole === organizations.length)
     phrase = web ? "all stores" : "All stores";
   else if (whole === 0 && count === 1 && first) phrase = first;
   else if (loading) phrase = web ? "stores" : "Stores";
@@ -288,12 +296,7 @@ function Panel({
           />
         </div>
       )}
-      <div
-        className={cn(
-          "min-h-0 flex-1 scroll-py-1 scrollbar-thin overflow-y-auto overscroll-contain p-1",
-          several && "scroll-pt-9",
-        )}
-      >
+      <div className="min-h-0 flex-1 scroll-py-1 scroll-pt-9 scrollbar-thin overflow-y-auto overscroll-contain p-1">
         {!words && (
           <>
             <div className={heading}>Search in</div>
@@ -323,7 +326,7 @@ function Panel({
             key={organization.id}
             organization={organization}
             state={all[organization.id]}
-            header={several}
+            named={several}
             words={words}
           />
         ))}
@@ -346,32 +349,34 @@ function Panel({
 }
 
 /**
- * One organization's stores: every one (Toast picks), some, or none.
- * Picking a store narrows the organization to the picked ones; "All stores"
- * widens it again, and unticking the last pick turns it off.
+ * One organization's stores, on Auto, where Toast picks where to look for
+ * each question, or Manual, where the stores ticked are searched: all of
+ * them, stores made later included, or just some. Manual with none ticked
+ * leaves the organization out. Ticking a store found by the filter on Auto
+ * turns to Manual with just that one.
  */
 function OrganizationStores({
   organization,
   state,
-  header,
+  named,
   words,
 }: {
   organization: Organization;
   state: StoresState | undefined;
   /** Several organizations are connected, so each names itself. */
-  header: boolean;
+  named: boolean;
   /** While filtering, only stores with every word show, and nothing else. */
   words: string[] | undefined;
 }) {
   const sources = useSources();
   const selection = useSelection();
-  const headerId = useId();
-  const hintId = useId();
-  // Rows that load while the panel is open slide in; rows ready as it opens
-  // are simply there.
-  const [arrived] = useState(() => state?.status !== "ok");
+  const choice = choiceFor(selection, organization.id);
+  const auto = choice === "auto";
+  // Rows ready as the panel opens are simply there; rows that load or unfold
+  // later slide in, one after another.
+  const [unfold, setUnfold] = useState(() => state?.status !== "ok" || auto);
   const stores = state?.status === "ok" ? state.stores : undefined;
-  let shown = stores ?? [];
+  let shown = auto ? [] : (stores ?? []);
   if (words) {
     shown = [];
     for (const store of stores ?? []) {
@@ -379,11 +384,13 @@ function OrganizationStores({
     }
     if (shown.length === 0) return null;
   }
-  const choice = choiceFor(selection, organization.id);
-  const picked = new Set(choice === "all" ? [] : choice);
-  const everything = stores ? `All ${stores.length} stores` : "All stores";
+  const picked = new Set(Array.isArray(choice) ? choice : []);
+  // Its grant lapsed, or it has no stores: nothing to pick from.
+  const searchable = state?.status !== "reconnect" && stores?.length !== 0;
+  const name = named ? organization.name : "Stores";
 
   function choose(next: StoreChoice) {
+    if (next === "auto") setUnfold(true);
     sources.select({
       ...selection,
       organizations: { ...selection.organizations, [organization.id]: next },
@@ -395,65 +402,55 @@ function OrganizationStores({
       <div aria-hidden="true" className={separator} />
       <div
         role="group"
-        aria-labelledby={header ? headerId : undefined}
-        aria-label={header ? undefined : "Stores"}
+        aria-label={name}
         aria-busy={!state || state.status === "loading" || undefined}
       >
-        {header && (
-          <div
-            id={headerId}
-            className={cn(heading, "sticky top-0 z-1 -mx-1 bg-popover px-3")}
-          >
-            {organization.name}
+        {!words && (named || searchable) && (
+          <div className="sticky top-0 z-1 -mx-1 flex min-h-9 items-center gap-2.5 bg-popover px-3 py-1 text-[13.5px] text-foreground/90">
+            <LayersIcon className="size-4 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate">{name}</span>
+            {/* Choosable before its list loads. */}
+            {searchable && (
+              <Mode
+                auto={auto}
+                label={name}
+                onChange={(next) => choose(next ? "auto" : [])}
+              />
+            )}
           </div>
         )}
-        {/* Choosable before its list loads, unless nothing can be searched. */}
-        {!words && state?.status !== "reconnect" && stores?.length !== 0 && (
+        {!words && !auto && searchable && (
           <button
             type="button"
             role="checkbox"
             aria-checked={choice === "all"}
-            aria-label={everything}
-            aria-describedby={hintId}
             data-row=""
             onClick={() => choose(choice === "all" ? [] : "all")}
-            className={cn(row, "items-start")}
+            className={cn(row, unfold && "motion-safe:animate-swap-in")}
           >
-            <Box className="mt-0.75" />
-            <span className="flex min-w-0 flex-1 flex-col">
-              <span className="truncate">{everything}</span>
-              <span
-                id={hintId}
-                className="text-xs text-balance text-muted-foreground"
-              >
-                Toast, Mixedbread’s search&nbsp;agent, picks where to look
-              </span>
-            </span>
-            {/* The slice pops up while Toast gets to pick. */}
-            <span className="mt-px flex">
-              <Toasting state={choice === "all" ? "done" : "stopped"} />
-            </span>
+            <Box />
+            <span className="flex-1 truncate">All stores</span>
           </button>
         )}
-        {shown.map((store) => (
+        {shown.map((store, index) => (
           <button
             key={store.id}
             type="button"
             role="checkbox"
-            aria-checked={picked.has(store.id)}
+            aria-checked={choice === "all" || picked.has(store.id)}
             data-row=""
             data-store=""
             title={store.description ?? undefined}
-            onClick={() =>
-              choose(
-                choice === "all"
-                  ? [store.id]
-                  : picked.has(store.id)
-                    ? choice.filter((id) => id !== store.id)
-                    : [...choice, store.id],
-              )
+            onClick={() => choose(toggle(choice, store.id, stores))}
+            style={
+              unfold
+                ? {
+                    animationDelay: `${Math.min(index + 1, 8) * 16}ms`,
+                    animationFillMode: "backwards",
+                  }
+                : undefined
             }
-            className={cn(row, arrived && "motion-safe:animate-swap-in")}
+            className={cn(row, unfold && "motion-safe:animate-swap-in")}
           >
             <Box />
             <span className="min-w-0 flex-1 truncate">{store.name}</span>
@@ -462,9 +459,99 @@ function OrganizationStores({
             </span>
           </button>
         ))}
-        {!words && <StoresNotice organization={organization} state={state} />}
+        {!words && (
+          <StoresNotice
+            organization={organization}
+            state={state}
+            manual={!auto}
+          />
+        )}
       </div>
     </>
+  );
+}
+
+/**
+ * The stores searched once `id` is ticked or unticked. From Auto it is the
+ * only one; from all of them, every other one stays.
+ */
+function toggle(
+  choice: StoreChoice,
+  id: string,
+  stores: StoreOption[] | undefined,
+): string[] {
+  if (choice === "auto") return [id];
+  if (choice !== "all") {
+    return choice.includes(id)
+      ? choice.filter((picked) => picked !== id)
+      : [...choice, id];
+  }
+  const rest: string[] = [];
+  for (const store of stores ?? []) if (store.id !== id) rest.push(store.id);
+  return rest;
+}
+
+const segment =
+  "relative flex h-6 cursor-pointer items-center justify-center gap-1 rounded-full px-2.5 text-[12.5px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 hover:text-foreground focus-visible:outline-2 aria-checked:text-foreground";
+
+/**
+ * Auto or Manual, as a pill that glides to the one picked; the slice pops up
+ * while Toast gets to pick. Arrow keys switch, as in any set of radios.
+ */
+function Mode({
+  auto,
+  label,
+  onChange,
+}: {
+  auto: boolean;
+  label: string;
+  onChange: (auto: boolean) => void;
+}) {
+  const pick = (next: boolean) => next !== auto && onChange(next);
+
+  return (
+    // oxlint-disable-next-line jsx-a11y/interactive-supports-focus -- its radios take focus
+    <div
+      role="radiogroup"
+      aria-label={label}
+      onKeyDown={(event) => {
+        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+        event.preventDefault();
+        const next = event.key === "ArrowLeft";
+        pick(next);
+        event.currentTarget.querySelectorAll("button")[next ? 0 : 1].focus();
+      }}
+      className="relative grid shrink-0 grid-cols-2 rounded-full bg-soft p-0.5"
+    >
+      <span
+        aria-hidden="true"
+        style={{ translate: auto ? "0 0" : "100% 0" }}
+        className="absolute inset-y-0.5 left-0.5 w-[calc(50%-0.125rem)] rounded-full bg-popover shadow-raised transition-[translate] duration-300 ease-smooth motion-reduce:transition-none"
+      />
+      <button
+        type="button"
+        role="radio"
+        aria-checked={auto}
+        tabIndex={auto ? 0 : -1}
+        data-row={auto ? "" : undefined}
+        onClick={() => pick(true)}
+        className={segment}
+      >
+        <Toasting state={auto ? "done" : "stopped"} />
+        Auto
+      </button>
+      <button
+        type="button"
+        role="radio"
+        aria-checked={!auto}
+        tabIndex={auto ? -1 : 0}
+        data-row={auto ? undefined : ""}
+        onClick={() => pick(false)}
+        className={segment}
+      >
+        Manual
+      </button>
+    </div>
   );
 }
 
@@ -499,17 +586,23 @@ function storeStatus(store: StoreOption): React.ReactNode {
   }
 }
 
-/** Loading, failed, signed out, or empty: what stands in for the list. */
+/**
+ * Loading, failed, signed out, or empty: what stands in for the list. Toast
+ * finds the stores itself on Auto, so only Manual waits for the list.
+ */
 function StoresNotice({
   organization,
   state,
+  manual,
 }: {
   organization: Organization;
   state: StoresState | undefined;
+  manual: boolean;
 }) {
   const sources = useSources();
 
   if (!state || state.status === "loading") {
+    if (!manual) return null;
     return (
       <p
         role="status"
@@ -521,6 +614,7 @@ function StoresNotice({
     );
   }
   if (state.status === "error") {
+    if (!manual) return null;
     return (
       <button
         type="button"
@@ -612,14 +706,11 @@ function ConnectButton({
 }
 
 /** A checkbox's box, checked with the row it is in. The tick springs in. */
-function Box({ className }: { className?: string }) {
+function Box() {
   return (
     <span
       aria-hidden="true"
-      className={cn(
-        "grid size-3.5 shrink-0 place-items-center rounded-[4px] bg-card shadow-[inset_0_0_0_1.5px_var(--input)] transition-[background-color,box-shadow] duration-150 group-aria-checked/row:bg-primary group-aria-checked/row:shadow-none motion-reduce:transition-none",
-        className,
-      )}
+      className="grid size-3.5 shrink-0 place-items-center rounded-[4px] bg-card shadow-[inset_0_0_0_1.5px_var(--input)] transition-[background-color,box-shadow] duration-150 group-aria-checked/row:bg-primary group-aria-checked/row:shadow-none motion-reduce:transition-none"
     >
       <CheckIcon
         strokeWidth={3}
