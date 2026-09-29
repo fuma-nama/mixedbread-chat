@@ -12,6 +12,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { IconSwap } from "@/components/ui/icon-swap";
+import { useWindowEvent } from "@/hooks/use-window-event";
 import type { Effort, Reasoning } from "@/lib/reasoning";
 import { ModelPicker } from "./model-picker";
 import { ReasoningPicker } from "./reasoning-picker";
@@ -47,7 +48,7 @@ export const Composer = memo(function Composer({
   onStop,
   placeholder,
   blocked,
-  inviting = false,
+  fresh = false,
 }: {
   ref?: React.Ref<ComposerHandle>;
   status: ChatStatus;
@@ -62,8 +63,8 @@ export const Composer = memo(function Composer({
   placeholder: string;
   /** Why sending is off for now, shown in place of the placeholder. */
   blocked?: string;
-  /** Glows warm whenever it has focus, as on a new chat; otherwise only once there is something to send. */
-  inviting?: boolean;
+  /** A new chat: it glows warm on focus, not only once there is something to send, and ⌘⇧O lands here. */
+  fresh?: boolean;
 }) {
   const [text, setText] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
@@ -92,6 +93,30 @@ export const Composer = memo(function Composer({
     if (!coarse()) textareaRef.current?.focus();
   }, []);
 
+  // Keys that work anywhere: type to write, Escape to stop.
+  useWindowEvent("keydown", (event) => {
+    const loose =
+      document.activeElement === document.body &&
+      !document.querySelector("[role=dialog]");
+    if (event.key === "Escape" && busy && loose) {
+      onStop();
+      return;
+    }
+    const typed =
+      loose &&
+      event.key.length === 1 &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.altKey;
+    // ⌘⇧O on a fresh chat has nowhere to go but here.
+    const opened =
+      fresh &&
+      event.key.toLowerCase() === "o" &&
+      event.shiftKey &&
+      (event.metaKey || event.ctrlKey);
+    if (typed || opened) textareaRef.current?.focus();
+  });
+
   function submit() {
     if (!ready || busy) return;
     onSubmit(text.trim());
@@ -103,7 +128,7 @@ export const Composer = memo(function Composer({
     <form
       ref={formRef}
       data-disabled={Boolean(reason)}
-      data-glow={inviting || ready}
+      data-glow={fresh || ready}
       className="relative flex w-full flex-col rounded-[22px] bg-card shadow-composer ring-1 ring-soft transition-[box-shadow,opacity] duration-200 ease-smooth focus-within:ring-foreground/15 data-[disabled=true]:opacity-60 data-[glow=true]:focus-within:shadow-[var(--elevation-composer),0_0_0_4px_oklch(from_var(--crust)_l_c_h/0.08)] data-[glow=true]:focus-within:ring-crust/40"
       onSubmit={(event) => {
         event.preventDefault();

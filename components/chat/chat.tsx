@@ -16,7 +16,6 @@ import { setChatLeaf } from "@/app/(chat)/actions";
 import { useChats, useChatTitle } from "@/components/sidebar/chats-provider";
 import { Button } from "@/components/ui/button";
 import { useReducedMotion } from "@/hooks/use-media";
-import { useWindowEvent } from "@/hooks/use-window-event";
 import { childrenOf, latestLeaf, pathTo, withPath } from "@/lib/branches";
 import { citationsAlong } from "@/lib/messages";
 import type { Reasoning } from "@/lib/reasoning";
@@ -213,36 +212,6 @@ export function Chat({
       easing: "cubic-bezier(0.22, 1, 0.36, 1)",
     });
   }, [empty]);
-
-  // Keys that work anywhere: type to write, Escape to stop.
-  useWindowEvent("keydown", (event) => {
-    if (readonly) return;
-    const loose =
-      document.activeElement === document.body &&
-      !document.querySelector("[role=dialog]");
-    if (event.key === "Escape" && busy && loose) {
-      void stop();
-      return;
-    }
-    if (
-      loose &&
-      event.key.length === 1 &&
-      !event.metaKey &&
-      !event.ctrlKey &&
-      !event.altKey
-    ) {
-      composer.current?.focus();
-    }
-    // ⌘⇧O on a fresh chat has nowhere to go but here.
-    if (
-      empty &&
-      event.key.toLowerCase() === "o" &&
-      event.shiftKey &&
-      (event.metaKey || event.ctrlKey)
-    ) {
-      composer.current?.focus();
-    }
-  });
 
   /** Brings `questionId` to the top, with room below for its answer. */
   const answer = useCallback((questionId: string) => {
@@ -459,7 +428,7 @@ export function Chat({
                   ? "Pick a source for Toast to answer from"
                   : undefined
               }
-              inviting={empty}
+              fresh={empty}
             />
           </>
         )}
