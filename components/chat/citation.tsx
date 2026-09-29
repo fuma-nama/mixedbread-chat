@@ -53,8 +53,11 @@ export function CitationHighlight({ children }: { children: React.ReactNode }) {
 export const badge =
   "cursor-pointer items-center justify-center rounded-[0.35rem] bg-soft font-mono font-medium text-muted-foreground tabular-nums no-underline outline-offset-1 outline-ring transition-[background-color,color] duration-150 ease-smooth hover:bg-berry/15 hover:text-berry focus-visible:outline-2 data-popup-open:bg-berry/15 data-popup-open:text-berry data-[lit=true]:bg-berry/15 data-[lit=true]:text-berry";
 
-/** An inline citation: the source's number, with the source on hover. */
-export function Citation({
+/**
+ * An inline citation: the source's number, with the source on hover.
+ * Memoized, so settled citations sit still while the answer streams.
+ */
+export const Citation = memo(function Citation({
   number,
   source,
 }: {
@@ -75,7 +78,7 @@ export function Citation({
       {number}
     </SourcePreview>
   );
-}
+});
 
 type FileSource = Extract<Source, { type: "file" }>;
 
