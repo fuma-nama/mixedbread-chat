@@ -204,8 +204,9 @@ function Dial({ level }: { level: Reasoning }) {
 
 /**
  * The level's name. On a change the old word rolls out as the new one rolls
- * in, the way the dial turned, and the width between them glides instead of
- * jumping.
+ * in, the way the dial turned, and the width glides between them. The words
+ * share one cell, so the width holds the old one until it leaves, and the
+ * new one waits for the width to all but land: neither runs past the edge.
  */
 function Rolling({ text, rank }: { text: string; rank: number }) {
   const ref = useGlide<HTMLSpanElement>("width", 360);
@@ -228,13 +229,13 @@ function Rolling({ text, rank }: { text: string; rank: number }) {
     <span
       ref={ref}
       style={{ "--roll": roll.direction } as React.CSSProperties}
-      className="relative inline-block whitespace-nowrap"
+      className="inline-grid justify-items-start whitespace-nowrap *:[grid-area:1/1]"
     >
       {roll.previous && (
         <span
           key={roll.previous}
           aria-hidden="true"
-          className="absolute top-0 left-0 motion-safe:animate-roll-out motion-reduce:hidden"
+          className="motion-safe:animate-roll-out motion-reduce:hidden"
           onAnimationEnd={() =>
             setRoll((roll) => ({ ...roll, previous: undefined }))
           }
@@ -244,10 +245,10 @@ function Rolling({ text, rank }: { text: string; rank: number }) {
       )}
       <span
         key={roll.text}
-        className={cn(
-          "inline-block",
-          roll.direction && "motion-safe:animate-roll-in",
-        )}
+        className={
+          roll.direction &&
+          "motion-safe:[animation:var(--animate-roll-in)_140ms]"
+        }
       >
         {roll.text}
       </span>
