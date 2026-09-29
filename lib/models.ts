@@ -15,7 +15,6 @@ export interface Model {
   toast?: true;
 }
 
-/** Answers with Toast itself, searching directly, not through a Gateway model. */
 const TOAST_MODEL = "mixedbread/toast-1";
 
 /** Featured models by provider, grouped in this order. */
@@ -68,9 +67,8 @@ async function refresh(): Promise<Model[]> {
     expires = Date.now() + REFRESH;
   } catch {
     expires = Date.now() + RETRY;
-  } finally {
-    refreshing = undefined;
   }
+  refreshing = undefined;
   return catalog ?? [];
 }
 

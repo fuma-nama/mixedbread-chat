@@ -37,12 +37,15 @@ export const toastModel: ModelV4 = {
     const last = prompt.at(-1);
     const parts: Part[] = [{ type: "stream-start", warnings: [] }];
     if (last?.role === "user" && tools?.some(({ name }) => name === "search")) {
+      let query = "";
+      for (const part of last.content)
+        if (part.type === "text") query += part.text;
       parts.push(
         {
           type: "tool-call",
           toolCallId: generateId(),
           toolName: "search",
-          input: JSON.stringify({ query: textOf(last) }),
+          input: JSON.stringify({ query }),
         },
         {
           type: "finish",
@@ -73,16 +76,6 @@ export const toastModel: ModelV4 = {
     };
   },
 };
-
-function textOf(message: Message): string {
-  let text = "";
-  if (message.role === "user") {
-    for (const part of message.content) {
-      if (part.type === "text") text += part.text;
-    }
-  }
-  return text;
-}
 
 function answerOf(message: Message | undefined): string {
   if (message?.role !== "tool") {

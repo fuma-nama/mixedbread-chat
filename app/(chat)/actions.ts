@@ -14,30 +14,28 @@ import {
 } from "@/lib/mixedbread/organizations";
 import type { StoresResult } from "@/lib/sources";
 
-async function currentUser() {
+async function currentUserId() {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
-  return session.user;
+  return session.user.id;
 }
 
 export async function listOrganizationStores(
   organizationId: string,
 ): Promise<StoresResult> {
-  const user = await currentUser();
-  for (const connection of await listConnections(user.id)) {
-    if (connection.organizationId === organizationId) {
-      return listStores(user.id, connection);
-    }
-  }
-  return { status: "reconnect" };
+  const userId = await currentUserId();
+  const connection = (await listConnections(userId)).find(
+    (entry) => entry.organizationId === organizationId,
+  );
+  return connection ? listStores(userId, connection) : { status: "reconnect" };
 }
 
 /** One action for every organization, since a client runs server actions one at a time. */
 export async function listAllStores(): Promise<Record<string, StoresResult>> {
-  const user = await currentUser();
-  const connections = await listConnections(user.id);
+  const userId = await currentUserId();
+  const connections = await listConnections(userId);
   const results = await Promise.all(
-    connections.map((connection) => listStores(user.id, connection)),
+    connections.map((connection) => listStores(userId, connection)),
   );
   const byOrganization: Record<string, StoresResult> = {};
   for (let i = 0; i < connections.length; i++) {
@@ -64,61 +62,57 @@ const citedPageSchema = z.object({
 export async function openPage(
   cited: z.input<typeof citedPageSchema>,
 ): Promise<PageResult> {
-  const user = await currentUser();
+  const userId = await currentUserId();
   const { organizationId, storeId, chunkId, claim } =
     citedPageSchema.parse(cited);
-  for (const connection of await listConnections(user.id)) {
-    if (connection.organizationId !== organizationId) continue;
-    try {
-      const client = await clientFor(user.id, connection);
-      const page = await fetchPage(client, storeId, chunkId);
-      if (!page) return { status: "missing" };
-      const marked = claim ? highlight(claim, page.blocks) : [];
-      return { status: "ok", page, marked };
-    } catch (error) {
-      return { status: needsReconnect(error) ? "reconnect" : "error" };
-    }
+  const connection = (await listConnections(userId)).find(
+    (entry) => entry.organizationId === organizationId,
+  );
+  if (!connection) return { status: "missing" };
+  try {
+    const client = await clientFor(userId, connection);
+    const page = await fetchPage(client, storeId, chunkId);
+    if (!page) return { status: "missing" };
+    const marked = claim ? highlight(claim, page.blocks) : [];
+    return { status: "ok", page, marked };
+  } catch (error) {
+    return { status: needsReconnect(error) ? "reconnect" : "error" };
   }
-  return { status: "missing" };
 }
 
 export async function disconnectOrganization(organizationId: string) {
-  await disconnect((await currentUser()).id, organizationId);
+  await disconnect(await currentUserId(), organizationId);
 }
 
 export async function listChats() {
-  const user = await currentUser();
-  return queries.getChats(user.id);
+  return queries.getChats(await currentUserId());
 }
 
 export async function searchChats(query: string) {
-  const user = await currentUser();
-  return queries.searchChats(user.id, z.string().max(200).parse(query));
+  const userId = await currentUserId();
+  return queries.searchChats(userId, z.string().max(200).parse(query));
 }
 
 export async function renameChat(id: string, title: string) {
-  const user = await currentUser();
-  const parsed = z.string().trim().min(1).max(200).parse(title);
-  await queries.updateChat(id, user.id, { title: parsed });
+  await queries.updateChat(id, await currentUserId(), {
+    title: z.string().trim().min(1).max(200).parse(title),
+  });
 }
 
 export async function deleteChat(id: string) {
-  const user = await currentUser();
-  await queries.deleteChat(id, user.id);
+  await queries.deleteChat(id, await currentUserId());
 }
 
 /** Remembers the branch the user switched to. */
 export async function setChatLeaf(id: string, leafId: string) {
-  const user = await currentUser();
-  await queries.updateChat(id, user.id, { leafId });
+  await queries.updateChat(id, await currentUserId(), { leafId });
 }
 
 export async function setChatVisibility(
   id: string,
   visibility: "private" | "public",
 ) {
-  const user = await currentUser();
-  await queries.updateChat(id, user.id, {
+  await queries.updateChat(id, await currentUserId(), {
     visibility: z.enum(["private", "public"]).parse(visibility),
   });
 }

@@ -7,6 +7,30 @@ export type Citations = Map<string, { number: number; source: Source }>;
 const CITATION = /\]\(#(S\d+)\)/g;
 const CITATION_LINK = /\[[^\]]*\]\(#(S\d+)\)/g;
 
+/** What the message's finished searches found. */
+function* sourcesOf(message: ChatMessage): Generator<Source> {
+  for (const part of message.parts) {
+    if (
+      part.type === "tool-search" &&
+      part.state === "output-available" &&
+      part.output.status === "done"
+    ) {
+      yield* part.output.sources;
+    }
+  }
+}
+
+/** Source labels stay unique across a conversation, so a later answer can cite an earlier search. */
+export function nextLabel(messages: ChatMessage[]): number {
+  let last = 0;
+  for (const message of messages) {
+    for (const { label } of sourcesOf(message)) {
+      last = Math.max(last, Number(label.slice(1)));
+    }
+  }
+  return last + 1;
+}
+
 // A message never changes once it is done, and neither do its citations.
 const cache = new WeakMap<ChatMessage, Citations>();
 
@@ -18,15 +42,7 @@ export function citationsAlong(messages: ChatMessage[]): Citations[] {
   const sources = new Map<string, Source>();
   const all: Citations[] = [];
   for (const message of messages) {
-    for (const part of message.parts) {
-      if (part.type !== "tool-search" || part.state !== "output-available")
-        continue;
-      if (part.output.status !== "done") continue;
-      for (const source of part.output.sources) {
-        sources.set(source.label, source);
-      }
-    }
-
+    for (const source of sourcesOf(message)) sources.set(source.label, source);
     let citations = cache.get(message);
     if (!citations) {
       citations = new Map();
@@ -72,10 +88,8 @@ export function copyTextOf(message: ChatMessage, citations: Citations): string {
 
   let notes = "";
   for (const { number, source } of citations.values()) {
-    notes +=
-      source.type === "url"
-        ? `\n[${number}] ${sourceTitle(source)} (${source.url})`
-        : `\n[${number}] ${source.filename}`;
+    notes += `\n[${number}] ${sourceTitle(source)}`;
+    if (source.type === "url") notes += ` (${source.url})`;
   }
   return `${text}\n\nSources:${notes}`;
 }

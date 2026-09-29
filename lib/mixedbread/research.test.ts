@@ -32,7 +32,7 @@ test("normalizes steps, skips unknown shapes, and cites what Toast read", async 
         hosted_tool_calls: [
           {
             id: "1",
-            type: "store_search_call",
+            type: "search_corpus_call",
             status: "completed",
             queries: ["leave"],
             store: "mixedbread/web",

@@ -1,10 +1,10 @@
 import { cn } from "cn";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { cookies } from "next/headers";
 import { Toaster } from "@/components/ui/toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { themeColors } from "@/lib/theme";
-import { selectedTheme } from "./theme";
+import { isTheme, themeColors } from "@/lib/theme";
 import "./globals.css";
 
 const sans = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
@@ -15,6 +15,12 @@ export const metadata: Metadata = {
   description:
     "A chat app that searches your data and the web, powered by Mixedbread.",
 };
+
+/** The theme picked last, remembered in a cookie by the theme menu. */
+async function selectedTheme() {
+  const theme = (await cookies()).get("theme")?.value;
+  return isTheme(theme) ? theme : "system";
+}
 
 export async function generateViewport(): Promise<Viewport> {
   const theme = await selectedTheme();

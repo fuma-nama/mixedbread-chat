@@ -48,16 +48,15 @@ export async function listConnections(userId: string): Promise<Connection[]> {
 /** Forgets one grant. The last stays: it is how the user signs in. */
 export async function disconnect(userId: string, organizationId: string) {
   const connections = await listConnections(userId);
-  if (connections.length < 2) return;
-  for (const connection of connections) {
-    if (connection.organizationId !== organizationId) continue;
-    await db
-      .delete(account)
-      .where(
-        and(eq(account.id, connection.accountId), eq(account.userId, userId)),
-      );
-    return;
-  }
+  const connection = connections.find(
+    (entry) => entry.organizationId === organizationId,
+  );
+  if (!connection || connections.length < 2) return;
+  await db
+    .delete(account)
+    .where(
+      and(eq(account.id, connection.accountId), eq(account.userId, userId)),
+    );
 }
 
 /** Refresh this early, so a token never runs out in the middle of a search. */
@@ -86,23 +85,20 @@ async function expiryOf(
 async function accessToken(userId: string, { accountId }: Connection) {
   // Better Auth resolves its base URL, which varies by host, from the request.
   const call = { body: { accountId, userId }, headers: await headers() };
-  if (fresh(await expiryOf(accountId))) {
-    const { accessToken } = await auth.api.getAccessToken(call);
-    if (accessToken) return accessToken;
-    throw new ReconnectError();
-  }
-  const token = await db
-    .transaction(async (tx) => {
-      await tx.execute(
-        sql`select pg_advisory_xact_lock(hashtext(${accountId}))`,
-      );
-      // Another request may have refreshed it while this one waited.
-      if (fresh(await expiryOf(accountId, tx))) {
-        return (await auth.api.getAccessToken(call)).accessToken;
-      }
-      return (await auth.api.refreshToken(call)).accessToken;
-    })
-    .catch(() => undefined);
+  const token = fresh(await expiryOf(accountId))
+    ? (await auth.api.getAccessToken(call)).accessToken
+    : await db
+        .transaction(async (tx) => {
+          await tx.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${accountId}))`,
+          );
+          // Another request may have refreshed it while this one waited.
+          if (fresh(await expiryOf(accountId, tx))) {
+            return (await auth.api.getAccessToken(call)).accessToken;
+          }
+          return (await auth.api.refreshToken(call)).accessToken;
+        })
+        .catch(() => undefined);
   if (token) return token;
   throw new ReconnectError();
 }

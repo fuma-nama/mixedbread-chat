@@ -20,7 +20,7 @@ export interface Step {
   pattern?: string;
   filters?: { key: string; operator: string; value: unknown }[];
   /** The stores a `stores` step looked through. */
-  stores?: { name: string; connectors?: string[] }[];
+  stores?: { name: string }[];
   /** Chunks the step returned or read. */
   results?: number;
   error?: string;
@@ -96,11 +96,7 @@ const callSchema = z.object({
       z.object({ key: z.string(), operator: z.string(), value: z.unknown() }),
     )
     .nullish(),
-  stores: z
-    .array(
-      z.object({ name: z.string(), connectors: z.array(z.string()).nullish() }),
-    )
-    .nullish(),
+  stores: z.array(z.object({ name: z.string() })).nullish(),
   results: z.array(resultSchema).nullish(),
   error: z.object({ message: z.string() }).nullish(),
 });
@@ -120,16 +116,11 @@ const chunkSchema = z.object({
   hosted_tool_calls: z.array(z.unknown()).nullish(),
 });
 
-// The API also streams deprecated aliases of some step types.
 const kinds: Record<string, Step["kind"]> = {
   search_corpus_call: "search",
-  store_search_call: "search",
   grep_call: "grep",
-  store_grep_call: "grep",
   filter_chunks_call: "filter",
-  store_list_chunks_call: "filter",
   inspect_metadata_call: "metadata",
-  store_metadata_facets_call: "metadata",
   get_chunks_call: "read",
   list_stores_call: "stores",
 };
@@ -140,12 +131,13 @@ const statuses = {
   failed: "failed",
 } as const;
 
-const WITH_RESULTS = new Set([
-  "search_corpus",
-  "grep",
-  "filter_chunks",
-  "get_chunks",
-]);
+// Steps carry the chunks they read only when asked; extra keys are ignored.
+const include = [
+  "search_corpus_call.results",
+  "grep_call.results",
+  "filter_chunks_call.results",
+  "get_chunks_call.results",
+];
 
 function toolsFor(target: ResearchTarget): ChatCreateCompletionParams.Tool[] {
   if (target.kind === "web") {
@@ -177,19 +169,12 @@ export async function* research(
   target: ResearchTarget,
   signal?: AbortSignal,
 ): AsyncGenerator<ResearchEvent> {
-  const tools = toolsFor(target);
-  const include: string[] = [];
-  for (const tool of tools) {
-    if (tool.type && WITH_RESULTS.has(tool.type)) {
-      include.push(`${tool.type}_call.results`);
-    }
-  }
   const response = await client.chat
     .createCompletion(
       {
         model: "toast-1",
         messages: [{ role: "system", content: instructions() }, ...turns],
-        tools,
+        tools: toolsFor(target),
         include,
         context_management: { edits: [{ type: "prune_context" }] },
         stream: true,
@@ -287,16 +272,7 @@ function stepOf(call: z.infer<typeof callSchema>): Step {
   if (call.pattern) step.pattern = call.pattern;
   if (call.store && call.store !== WEB_STORE) step.store = call.store;
   if (call.metadata_filters?.length) step.filters = call.metadata_filters;
-  if (call.stores) {
-    step.stores = [];
-    for (const store of call.stores) {
-      step.stores.push(
-        store.connectors?.length
-          ? { name: store.name, connectors: store.connectors }
-          : { name: store.name },
-      );
-    }
-  }
+  if (call.stores) step.stores = call.stores;
   const results = call.results?.length ?? call.chunk_ids?.length;
   if (results !== undefined) step.results = results;
   if (call.error) step.error = call.error.message;

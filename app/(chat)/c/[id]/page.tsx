@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { Chat } from "@/components/chat/chat";
 import { getChat, getMessages } from "@/lib/db/queries";
+import { withNext } from "@/lib/safe-next";
 import { getViewer } from "@/lib/viewer";
 import { selectedModel, selectedReasoning } from "../../model";
 
@@ -42,8 +43,7 @@ export default async function ChatPage({
   ]);
   if (!readable) {
     // Signed out, it may be their own private chat.
-    if (!(await getViewer()))
-      redirect(`/login?next=${encodeURIComponent(`/c/${id}`)}`);
+    if (!(await getViewer())) redirect(withNext("/login", `/c/${id}`));
     notFound();
   }
   const { chat, owner } = readable;

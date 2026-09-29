@@ -79,14 +79,8 @@ test("citations are labelled across runs in order, and files learn their store",
       storeNames: new Map(),
     },
   ];
-  const { findings, sources } = combine(
-    [
-      { label: "Organization 1", connection: connections[0] },
-      { label: "Web", connection: connections[0] },
-    ],
-    results,
-    labels(),
-  );
+  const runs = planRuns({ web: true, organizations: {} }, [connections[0]]);
+  const { findings, sources } = combine(runs, results, labels());
   assert.equal(
     findings,
     "### Organization 1\n\nLeave[S1] is 30 days.\n\n### Web\n\nIt [S2]is sunny.",
@@ -106,7 +100,7 @@ test("citations are labelled across runs in order, and files learn their store",
 
 test("a failed run says so, and a single run gets no heading", () => {
   const failed = combine(
-    [{ label: "Web", connection: connections[0] }],
+    planRuns({ web: true, organizations: { "org-a": [] } }, [connections[0]]),
     [{ status: "failed", message: "Mixedbread could not be reached." }],
     labels(),
   );

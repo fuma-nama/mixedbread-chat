@@ -1,5 +1,6 @@
 import { choiceFor, type SourceSelection, searchesStores } from "../sources.ts";
 import { labelCitations, type Source } from "./citations.ts";
+import type { Connection } from "./organizations.ts";
 import type { Citation, ResearchTarget } from "./research.ts";
 
 /*
@@ -7,19 +8,19 @@ import type { Citation, ResearchTarget } from "./research.ts";
  * organization with stores picked, plus one for the web, side by side.
  */
 
-export interface Run<C> {
+export interface Run {
   /** "Web" or the organization's name. */
   label: string;
   /** Whose token the run uses; the web run borrows one, which it bills. */
-  connection: C;
+  connection: Connection;
   target: ResearchTarget;
 }
 
-export function planRuns<C extends { organizationId: string; name: string }>(
+export function planRuns(
   selection: SourceSelection,
-  connections: C[],
-): Run<C>[] {
-  const runs: Run<C>[] = [];
+  connections: Connection[],
+): Run[] {
+  const runs: Run[] = [];
   for (const connection of connections) {
     const choice = choiceFor(selection, connection.organizationId);
     if (!searchesStores(choice)) continue;
@@ -52,7 +53,7 @@ export type RunResult =
  * several. `nextLabel` continues the conversation's labels.
  */
 export function combine(
-  runs: { label: string; connection: { organizationId: string } }[],
+  runs: Run[],
   results: RunResult[],
   nextLabel: () => string,
 ): { findings: string; sources: Source[] } {

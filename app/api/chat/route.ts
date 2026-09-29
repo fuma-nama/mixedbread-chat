@@ -19,9 +19,10 @@ import {
 } from "@/lib/db/queries";
 import { languageModel } from "@/lib/language-model";
 import { answersPerDay } from "@/lib/limits";
+import { nextLabel } from "@/lib/messages";
 import { listModels, titleModel } from "@/lib/models";
 import { isReasoning, type Reasoning } from "@/lib/reasoning";
-import { type ChatMessage, nextLabel, searchTool } from "@/lib/search-tool";
+import { type ChatMessage, searchTool } from "@/lib/search-tool";
 import { scopeOf, sourceSelectionSchema } from "@/lib/sources";
 import { toastModel } from "@/lib/toast-model";
 import { getViewer } from "@/lib/viewer";
@@ -59,9 +60,8 @@ export async function POST(request: Request) {
   const chosen = (await listModels()).find((entry) => entry.id === model);
   if (!chosen) return new Response("Invalid request.", { status: 400 });
 
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const [answers, chat, saved] = await Promise.all([
-    countAnswers(user.id, since),
+    countAnswers(user.id, new Date(Date.now() - 24 * 60 * 60 * 1000)),
     getChat(id),
     getMessages(id),
   ]);

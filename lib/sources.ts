@@ -32,11 +32,6 @@ export interface SourceSelection {
   organizations: Record<string, StoreChoice>;
 }
 
-export const defaultSelection: SourceSelection = {
-  web: true,
-  organizations: {},
-};
-
 export type SearchScope = "web" | "docs" | "both" | "none";
 
 export function choiceFor(
@@ -72,15 +67,12 @@ export const sourceSelectionSchema = z.object({
 
 export const SELECTION_COOKIE = "sources";
 
-export function parseSelection(value: unknown): SourceSelection | undefined {
-  if (typeof value !== "string") return undefined;
+/** The selection the picker's cookie holds; by default, the web and every store. */
+export function parseSelection(value = ""): SourceSelection {
   try {
-    const parsed = sourceSelectionSchema.safeParse(
-      JSON.parse(decodeURIComponent(value)),
-    );
-    return parsed.success ? parsed.data : undefined;
+    return sourceSelectionSchema.parse(JSON.parse(decodeURIComponent(value)));
   } catch {
-    return undefined;
+    return { web: true, organizations: {} };
   }
 }
 

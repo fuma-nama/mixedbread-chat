@@ -2,7 +2,7 @@ import { and, count, desc, eq, exists, gt, ilike, or, sql } from "drizzle-orm";
 import { db } from ".";
 import { chat, message } from "./schema";
 
-export type Chat = typeof chat.$inferSelect;
+type Chat = typeof chat.$inferSelect;
 
 export function getChats(userId: string) {
   return db

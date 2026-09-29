@@ -6,24 +6,24 @@ A ChatGPT-style chat template that answers from your documents and the web, with
 
 ## Features
 
-- Sign in with Mixedbread, then search the stores of every organization you connect, and the web, with numbered citations and source previews
+- Sign in with Mixedbread, then search the web and the stores of every organization you connect
 - Pick what each question searches: the web, all of an organization's stores (Toast picks among them), or just some
-- Chat history with titles, search, rename, delete and share links
+- Numbered citations that preview the passage they quote; a cited PDF page opens with it marked
+- Any tool-calling model on [AI Gateway](https://vercel.com/ai-gateway), with the thinking efforts it takes, or Toast 1 answering straight from your sources
+- Chat history with titles, search, rename, delete and share links, which say when a chat quotes your stores
 - Edit a message or retry an answer, then flip between versions
-- Every tool-calling model on [AI Gateway](https://vercel.com/ai-gateway), each with the thinking efforts it takes, or Toast 1 answering straight from your sources
-- Citations preview the passage they quote, and a cited PDF page opens with that passage marked
-- Sharing a chat says when it quotes your stores
 - Reasoning, code highlighting and math
 
 ## How it works
 
 1. A chat model on AI Gateway runs the conversation.
-2. When it needs facts, it calls one `search` tool, which hands the request to [Toast 1](https://www.mixedbread.com/docs/agent/models), Mixedbread's search agent, with the signed-in person's own access. Toast searches the picked stores and the web, reads what it finds, and answers with citations. A Mixedbread token reaches one organization, so a search over several runs one Toast search per organization, side by side.
-3. The tool labels each cited source `[S1]`, `[S2]` so the chat model can cite the same evidence, and the UI renders those labels as numbered citations, with the passage Toast read.
+2. When it needs facts, it calls a `search` tool that hands the request to [Toast 1](https://www.mixedbread.com/docs/agent/models), Mixedbread's search agent, with the signed-in person's own access. Toast searches the picked stores and the web, reads what it finds, and answers with citations.
+3. The tool labels each cited source `[S1]`, `[S2]`, so the chat model can cite the same evidence, and the UI renders the labels as numbered citations.
 
-Pick Toast 1 as the model and there is no chat model in between: the same search runs with the whole conversation, and Toast's cited findings are the answer.
+A Mixedbread token reaches one organization, so a search over several runs one Toast search per organization, side by side. Pick Toast 1 as the model and there is no chat model in between: Toast searches with the whole conversation, and its cited findings are the answer.
 
-People sign in with their Mixedbread account through OAuth, handled by [Better Auth](https://www.better-auth.com). Each organization they connect is stored as its own account, with its tokens encrypted. Chats live in Postgres. Each message stores its parent, so edits and retries become branches of one chat.
+- **Sign-in**: Mixedbread OAuth through [Better Auth](https://www.better-auth.com). Each connected organization is its own account, with encrypted tokens.
+- **Chats**: stored in Postgres. Each message keeps its parent, so edits and retries branch one chat.
 
 ## Run locally
 

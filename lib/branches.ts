@@ -2,7 +2,7 @@
  * Messages form a tree: editing a message or retrying an answer adds a
  * sibling under the same parent. A conversation is one path through it.
  */
-export interface Branched {
+interface Branched {
   id: string;
   parentId: string | null;
 }

@@ -29,11 +29,11 @@ export type SearchOutput =
       ms: number;
     };
 
-export interface SearchContext {
+interface SearchContext {
   userId: string;
   connections: Connection[];
   selection: SourceSelection;
-  /** Continues the conversation's source labels, see {@link nextLabel}. */
+  /** Continues the conversation's source labels. */
   firstLabel: number;
   /**
    * Toast answers the chat itself: it reads the whole conversation, and its
@@ -49,7 +49,7 @@ type RunEvent =
 /** One Toast run; it reports how it ended instead of throwing, unless aborted. */
 async function* run(
   userId: string,
-  { connection, label, target }: Run<Connection>,
+  { connection, label, target }: Run,
   turns: Turn[],
   signal: AbortSignal | undefined,
 ): AsyncGenerator<RunEvent> {
@@ -195,7 +195,7 @@ function turnsOf(messages: ModelMessage[]): Turn[] {
   return turns;
 }
 
-function describe(runs: Run<Connection>[]): string {
+function describe(runs: Run[]): string {
   let web = false;
   let stores = false;
   for (const entry of runs) {
@@ -217,19 +217,3 @@ export type ChatMessage = UIMessage<
   { title: string },
   InferUITools<{ search: ReturnType<typeof searchTool> }>
 >;
-
-/** Source labels stay unique across a conversation, so a later answer can cite an earlier search. */
-export function nextLabel(messages: ChatMessage[]): number {
-  let last = 0;
-  for (const message of messages) {
-    for (const part of message.parts) {
-      if (part.type !== "tool-search" || part.state !== "output-available")
-        continue;
-      if (part.output.status !== "done") continue;
-      for (const source of part.output.sources) {
-        last = Math.max(last, Number(source.label.slice(1)));
-      }
-    }
-  }
-  return last + 1;
-}

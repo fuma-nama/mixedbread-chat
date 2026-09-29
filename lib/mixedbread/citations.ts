@@ -39,29 +39,12 @@ export function labelCitations(
     const key = citation.type === "url" ? citation.url : citation.chunkId;
     let source = sources.get(key);
     if (!source) {
-      if (citation.type === "url") {
-        source = {
-          label: nextLabel(),
-          type: "url",
-          url: citation.url,
-          title: citation.title,
-        };
-      } else {
-        source = {
-          label: nextLabel(),
-          type: "file",
-          fileId: citation.fileId,
-          filename: citation.filename,
-          chunkId: citation.chunkId,
-          storeId: citation.storeId,
-        };
-        if (citation.image) {
-          source.image = true;
-          source.claim = claimAt(chars, at);
-        }
-      }
       // A page cited at several chunks previews the first.
-      if (citation.excerpt) source.excerpt = citation.excerpt;
+      const { at: _, ...cited } = citation;
+      source = { label: nextLabel(), ...cited };
+      if (source.type === "file" && source.image) {
+        source.claim = claimAt(chars, at);
+      }
       sources.set(key, source);
     }
 
