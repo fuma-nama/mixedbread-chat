@@ -430,11 +430,7 @@ export function Chat({
 
       {empty && !readonly && (
         <div className="max-md:order-1 max-md:pb-3 md:flex-[1.2] md:pt-2">
-          <Suggestions
-            scope={scope}
-            onPick={send}
-            className="max-md:scroll-fade-x max-md:scrollbar-none max-md:flex-nowrap max-md:justify-start max-md:overflow-x-auto max-md:py-1 max-md:[--scroll-fade-size:1.25rem]"
-          />
+          <Suggestions scope={scope} onPick={send} />
         </div>
       )}
 

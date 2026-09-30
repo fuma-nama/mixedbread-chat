@@ -97,10 +97,6 @@ export function SignIn({
               {pending ? "Opening Mixedbread…" : "Continue with Mixedbread"}
             </span>
           </Button>
-          <p className="text-[12.5px] leading-relaxed text-pretty text-muted-foreground">
-            Mixedbread asks which organization to connect. Bread Chat searches
-            its stores with your access, and you can add more later.
-          </p>
         </div>
       ) : (
         <div className="mt-8 w-full rounded-xl bg-soft px-4 py-3.5 text-left text-[13px] leading-relaxed text-muted-foreground motion-safe:animate-rise motion-safe:[animation-delay:180ms]">

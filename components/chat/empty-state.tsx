@@ -24,11 +24,9 @@ export function EmptyState({ ref }: { ref?: React.Ref<HTMLDivElement> }) {
 export function Suggestions({
   scope,
   onPick,
-  className,
 }: {
   scope: SearchScope;
   onPick: (question: string) => void;
-  className?: string;
 }) {
   const questions = suggestionsFor(scope, usePickedStores());
   const [first] = useState(() => new Set(questions));
@@ -37,10 +35,7 @@ export function Suggestions({
   return (
     <ul
       aria-label="Suggestions"
-      className={cn(
-        "flex flex-wrap justify-center gap-2 px-4 outline-offset-2 outline-ring focus-visible:outline-2",
-        className,
-      )}
+      className="flex flex-wrap justify-center gap-2 px-4 outline-offset-2 outline-ring focus-visible:outline-2 max-md:scroll-fade-x max-md:scrollbar-none max-md:flex-nowrap max-md:justify-start max-md:overflow-x-auto max-md:py-1 max-md:[--scroll-fade-size:1.25rem]"
     >
       {questions.map((question, index) => {
         const arrival = first.has(question);
