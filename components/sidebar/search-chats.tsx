@@ -4,13 +4,14 @@ import { Autocomplete } from "@base-ui/react/autocomplete";
 import { Dialog } from "@base-ui/react/dialog";
 import { MessageSquareIcon, SearchIcon, SquarePenIcon } from "lucide-react";
 import Link from "next/link";
-import { createContext, use, useEffect, useState } from "react";
+import { createContext, use, useRef, useState } from "react";
+import useSWR from "swr";
 import { searchChats } from "@/app/(chat)/actions";
 import { navigate, openLink } from "@/components/chat/chat-cache";
 import { backdropClassName } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { useWindowEvent } from "@/hooks/use-window-event";
-import { type ChatSummary, useChatList } from "./chats-provider";
+import { useChatList } from "./chats-provider";
 
 const SearchContext = createContext<(open: boolean) => void>(() => {});
 
@@ -65,29 +66,18 @@ const item =
 function Palette({ onGo }: { onGo: () => void }) {
   const chats = useChatList();
   const [query, setQuery] = useState("");
+  // What is searched: the query once typing pauses.
+  const [searched, setSearched] = useState("");
+  const pause = useRef<ReturnType<typeof setTimeout>>(undefined);
   // Kept while the next query runs, so the list does not flicker empty.
-  const [results, setResults] = useState<{
-    query: string;
-    chats: ChatSummary[];
-  }>();
+  const { data: found, isLoading } = useSWR(
+    searched ? (["search", searched] as const) : null,
+    ([, text]) => searchChats(text),
+    { keepPreviousData: true },
+  );
   const trimmed = query.trim();
-  const searching = trimmed !== "" && results?.query !== trimmed;
-
-  useEffect(() => {
-    if (!trimmed) return;
-    let stale = false;
-    const timeout = setTimeout(() => {
-      void searchChats(trimmed).then((chats) => {
-        if (!stale) setResults({ query: trimmed, chats });
-      });
-    }, 180);
-    return () => {
-      stale = true;
-      clearTimeout(timeout);
-    };
-  }, [trimmed]);
-
-  const shown = trimmed ? (results?.chats ?? []) : chats.slice(0, 8);
+  const searching = trimmed !== "" && (trimmed !== searched || isLoading);
+  const shown = trimmed ? (found ?? []) : chats.slice(0, 8);
 
   return (
     <Autocomplete.Root
@@ -96,7 +86,11 @@ function Palette({ onGo }: { onGo: () => void }) {
       autoHighlight="always"
       keepHighlight
       value={query}
-      onValueChange={setQuery}
+      onValueChange={(value) => {
+        setQuery(value);
+        clearTimeout(pause.current);
+        pause.current = setTimeout(() => setSearched(value.trim()), 180);
+      }}
     >
       <div className="flex h-13 shrink-0 items-center gap-3 border-b border-soft px-4">
         <SearchIcon className="size-4 shrink-0 text-muted-foreground" />

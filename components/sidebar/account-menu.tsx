@@ -15,10 +15,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
+  storesOf,
+  useAllStores,
   useConnect,
   useOrganizations,
   useSources,
-  useStoresOf,
 } from "@/components/chat/sources-provider";
 import {
   AlertDialog,
@@ -230,7 +231,8 @@ function OrganizationRow({
   organization: Organization;
   onDisconnect?: () => void;
 }) {
-  const lapsed = useStoresOf(organization.id)?.status === "reconnect";
+  const lapsed =
+    storesOf(useAllStores(), organization.id).status === "reconnect";
   const { pending, connect } = useConnect();
 
   return (

@@ -19,6 +19,7 @@ import {
   type StoreOption,
 } from "@/lib/sources";
 import {
+  reloadStores,
   type StoresState,
   useConnect,
   useSelection,
@@ -43,7 +44,7 @@ export function OrganizationStores({
   words,
 }: {
   organization: Organization;
-  state: StoresState | undefined;
+  state: StoresState;
   /** Several organizations are connected, so each names itself. */
   named: boolean;
   /** While filtering, only stores with every word show, and nothing else. */
@@ -53,8 +54,8 @@ export function OrganizationStores({
   const selection = useSelection();
   const choice = choiceFor(selection, organization.id);
   const auto = choice === "auto";
-  const [unfold, setUnfold] = useState(() => state?.status !== "ok" || auto);
-  const stores = state?.status === "ok" ? state.stores : undefined;
+  const [unfold, setUnfold] = useState(() => state.status !== "ok" || auto);
+  const stores = state.status === "ok" ? state.stores : undefined;
   let shown = auto ? [] : (stores ?? []);
   if (words) {
     shown = [];
@@ -65,7 +66,7 @@ export function OrganizationStores({
   }
   const picked = new Set(Array.isArray(choice) ? choice : []);
   // Its grant lapsed, or it has no stores: nothing to pick from.
-  const searchable = state?.status !== "reconnect" && stores?.length !== 0;
+  const searchable = state.status !== "reconnect" && stores?.length !== 0;
   const name = named ? organization.name : "Stores";
 
   function choose(next: StoreChoice) {
@@ -82,7 +83,7 @@ export function OrganizationStores({
       <div
         role="group"
         aria-label={name}
-        aria-busy={!state || state.status === "loading" || undefined}
+        aria-busy={state.status === "loading" || undefined}
       >
         {!words && (named || searchable) && (
           <div className="sticky top-0 z-1 -mx-1 flex min-h-9 items-center gap-2.5 bg-popover px-3 py-1 text-[13.5px] text-foreground/90">
@@ -237,12 +238,10 @@ function StoresNotice({
   manual,
 }: {
   organization: Organization;
-  state: StoresState | undefined;
+  state: StoresState;
   manual: boolean;
 }) {
-  const sources = useSources();
-
-  if (!state || state.status === "loading") {
+  if (state.status === "loading") {
     if (!manual) return null;
     return (
       <p
@@ -260,7 +259,7 @@ function StoresNotice({
       <button
         type="button"
         data-row=""
-        onClick={() => sources.reload(organization.id)}
+        onClick={() => reloadStores(organization.id)}
         className={cn(row, "motion-safe:animate-swap-in")}
       >
         <RotateCwIcon className="size-4 text-muted-foreground" />

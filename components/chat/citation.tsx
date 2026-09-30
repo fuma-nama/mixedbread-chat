@@ -10,12 +10,7 @@ import { useCoarsePointer } from "@/hooks/use-media";
 import { createStore, type Store, useStore } from "@/hooks/use-store";
 import { originOf, type Source, sourceTitle } from "@/lib/mixedbread/citations";
 import type { Organization } from "@/lib/sources";
-import {
-  type FileSource,
-  loadPage,
-  PageView,
-  type ShownPage,
-} from "./page-view";
+import { type FileSource, PageView, type ShownPage } from "./page-view";
 import { useOrganizations } from "./sources-provider";
 
 type Lit = ReadonlySet<string> | undefined;
@@ -99,8 +94,7 @@ function view(
   trigger: HTMLElement | null,
 ) {
   cards.card.close();
-  const result = loadPage(source, organization);
-  cards.page.openWithPayload({ source, organization, trigger, result });
+  cards.page.openWithPayload({ source, organization, trigger });
 }
 
 // Pointers pass through the card, and a click on the trigger opens the source;

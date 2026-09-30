@@ -36,17 +36,6 @@ async function listStores(
   }
 }
 
-export async function listOrganizationStores(
-  organizationId: string,
-): Promise<StoresResult> {
-  const userId = await currentUserId();
-  const connection = (await listConnections(userId)).find(
-    (entry) => entry.organizationId === organizationId,
-  );
-  return connection ? listStores(userId, connection) : { status: "reconnect" };
-}
-
-/** One action for every organization, since a client runs server actions one at a time. */
 export async function listAllStores(): Promise<Record<string, StoresResult>> {
   const userId = await currentUserId();
   const connections = await listConnections(userId);

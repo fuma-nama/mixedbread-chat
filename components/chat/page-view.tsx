@@ -2,7 +2,8 @@
 
 import { cn } from "cn";
 import { ArrowUpRightIcon } from "lucide-react";
-import { Suspense, use, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import useSWR from "swr";
 import { openPage, type PageResult } from "@/app/(chat)/actions";
 import { SliceGlyph } from "@/components/brand/slice";
 import { Button } from "@/components/ui/button";
@@ -27,33 +28,6 @@ export interface ShownPage {
   organization: Organization;
   /** Where focus goes back to once it closes. */
   trigger: HTMLElement | null;
-  result: Promise<PageResult>;
-}
-
-// Its links expire within the hour, so a page opened again soon reuses them.
-const pages = new Map<
-  string,
-  { expires: number; result: Promise<PageResult> }
->();
-
-/** Starts loading a cited page, from an event: a server action can't run while rendering. */
-export function loadPage(
-  source: FileSource,
-  organization: Organization,
-): Promise<PageResult> {
-  const key = `${source.chunkId} ${source.claim}`;
-  const cached = pages.get(key);
-  if (cached && cached.expires > Date.now()) return cached.result;
-  const result = openPage({
-    organizationId: organization.id,
-    storeId: source.storeId,
-    chunkId: source.chunkId,
-    claim: source.claim,
-  }).catch((): PageResult => ({ status: "error" }));
-  pages.set(key, { expires: Date.now() + 10 * 60 * 1000, result });
-  // Only a page that opened is kept, so trying again loads it again.
-  void result.then(({ status }) => status === "ok" || pages.delete(key));
-  return result;
 }
 
 // A tall page fills the height its loading stand-in held, so the dialog
@@ -68,8 +42,18 @@ export function PageView({ handle }: { handle: DialogHandle<ShownPage> }) {
   );
 }
 
-function PageDialog({ source, organization, trigger, result }: ShownPage) {
-  const [page, setPage] = useState(result);
+function PageDialog({ source, organization, trigger }: ShownPage) {
+  // Its links expire within the hour, so a page opened again soon reuses them.
+  const { data: result, mutate } = useSWR(
+    {
+      organizationId: organization.id,
+      storeId: source.storeId,
+      chunkId: source.chunkId,
+      claim: source.claim,
+    },
+    (cited) => openPage(cited).catch((): PageResult => ({ status: "error" })),
+    { dedupingInterval: 10 * 60 * 1000 },
+  );
 
   return (
     <DialogContent finalFocus={() => trigger} className="max-w-xl gap-4">
@@ -85,27 +69,26 @@ function PageDialog({ source, organization, trigger, result }: ShownPage) {
           </DialogDescription>
         )}
       </DialogHeader>
-      <Suspense
-        fallback={
-          <p
-            role="status"
-            className={cn(
-              frame,
-              "flex items-center justify-center gap-2 text-[13px] text-muted-foreground",
-            )}
-          >
-            <Spinner aria-hidden="true" className="size-3.5" />
-            Loading the page…
-          </p>
-        }
-      >
+      {result ? (
         <PageBody
           title={source.filename}
           organization={organization}
-          page={page}
-          onRetry={() => setPage(loadPage(source, organization))}
+          result={result}
+          // Emptied first, so it shows as loading again.
+          onRetry={() => void mutate(undefined)}
         />
-      </Suspense>
+      ) : (
+        <p
+          role="status"
+          className={cn(
+            frame,
+            "flex items-center justify-center gap-2 text-[13px] text-muted-foreground",
+          )}
+        >
+          <Spinner aria-hidden="true" className="size-3.5" />
+          Loading the page…
+        </p>
+      )}
     </DialogContent>
   );
 }
@@ -116,15 +99,14 @@ const notice =
 function PageBody({
   title,
   organization,
-  page,
+  result,
   onRetry,
 }: {
   title: string;
   organization: Organization;
-  page: Promise<PageResult>;
+  result: PageResult;
   onRetry: () => void;
 }) {
-  const result = use(page);
   if (result.status === "ok") {
     return (
       <PageImage page={result.page} marked={result.marked} title={title} />

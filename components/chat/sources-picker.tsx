@@ -26,6 +26,7 @@ import {
 } from "./organization-stores";
 import {
   type StoresState,
+  storesOf,
   useAllStores,
   useOrganizations,
   useSelection,
@@ -121,7 +122,7 @@ const glyph =
 function reachOf(
   selection: SourceSelection,
   organizations: Organization[],
-  all: Record<string, StoresState>,
+  all: Record<string, StoresState> | undefined,
 ) {
   const { web } = selection;
   let docs = false;
@@ -136,9 +137,9 @@ function reachOf(
     const choice = choiceFor(selection, id);
     if (!searchesStores(choice)) continue;
     docs = true;
-    const state = all[id];
-    const stores = state?.status === "ok" ? state.stores : undefined;
-    lapsed ||= state?.status === "reconnect";
+    const state = storesOf(all, id);
+    const stores = state.status === "ok" ? state.stores : undefined;
+    lapsed ||= state.status === "reconnect";
     if (choice === "auto") {
       auto = true;
       continue;
@@ -146,7 +147,7 @@ function reachOf(
     if (choice === "all") {
       whole++;
       count += stores?.length ?? 0;
-      loading ||= !state || state.status === "loading";
+      loading ||= state.status === "loading";
       continue;
     }
     if (!stores) {
@@ -193,8 +194,8 @@ function Panel({
   const several = organizations.length > 1;
   let total = 0;
   for (const { id } of organizations) {
-    const state = all[id];
-    if (state?.status === "ok") total += state.stores.length;
+    const state = storesOf(all, id);
+    if (state.status === "ok") total += state.stores.length;
   }
   const filterable = total >= FILTER_FROM;
   const text = query.trim();
@@ -290,7 +291,7 @@ function Panel({
           <OrganizationStores
             key={organization.id}
             organization={organization}
-            state={all[organization.id]}
+            state={storesOf(all, organization.id)}
             named={several}
             words={words}
           />
