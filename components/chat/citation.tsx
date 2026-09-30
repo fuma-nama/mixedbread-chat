@@ -2,15 +2,7 @@
 
 import { cn } from "cn";
 import { ArrowUpRightIcon, ScanSearchIcon } from "lucide-react";
-import {
-  createContext,
-  memo,
-  use,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { createContext, memo, use, useId, useRef, useState } from "react";
 import type { PageResult } from "@/app/(chat)/actions";
 import { SliceGlyph } from "@/components/brand/slice";
 import {
@@ -135,13 +127,13 @@ function view(cards: Cards, page: Omit<Page, "result" | "open">) {
   cards.page.set({ ...page, result, open: true });
 }
 
-const Card = memo(function Card({ cards }: { cards: Cards }) {
+function Card({ cards }: { cards: Cards }) {
   return (
     <HoverCard handle={cards.handle}>
       {({ payload }) => <CardContent preview={payload} cards={cards} />}
     </HoverCard>
   );
-});
+}
 
 /**
  * The card is only a preview: pointers pass through it to what lies under,
@@ -180,7 +172,7 @@ function CardContent({ preview, cards }: { preview?: Preview; cards: Cards }) {
   );
 }
 
-const PageViews = memo(function PageViews({ cards }: { cards: Cards }) {
+function PageViews({ cards }: { cards: Cards }) {
   const page = useStore(cards.page, (page) => page);
   if (!page) return null;
   return (
@@ -201,7 +193,7 @@ const PageViews = memo(function PageViews({ cards }: { cards: Cards }) {
       finalFocus={page.trigger}
     />
   );
-});
+}
 
 /**
  * Anything that previews a source in the chat's card. With a mouse it
@@ -254,10 +246,7 @@ export function SourcePreview({
     source.type === "file" && source.image
       ? organizations.find((entry) => entry.id === source.organizationId)
       : undefined;
-  const preview = useMemo(
-    () => ({ id, source, number, organization, side, align }),
-    [id, source, number, organization, side, align],
-  );
+  const preview = { id, source, number, organization, side, align };
   const open =
     organization && source.type === "file"
       ? () => view(cards, { source, organization, trigger })

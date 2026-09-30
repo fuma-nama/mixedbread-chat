@@ -112,26 +112,22 @@ export function Chat({
       ? reasoning
       : "auto";
 
-  const transport = useMemo(
-    () =>
-      new DefaultChatTransport<ChatMessage>({
-        body: () => ({
-          model,
-          reasoning: effort,
-          sources: sources.selection.get(),
-        }),
-        // New messages and retries both end with the user message to answer.
-        prepareSendMessagesRequest: ({ id, messages, body }) => ({
-          body: {
-            ...body,
-            id,
-            message: messages.at(-1),
-            parentId: messages.at(-2)?.id ?? null,
-          },
-        }),
-      }),
-    [model, effort, sources],
-  );
+  const transport = new DefaultChatTransport<ChatMessage>({
+    body: () => ({
+      model,
+      reasoning: effort,
+      sources: sources.selection.get(),
+    }),
+    // New messages and retries both end with the user message to answer.
+    prepareSendMessagesRequest: ({ id, messages, body }) => ({
+      body: {
+        ...body,
+        id,
+        message: messages.at(-1),
+        parentId: messages.at(-2)?.id ?? null,
+      },
+    }),
+  });
 
   const {
     messages,
@@ -183,7 +179,7 @@ export function Chat({
       ? [...messages, PENDING]
       : messages;
   const citations = citationsAlong(rendered);
-  const children = useMemo(() => childrenOf(tree), [tree]);
+  const children = childrenOf(tree);
   const failure = error ? failureOf(error) : undefined;
   const retryLabel = current && `Try again with ${current.name}`;
   // Screen readers hear where a search is, not every token of it.

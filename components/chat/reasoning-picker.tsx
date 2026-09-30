@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "cn";
-import { memo, useState } from "react";
+import { useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,7 +29,7 @@ import { Dial } from "./dial";
  * For a model that takes no effort it folds away, and unfolds again for one
  * that does.
  */
-export const ReasoningPicker = memo(function ReasoningPicker({
+export function ReasoningPicker({
   value,
   efforts,
   onChange,
@@ -107,7 +107,7 @@ export const ReasoningPicker = memo(function ReasoningPicker({
       </div>
     </div>
   );
-});
+}
 
 /**
  * The level's name. On a change the old word rolls out as the new one rolls

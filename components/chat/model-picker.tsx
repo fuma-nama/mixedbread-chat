@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDownIcon } from "lucide-react";
-import { memo, useMemo, useState } from "react";
+import { memo, useState } from "react";
 import {
   Combobox,
   ComboboxCollection,
@@ -45,7 +45,7 @@ function searchText(model: Model) {
 }
 
 /** Picks the chat model; the choice is kept for the next visit. */
-export const ModelPicker = memo(function ModelPicker({
+export function ModelPicker({
   value,
   onChange,
 }: {
@@ -55,44 +55,40 @@ export const ModelPicker = memo(function ModelPicker({
   const models = useModels();
   const { contains } = useComboboxFilter();
   const [query, setQuery] = useState("");
-  const catalog = useMemo(() => {
-    const groups = groupsOf(models);
-    // Grouped data needs the item type spelled out, or it is inferred as the group.
-    const items = createComboboxItems<Model, string>(groups.all, {
-      getValue: (model) => model.id,
-      getLabel: (model) => model.name,
-    });
-    return { ...groups, items };
-  }, [models]);
+  const catalog = groupsOf(models);
+  // Grouped data needs the item type spelled out, or it is inferred as the group.
+  const items = createComboboxItems<Model, string>(catalog.all, {
+    getValue: (model) => model.id,
+    getLabel: (model) => model.name,
+  });
   const text = query.trim();
 
   // The featured models, plus the one picked if it isn't among them, until a
   // search reaches the whole catalog. Each word matches the name or the
   // provider, so "claude 5.5" and "openai sol" both find what they mean.
-  const shown = useMemo(() => {
-    if (!text) {
-      const picked = catalog.more.find((model) => model.id === value);
-      return picked
-        ? [...catalog.featured, { provider: MORE, items: [picked] }]
-        : catalog.featured;
-    }
+  let shown: ProviderGroup[] = [];
+  if (text) {
     const words = text.split(/\s+/);
-    const found: ProviderGroup[] = [];
     for (const group of catalog.all) {
-      const items: Model[] = [];
+      const found: Model[] = [];
       for (const model of group.items) {
         if (words.every((word) => contains(model, word, searchText))) {
-          items.push(model);
+          found.push(model);
         }
       }
-      if (items.length > 0) found.push({ provider: group.provider, items });
+      if (found.length > 0)
+        shown.push({ provider: group.provider, items: found });
     }
-    return found;
-  }, [catalog, text, value, contains]);
+  } else {
+    const picked = catalog.more.find((model) => model.id === value);
+    shown = picked
+      ? [...catalog.featured, { provider: MORE, items: [picked] }]
+      : catalog.featured;
+  }
 
   return (
     <Combobox
-      items={catalog.items}
+      items={items}
       filteredItems={shown}
       inputValue={query}
       // A pick clears the field at once; the results it found stay while the
@@ -146,7 +142,7 @@ export const ModelPicker = memo(function ModelPicker({
       </ComboboxContent>
     </Combobox>
   );
-});
+}
 
 /** Memoized, so a broad search re-renders only the rows that come and go. */
 const ModelItem = memo(function ModelItem({ model }: { model: Model }) {

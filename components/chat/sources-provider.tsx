@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useEffect, useMemo, useState } from "react";
+import { createContext, use, useEffect, useState } from "react";
 import {
   disconnectOrganization,
   listAllStores,
@@ -193,17 +193,15 @@ export function usePickedStores(): StoreOption[] {
   const organizations = useOrganizations();
   const selection = useSelection();
   const all = useAllStores();
-  return useMemo(() => {
-    const picked: StoreOption[] = [];
-    for (const organization of organizations) {
-      const choice = choiceFor(selection, organization.id);
-      const state = all[organization.id];
-      if (typeof choice === "string" || state?.status !== "ok") continue;
-      const ids = new Set(choice);
-      for (const store of state.stores) {
-        if (ids.has(store.id)) picked.push(store);
-      }
+  const picked: StoreOption[] = [];
+  for (const organization of organizations) {
+    const choice = choiceFor(selection, organization.id);
+    const state = all[organization.id];
+    if (typeof choice === "string" || state?.status !== "ok") continue;
+    const ids = new Set(choice);
+    for (const store of state.stores) {
+      if (ids.has(store.id)) picked.push(store);
     }
-    return picked;
-  }, [organizations, selection, all]);
+  }
+  return picked;
 }

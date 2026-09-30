@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ChatItem } from "./chat-item";
 import type { ChatSummary } from "./chats-provider";
 import { HoverArea } from "./hover-area";
@@ -24,10 +24,7 @@ export function ChatList({
   onOpen: (event: { preventDefault: () => void }, href: string) => void;
   onDelete: (chats: ChatSummary[]) => void;
 }) {
-  const groups = useMemo(
-    () => groupByDay(chats, now, timeZone),
-    [chats, now, timeZone],
-  );
+  const groups = groupByDay(chats, now, timeZone);
   // Chats listed later than this slide in; the ones a page loads with do not.
   const [listed] = useState(() => new Set(chats.map((chat) => chat.id)));
 
