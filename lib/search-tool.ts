@@ -139,9 +139,8 @@ export function searchTool(context: SearchContext) {
         yield { status: "searching", calls: Array.from(steps.values()) };
       }
 
-      if (runs.length > 0 && !results.some((r) => r.type === "answer")) {
-        const [first] = results;
-        throw new Error(first?.type === "failed" ? first.message : undefined);
+      if (runs.length > 0 && results.every((r) => r.type === "failed")) {
+        throw new Error(results[0].message);
       }
       const { findings, sources } = combine(runs, results, () => `S${label++}`);
       yield {
@@ -187,18 +186,10 @@ function turnsOf(messages: ModelMessage[]): Turn[] {
 }
 
 function describe(runs: Run[]): string {
-  let web = false;
-  let stores = false;
-  for (const entry of runs) {
-    if (entry.target.kind === "web") web = true;
-    else stores = true;
-  }
-  const reach =
-    web && stores
-      ? "the user's Mixedbread stores and the web"
-      : stores
-        ? "the user's Mixedbread stores"
-        : "the web";
+  const web = runs.some(({ target }) => target.kind === "web");
+  const reach = runs.some(({ target }) => target.kind === "stores")
+    ? `the user's Mixedbread stores${web ? " and the web" : ""}`
+    : "the web";
   return `Search ${reach} with Toast, Mixedbread's search agent. It does not see this conversation, so write a complete, self-contained request.`;
 }
 
