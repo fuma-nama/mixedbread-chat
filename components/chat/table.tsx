@@ -16,7 +16,6 @@ const BYTE_ORDER_MARK = String.fromCharCode(0xfeff);
 
 export function Table({
   node: _,
-  children,
   ...props
 }: React.ComponentProps<"table"> & ExtraProps) {
   const ref = useRef<HTMLTableElement>(null);
@@ -31,9 +30,7 @@ export function Table({
           {...props}
           data-streamdown="table"
           className="w-full divide-y"
-        >
-          {children}
-        </table>
+        />
       </div>
       {!isAnimating && (
         <BlockActions
