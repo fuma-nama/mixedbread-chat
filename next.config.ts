@@ -9,4 +9,6 @@ export default {
   },
   reactCompiler: true,
   experimental: { turbopackRustReactCompiler: true },
+  // Keeps `next dev` from writing AGENTS.md and CLAUDE.md into the project.
+  agentRules: false,
 } satisfies NextConfig;
