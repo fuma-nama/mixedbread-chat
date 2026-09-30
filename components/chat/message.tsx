@@ -65,7 +65,6 @@ export const MessageView = memo(function MessageView({
     <CitationHighlight>
       <div
         ref={ref}
-        data-role={message.role}
         data-message-id={message.id}
         aria-busy={live || undefined}
         className={cn(
