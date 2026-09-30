@@ -27,8 +27,7 @@ interface ButtonVariants {
   className?: string;
 }
 
-/** The button's classes, with `className` merged over the variant's own. */
-function buttonVariants({
+export function buttonVariants({
   variant = "default",
   size = "default",
   className,
@@ -41,7 +40,7 @@ function buttonVariants({
   );
 }
 
-function Button({
+export function Button({
   variant,
   size,
   className,
@@ -49,11 +48,8 @@ function Button({
 }: Omit<ButtonPrimitive.Props, "className"> & ButtonVariants) {
   return (
     <ButtonPrimitive
-      data-slot="button"
       className={buttonVariants({ variant, size, className })}
       {...props}
     />
   );
 }
-
-export { Button, buttonVariants };

@@ -1,5 +1,5 @@
 /** Crossfades between two icons in one spot, like copy turning into a check. */
-function IconSwap({
+export function IconSwap({
   swapped,
   from,
   to,
@@ -12,7 +12,7 @@ function IconSwap({
     "col-start-1 row-start-1 flex transition-[opacity,scale,filter] duration-200 ease-smooth data-[shown=false]:scale-50 data-[shown=false]:opacity-0 data-[shown=false]:blur-[2px] motion-reduce:transition-none";
 
   return (
-    <span data-slot="icon-swap" className="inline-grid place-items-center">
+    <span className="inline-grid place-items-center">
       <span data-shown={!swapped} aria-hidden={swapped} className={layer}>
         {from}
       </span>
@@ -22,5 +22,3 @@ function IconSwap({
     </span>
   );
 }
-
-export { IconSwap };

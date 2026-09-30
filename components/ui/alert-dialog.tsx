@@ -3,71 +3,41 @@
 import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
-import {
-  backdropClassName,
-  DialogDescription,
-  DialogFooter,
-  DialogTitle,
-  popupClassName,
+import { backdropClassName, popupClassName } from "@/components/ui/dialog";
+
+export {
+  DialogDescription as AlertDialogDescription,
+  DialogFooter as AlertDialogFooter,
+  DialogTitle as AlertDialogTitle,
 } from "@/components/ui/dialog";
 
-const AlertDialog = AlertDialogPrimitive.Root;
+export const AlertDialog = AlertDialogPrimitive.Root;
 
-const createAlertDialogHandle = AlertDialogPrimitive.createHandle;
+export const createAlertDialogHandle = AlertDialogPrimitive.createHandle;
 
-type AlertDialogHandle<Payload> = AlertDialogPrimitive.Handle<Payload>;
+export type AlertDialogHandle<Payload> = AlertDialogPrimitive.Handle<Payload>;
 
-function AlertDialogContent({
-  className,
-  ...props
-}: AlertDialogPrimitive.Popup.Props) {
+export function AlertDialogContent(props: AlertDialogPrimitive.Popup.Props) {
   return (
     <AlertDialogPrimitive.Portal>
-      <AlertDialogPrimitive.Backdrop
-        data-slot="alert-dialog-overlay"
-        className={backdropClassName}
-      />
+      <AlertDialogPrimitive.Backdrop className={backdropClassName} />
       <AlertDialogPrimitive.Popup
-        data-slot="alert-dialog-content"
-        className={cn(popupClassName, "max-w-sm", className)}
+        className={cn(popupClassName, "max-w-sm")}
         {...props}
       />
     </AlertDialogPrimitive.Portal>
   );
 }
 
-function AlertDialogHeader({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="alert-dialog-header"
-      className={cn("flex flex-col gap-1.5", className)}
-      {...props}
-    />
-  );
+export function AlertDialogHeader({ children }: { children: React.ReactNode }) {
+  return <div className="flex flex-col gap-1.5">{children}</div>;
 }
 
-function AlertDialogCancel(props: AlertDialogPrimitive.Close.Props) {
+export function AlertDialogCancel(props: AlertDialogPrimitive.Close.Props) {
   return (
     <AlertDialogPrimitive.Close
-      data-slot="alert-dialog-cancel"
       render={<Button variant="ghost" />}
       {...props}
     />
   );
 }
-
-// An alert dialog's title, description and footer are a dialog's.
-export {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  DialogDescription as AlertDialogDescription,
-  DialogFooter as AlertDialogFooter,
-  type AlertDialogHandle,
-  AlertDialogHeader,
-  DialogTitle as AlertDialogTitle,
-  createAlertDialogHandle,
-};

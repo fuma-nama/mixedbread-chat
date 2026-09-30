@@ -1,9 +1,8 @@
 import { cn } from "cn";
 
-function Spinner({ className, ...props }: React.ComponentProps<"svg">) {
+export function Spinner({ className, ...props }: React.ComponentProps<"svg">) {
   return (
     <svg
-      data-slot="spinner"
       role="status"
       aria-label="Loading"
       viewBox="0 0 16 16"
@@ -19,5 +18,3 @@ function Spinner({ className, ...props }: React.ComponentProps<"svg">) {
     </svg>
   );
 }
-
-export { Spinner };
