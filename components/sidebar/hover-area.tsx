@@ -22,9 +22,8 @@ export function HoverArea({
   );
 }
 
-function follow(area: HTMLDivElement | null) {
-  const block = area?.firstElementChild;
-  if (!area || !(block instanceof HTMLElement)) return;
+function follow(area: HTMLDivElement) {
+  const block = area.firstElementChild as HTMLElement;
   let current: HTMLElement | null = null;
 
   const show = (row: HTMLElement | null) => {
@@ -42,22 +41,17 @@ function follow(area: HTMLDivElement | null) {
     block.style.height = `${row.offsetHeight}px`;
     block.style.opacity = "1";
   };
-  const rowOf = (target: EventTarget | null) =>
-    target instanceof Element
-      ? target.closest<HTMLElement>("[data-row]")
-      : null;
+  const rowOf = (event: Event) =>
+    (event.target as Element).closest<HTMLElement>("[data-row]");
 
   // Over a heading or a gap, it holds its place instead of flickering off.
   const onOver = (event: PointerEvent) => {
-    const row = rowOf(event.target);
+    const row = rowOf(event);
     if (row && event.pointerType === "mouse") show(row);
   };
   const onLeave = () => show(null);
   const onFocus = (event: FocusEvent) => {
-    const target = event.target;
-    if (target instanceof Element && target.matches(":focus-visible")) {
-      show(rowOf(target));
-    }
+    if ((event.target as Element).matches(":focus-visible")) show(rowOf(event));
   };
   const onBlur = () => {
     if (!area.matches(":hover")) show(null);
