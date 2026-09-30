@@ -20,6 +20,16 @@ function* sourcesOf(message: ChatMessage): Generator<Source> {
   }
 }
 
+/** Whether a search in the messages found files in the user's stores. */
+export function searchedStores(messages: ChatMessage[]): boolean {
+  for (const message of messages) {
+    for (const source of sourcesOf(message)) {
+      if (source.type === "file") return true;
+    }
+  }
+  return false;
+}
+
 /** Source labels stay unique across a conversation, so a later answer can cite an earlier search. */
 export function nextLabel(messages: ChatMessage[]): number {
   let last = 0;

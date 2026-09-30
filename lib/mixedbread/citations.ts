@@ -76,3 +76,9 @@ function claimAt(chars: string[], at: number): string {
 export function sourceTitle(source: Source): string {
   return source.type === "url" ? source.title || source.url : source.filename;
 }
+
+/** Where a source is from: the store it was found in, or its site. */
+export function originOf(source: Source): string {
+  if (source.type === "file") return source.storeName ?? "Your files";
+  return URL.parse(source.url)?.hostname.replace(/^www\./, "") ?? source.url;
+}

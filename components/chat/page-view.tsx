@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
-import type { Source } from "@/lib/mixedbread/citations";
+import { originOf, type Source } from "@/lib/mixedbread/citations";
 import type { Page } from "@/lib/mixedbread/files";
 import type { Organization } from "@/lib/sources";
 import { useConnect } from "./sources-provider";
@@ -60,7 +60,6 @@ export function PageView({
   organization,
   page,
   onRetry,
-  origin,
   open,
   onOpenChange,
   finalFocus,
@@ -70,7 +69,6 @@ export function PageView({
   /** The page loading, from `loadPage`. */
   page: Promise<PageResult>;
   onRetry: () => void;
-  origin: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Where focus goes back to once it closes. */
@@ -82,7 +80,7 @@ export function PageView({
         <DialogHeader>
           <p className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
             <SliceGlyph className="size-3 text-berry" />
-            <span className="truncate font-mono">{origin}</span>
+            <span className="truncate font-mono">{originOf(source)}</span>
           </p>
           <DialogTitle className="truncate">{source.filename}</DialogTitle>
           {source.claim && (

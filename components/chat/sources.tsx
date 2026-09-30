@@ -3,7 +3,8 @@
 import { cn } from "cn";
 import { SliceGlyph } from "@/components/brand/slice";
 import type { Citations } from "@/lib/messages";
-import { originOf, SourcePreview } from "./citation";
+import { originOf } from "@/lib/mixedbread/citations";
+import { SourcePreview } from "./citation";
 
 /** The sources a message cited, numbered like its inline citations. */
 export function Sources({

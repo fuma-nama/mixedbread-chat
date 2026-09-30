@@ -2,9 +2,9 @@
 
 import { cn } from "cn";
 import { SliceGlyph } from "@/components/brand/slice";
-import { type Source, sourceTitle } from "@/lib/mixedbread/citations";
+import { originOf, type Source, sourceTitle } from "@/lib/mixedbread/citations";
 import { More, useFirst } from "./activity";
-import { badge, originOf, SourcePreview, useHighlight } from "./citation";
+import { badge, SourcePreview, useHighlight } from "./citation";
 
 /** Listed until the rest are asked for. */
 const FIRST_FILES = 6;

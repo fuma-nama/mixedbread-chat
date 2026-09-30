@@ -15,7 +15,7 @@ import { setChatLeaf } from "@/app/(chat)/actions";
 import { useChats, useChatTitle } from "@/components/sidebar/chats-provider";
 import { useReducedMotion } from "@/hooks/use-media";
 import { childrenOf, latestLeaf, pathTo, withPath } from "@/lib/branches";
-import { citationsAlong } from "@/lib/messages";
+import { citationsAlong, searchedStores } from "@/lib/messages";
 import type { Reasoning } from "@/lib/reasoning";
 import type { ChatMessage } from "@/lib/search-tool";
 import type { SearchScope } from "@/lib/sources";
@@ -33,7 +33,7 @@ import {
   Unanswered,
   wasRejected,
 } from "./notices";
-import { ShareDialog, searchedStores } from "./share-dialog";
+import { ShareDialog } from "./share-dialog";
 import { useSearchScope, useSources } from "./sources-provider";
 
 /** A message with its place in the chat's branch tree. */

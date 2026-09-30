@@ -15,16 +15,10 @@ import {
 } from "@/components/ui/hover-card";
 import { useCoarsePointer } from "@/hooks/use-media";
 import { createStore, type Store, useStore } from "@/hooks/use-store";
-import { type Source, sourceTitle } from "@/lib/mixedbread/citations";
+import { originOf, type Source, sourceTitle } from "@/lib/mixedbread/citations";
 import type { Organization } from "@/lib/sources";
 import { loadPage, PageView } from "./page-view";
 import { useOrganizations } from "./sources-provider";
-
-/** Where a source is from: the store it was found in, or its site. */
-export function originOf(source: Source): string {
-  if (source.type === "file") return source.storeName ?? "Your files";
-  return URL.parse(source.url)?.hostname.replace(/^www\./, "") ?? source.url;
-}
 
 type Lit = ReadonlySet<string> | undefined;
 
@@ -187,7 +181,6 @@ function PageViews({ cards }: { cards: Cards }) {
           result: loadPage(page.source, page.organization),
         })
       }
-      origin={originOf(page.source)}
       open={page.open}
       onOpenChange={(open) => cards.page.set({ ...page, open })}
       finalFocus={page.trigger}

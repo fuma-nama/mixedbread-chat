@@ -16,22 +16,6 @@ import {
 import { IconSwap } from "@/components/ui/icon-swap";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
-import type { ChatMessage } from "@/lib/search-tool";
-
-/** Whether a search in the chat found files in the user's stores. */
-export function searchedStores(messages: ChatMessage[]): boolean {
-  for (const message of messages) {
-    for (const part of message.parts) {
-      if (part.type !== "tool-search" || part.state !== "output-available")
-        continue;
-      if (part.output.status !== "done") continue;
-      for (const source of part.output.sources) {
-        if (source.type === "file") return true;
-      }
-    }
-  }
-  return false;
-}
 
 export function ShareDialog({
   chatId,
