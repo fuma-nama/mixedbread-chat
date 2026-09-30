@@ -5,7 +5,7 @@ import { type Effort, reasoningLevels } from "./reasoning.ts";
 export interface Model {
   id: string;
   name: string;
-  /** Its name in the featured list, or the Gateway's ID for the rest. */
+  /** Its provider's name in the featured list, or else the Gateway's ID. */
   provider: string;
   featured: boolean;
   /** The efforts it takes besides Auto, least to most. */
@@ -35,12 +35,17 @@ const featured = new Map([
   ["alibaba/qwen3.8-max", "Alibaba"],
 ]);
 
+// A featured provider's name, which its other models share.
+const providers = new Map<string, string>();
+for (const [id, name] of featured) providers.set(id.split("/")[0], name);
+
 /** A deployment's own list, such as a demo's, the first picked by default. */
 const allowed = process.env.ALLOWED_MODELS?.match(/[^\s,]+/g) ?? undefined;
 
 export const defaultModel = allowed?.[0] ?? "anthropic/claude-sonnet-5";
 
-export const titleModel = "openai/gpt-5.6-luna";
+/** Names chats: small, quick, and on AI Gateway's free tier, so any deployment has it. */
+export const titleModel = "openai/gpt-4.1-nano";
 
 const CATALOG = "https://ai-gateway.vercel.sh/v1/models";
 const REFRESH = 60 * 60 * 1000;
@@ -106,7 +111,7 @@ async function fetchCatalog(): Promise<Model[]> {
     const model: Model = {
       id,
       name,
-      provider: provider ?? owned_by,
+      provider: provider ?? providers.get(owned_by) ?? owned_by,
       // Models listed by hand show without searching.
       featured: provider !== undefined || allowed !== undefined,
       efforts: effortsOf(entry.data.reasoning_options),

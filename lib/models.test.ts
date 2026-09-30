@@ -45,6 +45,12 @@ test("lists tool-calling language models, featured first, with the efforts they 
         },
         {
           ...language,
+          id: "openai/gpt-oss-20b",
+          name: "gpt-oss-20b",
+          owned_by: "openai",
+        },
+        {
+          ...language,
           id: "acme/embed",
           name: "Embed",
           owned_by: "acme",
@@ -83,6 +89,13 @@ test("lists tool-calling language models, featured first, with the efforts they 
       provider: "Anthropic",
       featured: true,
       efforts: ["none", "low", "high", "xhigh"],
+    },
+    {
+      id: "openai/gpt-oss-20b",
+      name: "gpt-oss-20b",
+      provider: "OpenAI",
+      featured: false,
+      efforts: [],
     },
     {
       id: "zai/glm-6",
