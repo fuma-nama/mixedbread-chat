@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { redirect, usePathname } from "next/navigation";
 import useSWRImmutable from "swr/immutable";
 import { SliceGlyph } from "@/components/brand/slice";
 import { buttonVariants } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   openLink,
 } from "./chat-cache";
 import { ChatHeader } from "./chat-header";
+import { useOrganizations } from "./sources-provider";
 
 const NEW_CHAT: CachedChat = {
   title: "",
@@ -27,26 +28,37 @@ const NEW_CHAT: CachedChat = {
 /**
  * The open chat. It follows the URL, which `navigate` changes in place, so
  * switching chats needs no server-rendered page. The page it was rendered
- * with seeds it: a chat, or with none, the id of a new one.
+ * with seeds it: a chat, `null` for one that can't be read, or with none,
+ * the id of a new one.
  */
 export function ChatScreen({
   id: seedId,
   chat: seed,
 }: {
   id: string;
-  chat?: CachedChat;
+  chat?: CachedChat | null;
 }) {
-  const draftId = useStore(draft, (id) => id) || (seed ? "" : seedId);
+  const draftId =
+    useStore(draft, (id) => id) || (seed === undefined ? seedId : "");
   const id = usePathname().match(/^\/c\/([^/]+)/)?.[1] ?? draftId;
+  const signedIn = useOrganizations().length > 0;
+  // As the page of a new chat does, for someone reading a shared one.
+  if (id === draftId && !signedIn) redirect("/login");
   const fallback = id === draftId ? NEW_CHAT : id === seedId ? seed : undefined;
   return <OpenChat key={id} id={id} fallback={fallback} />;
 }
 
-function OpenChat({ id, fallback }: { id: string; fallback?: CachedChat }) {
+function OpenChat({
+  id,
+  fallback,
+}: {
+  id: string;
+  fallback?: CachedChat | null;
+}) {
   // A chat the page brought, or a new one, is never fetched: only kept.
   const { data = fallback } = useSWRImmutable(
     chatKey(id),
-    fallback ? null : fetchChat,
+    fallback === undefined ? fetchChat : null,
   );
 
   if (data === undefined) return <ChatSkeleton />;
@@ -76,7 +88,7 @@ export function ChatSkeleton() {
   );
 }
 
-export function ChatMissing() {
+function ChatMissing() {
   return (
     <>
       <title>Chat not available · Bread Chat</title>

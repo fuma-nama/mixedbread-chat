@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { ChatScreen } from "@/components/chat/chat-screen";
 import { withNext } from "@/lib/safe-next";
 import { getViewer, readChat } from "@/lib/viewer";
@@ -22,10 +22,7 @@ export default async function ChatPage({
 }) {
   const { id } = await params;
   const chat = await readChat(id);
-  if (!chat) {
-    // Signed out, it may be their own private chat.
-    if (!(await getViewer())) redirect(withNext("/login", `/c/${id}`));
-    notFound();
-  }
-  return <ChatScreen id={id} chat={chat} />;
+  // Signed out, it may be their own private chat.
+  if (!chat && !(await getViewer())) redirect(withNext("/login", `/c/${id}`));
+  return <ChatScreen id={id} chat={chat ?? null} />;
 }
