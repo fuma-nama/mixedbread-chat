@@ -260,7 +260,7 @@ function StoresNotice({
       <button
         type="button"
         data-row=""
-        onClick={() => sources.load(organization.id, true)}
+        onClick={() => sources.reload(organization.id)}
         className={cn(row, "motion-safe:animate-swap-in")}
       >
         <RotateCwIcon className="size-4 text-muted-foreground" />

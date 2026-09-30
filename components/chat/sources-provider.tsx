@@ -32,7 +32,7 @@ interface Sources {
   stores: Store<Record<string, StoresState>>;
   /** Also remembered for the next visit. */
   select: (selection: SourceSelection) => void;
-  load: (organizationId: string, force?: boolean) => void;
+  reload: (organizationId: string) => void;
   prefetch: () => void;
   /** Leaves for Mixedbread to grant an organization, then comes back here. */
   connect: () => Promise<void>;
@@ -104,9 +104,8 @@ function createSources(
       selection.set(next);
       remember(SELECTION_COOKIE, serializeSelection(next));
     },
-    load(organizationId, force = false) {
-      const current = stores.get()[organizationId];
-      if (current && (current.status === "loading" || !force)) return;
+    reload(organizationId) {
+      if (stores.get()[organizationId]?.status === "loading") return;
       const ids = [organizationId];
       patch(ids, () => LOADING);
       listOrganizationStores(organizationId).then(
