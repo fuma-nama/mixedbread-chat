@@ -58,10 +58,10 @@ export function OrganizationStores({
   const stores = state.status === "ok" ? state.stores : undefined;
   let shown = auto ? [] : (stores ?? []);
   if (words) {
-    shown = [];
-    for (const store of stores ?? []) {
-      if (matches(store, words)) shown.push(store);
-    }
+    shown = (stores ?? []).filter((store) => {
+      const text = `${store.name} ${store.description ?? ""}`.toLowerCase();
+      return words.every((word) => text.includes(word));
+    });
     if (shown.length === 0) return null;
   }
   const picked = new Set(Array.isArray(choice) ? choice : []);
@@ -123,12 +123,53 @@ export function OrganizationStores({
             </span>
           </Check>
         ))}
-        {!words && (
-          <StoresNotice
-            organization={organization}
-            state={state}
-            manual={!auto}
-          />
+        {/* Toast finds the stores itself on Auto, so only Manual waits for the list. */}
+        {!auto && state.status === "loading" && (
+          <p
+            role="status"
+            className="flex h-8 items-center gap-2.5 px-2 text-[13px] text-muted-foreground"
+          >
+            <Spinner aria-hidden="true" />
+            Loading stores…
+          </p>
+        )}
+        {!auto && state.status === "error" && (
+          <button
+            type="button"
+            data-row=""
+            onClick={() => reloadStores(organization.id)}
+            className={cn(row, "motion-safe:animate-swap-in")}
+          >
+            <RotateCwIcon className="size-4 text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate">{state.message}</span>
+            <span className="text-xs text-muted-foreground">Retry</span>
+          </button>
+        )}
+        {state.status === "reconnect" && (
+          <ConnectButton
+            icon={<RotateCwIcon />}
+            hint="Access ended. Sign in again to search it."
+          >
+            Reconnect {organization.name}
+          </ConnectButton>
+        )}
+        {stores?.length === 0 && (
+          <a
+            href={PLATFORM_URL}
+            target="_blank"
+            rel="noreferrer"
+            data-row=""
+            className={cn(row, "items-start motion-safe:animate-swap-in")}
+          >
+            <PlusIcon className="mt-0.5 size-4 text-muted-foreground" />
+            <span className="flex min-w-0 flex-1 flex-col">
+              Create a store
+              <span className="text-xs text-muted-foreground">
+                No stores here yet. Add files on Mixedbread.
+              </span>
+            </span>
+            <ArrowUpRightIcon className="mt-0.5 size-3.5 text-muted-foreground" />
+          </a>
         )}
       </div>
     </>
@@ -201,11 +242,6 @@ function Mode({
   );
 }
 
-function matches(store: StoreOption, words: string[]): boolean {
-  const text = `${store.name} ${store.description ?? ""}`.toLowerCase();
-  return words.every((word) => text.includes(word));
-}
-
 function storeStatus(store: StoreOption): React.ReactNode {
   switch (store.status) {
     case "in_progress":
@@ -229,74 +265,6 @@ function storeStatus(store: StoreOption): React.ReactNode {
         ? "No files"
         : `${store.files.toLocaleString()} ${store.files === 1 ? "file" : "files"}`;
   }
-}
-
-// Toast finds the stores itself on Auto, so only Manual waits for the list.
-function StoresNotice({
-  organization,
-  state,
-  manual,
-}: {
-  organization: Organization;
-  state: StoresState;
-  manual: boolean;
-}) {
-  if (state.status === "loading") {
-    if (!manual) return null;
-    return (
-      <p
-        role="status"
-        className="flex h-8 items-center gap-2.5 px-2 text-[13px] text-muted-foreground"
-      >
-        <Spinner aria-hidden="true" />
-        Loading stores…
-      </p>
-    );
-  }
-  if (state.status === "error") {
-    if (!manual) return null;
-    return (
-      <button
-        type="button"
-        data-row=""
-        onClick={() => reloadStores(organization.id)}
-        className={cn(row, "motion-safe:animate-swap-in")}
-      >
-        <RotateCwIcon className="size-4 text-muted-foreground" />
-        <span className="min-w-0 flex-1 truncate">{state.message}</span>
-        <span className="text-xs text-muted-foreground">Retry</span>
-      </button>
-    );
-  }
-  if (state.status === "reconnect") {
-    return (
-      <ConnectButton
-        icon={<RotateCwIcon />}
-        hint="Access ended. Sign in again to search it."
-      >
-        Reconnect {organization.name}
-      </ConnectButton>
-    );
-  }
-  if (state.stores.length > 0) return null;
-  return (
-    <a
-      href={PLATFORM_URL}
-      target="_blank"
-      rel="noreferrer"
-      data-row=""
-      className={cn(row, "items-start motion-safe:animate-swap-in")}
-    >
-      <PlusIcon className="mt-0.5 size-4 text-muted-foreground" />
-      <span className="flex min-w-0 flex-1 flex-col">
-        Create a store
-        <span className="text-xs text-muted-foreground">
-          No stores here yet. Add files on Mixedbread.
-        </span>
-      </span>
-      <ArrowUpRightIcon className="mt-0.5 size-3.5 text-muted-foreground" />
-    </a>
-  );
 }
 
 export function ConnectButton({
