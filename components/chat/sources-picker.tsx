@@ -129,12 +129,12 @@ function useReach() {
     if (!searchesStores(choice)) continue;
     docs = true;
     const state = storesOf(all, id);
-    lapsed ||= state.status === "reconnect";
+    if (state.status === "reconnect") lapsed = true;
     if (choice === "auto") auto = true;
     else if (choice === "all") {
       whole++;
       if (state.status === "ok") count += state.stores.length;
-      loading ||= state.status === "loading";
+      if (state.status === "loading") loading = true;
     } else if (state.status !== "ok") count += choice.length;
   }
 
