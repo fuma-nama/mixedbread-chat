@@ -264,14 +264,11 @@ function stepOf(call: z.infer<typeof callSchema>): Step {
 // Any instructions replace Toast's default prompt, and without today's date
 // Toast assumes the year from memory when it searches the web.
 function instructions(): string {
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setUTCDate(today.getUTCDate() - 1);
-  const day = (date: Date) => date.toISOString().slice(0, 10);
-
+  const now = Date.now();
+  const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
   return `You are a search agent over the user's connected stores. Use the search tools you were given to explore the corpus regarding the user's query.
 
 Runtime context:
-- Current UTC date: ${day(today)}.
-- Relative date queries use this UTC date unless the user gives another timezone; yesterday is ${day(yesterday)}.`;
+- Current UTC date: ${day(now)}.
+- Relative date queries use this UTC date unless the user gives another timezone; yesterday is ${day(now - 86_400_000)}.`;
 }
