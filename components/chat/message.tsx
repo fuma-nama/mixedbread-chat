@@ -1,13 +1,14 @@
 "use client";
 
 import { cn } from "cn";
+import { PencilIcon, RefreshCwIcon } from "lucide-react";
 import { memo, useRef, useState } from "react";
 import { Proofing } from "@/components/brand/bakery";
 import { type Citations, copyTextOf, textOf } from "@/lib/messages";
 import type { ChatMessage } from "@/lib/search-tool";
 import { CitationHighlight } from "./citation";
 import { LazyMarkdown } from "./lazy-markdown";
-import { MessageActions } from "./message-actions";
+import { Action, CopyAction, Versions } from "./message-actions";
 import { MessageEditor } from "./message-editor";
 import { Reasoning } from "./reasoning";
 import { Search, type SearchPart } from "./search";
@@ -39,6 +40,7 @@ export const MessageView = memo(function MessageView({
   /** Its place among its edits or retries, oldest first, and how many there are. */
   version: number;
   versions: number;
+  /** Its actions show without hovering, as the latest answer's do. Touch screens show them all. */
   pinned: boolean;
   retryLabel?: string;
   /** Left out, like the other actions, while an answer streams or in someone else's chat. */
@@ -51,6 +53,13 @@ export const MessageView = memo(function MessageView({
   const user = message.role === "user";
   const traces = tracesOf(message.parts);
   const waiting = live ? pending(message) : undefined;
+  const switcher = onSwitch && versions > 1 && (
+    <Versions
+      version={version}
+      versions={versions}
+      onSwitch={(step) => onSwitch(message.id, step)}
+    />
+  );
 
   return (
     <CitationHighlight>
@@ -162,29 +171,58 @@ export const MessageView = memo(function MessageView({
             {!live && (
               <>
                 <Sources citations={citations} animate={appear === "rise"} />
-                <MessageActions
-                  from={message.role}
-                  copyText={
-                    textOf(message).trim()
-                      ? () => copyTextOf(message, citations)
-                      : undefined
-                  }
-                  version={version}
-                  versions={versions}
-                  pinned={pinned}
-                  retryLabel={retryLabel}
-                  onSwitch={onSwitch && ((step) => onSwitch(message.id, step))}
-                  onEdit={user && onEdit ? () => setEditing(true) : undefined}
-                  onRetry={
-                    !user && onRetry ? () => onRetry(message.id) : undefined
-                  }
-                  // Once an answer lands, its actions follow the sources in.
-                  className={
-                    appear === "rise"
-                      ? "motion-safe:animate-[fade_320ms_var(--ease-smooth)_140ms_backwards]"
-                      : undefined
-                  }
-                />
+                <div
+                  className={cn(
+                    "flex items-center gap-1 text-muted-foreground",
+                    // A question's actions float in the gap below it instead of widening it.
+                    user
+                      ? "absolute top-full right-0 -mr-1.5 pt-0.5"
+                      : "-my-1 -ml-1.5",
+                    // Once an answer lands, its actions follow the sources in.
+                    appear === "rise" &&
+                      "motion-safe:animate-[fade_320ms_var(--ease-smooth)_140ms_backwards]",
+                  )}
+                >
+                  {/* The switcher stays put at the message's edge; actions come and go beside it. */}
+                  {!user && switcher}
+                  <div
+                    className={cn(
+                      "flex items-center transition-opacity duration-200",
+                      // Hidden actions stay out of the way of clicks until the message is hovered.
+                      !pinned &&
+                        "pointer-events-none opacity-0 group-focus-within/message:pointer-events-auto group-focus-within/message:opacity-100 group-hover/message:pointer-events-auto group-hover/message:opacity-100 pointer-coarse:pointer-events-auto pointer-coarse:opacity-100",
+                    )}
+                  >
+                    {!!textOf(message).trim() && (
+                      <CopyAction
+                        label="Copy"
+                        copy={() =>
+                          navigator.clipboard.writeText(
+                            copyTextOf(message, citations),
+                          )
+                        }
+                      />
+                    )}
+                    {user && onEdit && (
+                      <Action
+                        label="Edit"
+                        data-action="edit"
+                        onClick={() => setEditing(true)}
+                      >
+                        <PencilIcon />
+                      </Action>
+                    )}
+                    {!user && onRetry && (
+                      <Action
+                        label={retryLabel ?? "Try again"}
+                        onClick={() => onRetry(message.id)}
+                      >
+                        <RefreshCwIcon />
+                      </Action>
+                    )}
+                  </div>
+                  {user && switcher}
+                </div>
               </>
             )}
           </>

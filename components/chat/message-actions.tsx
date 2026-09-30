@@ -6,8 +6,6 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   CopyIcon,
-  PencilIcon,
-  RefreshCwIcon,
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -18,91 +16,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-export function MessageActions({
-  from,
-  copyText,
-  version,
-  versions,
-  pinned,
-  retryLabel,
-  onSwitch,
-  onEdit,
-  onRetry,
-  className,
-}: {
-  from: "system" | "user" | "assistant";
-  /** What Copy puts on the clipboard; there is no Copy without it. */
-  copyText?: () => string;
-  version: number;
-  versions: number;
-  /** Shown without hovering, as the latest answer is. Touch screens show them all. */
-  pinned: boolean;
-  retryLabel?: string;
-  onSwitch?: (step: -1 | 1) => void;
-  onEdit?: () => void;
-  onRetry?: () => void;
-  className?: string;
-}) {
-  const actions = (
-    <div
-      className={cn(
-        "flex items-center transition-opacity duration-200",
-        // Hidden actions stay out of the way of clicks until the message is hovered.
-        !pinned &&
-          "pointer-events-none opacity-0 group-focus-within/message:pointer-events-auto group-focus-within/message:opacity-100 group-hover/message:pointer-events-auto group-hover/message:opacity-100 pointer-coarse:pointer-events-auto pointer-coarse:opacity-100",
-      )}
-    >
-      {copyText && (
-        <CopyAction
-          label="Copy"
-          copy={() => navigator.clipboard.writeText(copyText())}
-        />
-      )}
-      {onEdit && (
-        <Action label="Edit" data-action="edit" onClick={onEdit}>
-          <PencilIcon />
-        </Action>
-      )}
-      {onRetry && (
-        <Action label={retryLabel ?? "Try again"} onClick={onRetry}>
-          <RefreshCwIcon />
-        </Action>
-      )}
-    </div>
-  );
-
-  const switcher = onSwitch && versions > 1 && (
-    <Versions version={version} versions={versions} onSwitch={onSwitch} />
-  );
-
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-1 text-muted-foreground",
-        // A question's actions float in the gap below it instead of widening it.
-        from === "user"
-          ? "absolute top-full right-0 -mr-1.5 pt-0.5"
-          : "-my-1 -ml-1.5",
-        className,
-      )}
-    >
-      {/* The switcher stays put at the message's edge; actions come and go beside it. */}
-      {from === "user" ? (
-        <>
-          {actions}
-          {switcher}
-        </>
-      ) : (
-        <>
-          {switcher}
-          {actions}
-        </>
-      )}
-    </div>
-  );
-}
-
-function Versions({
+export function Versions({
   version,
   versions,
   onSwitch,
