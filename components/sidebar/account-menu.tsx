@@ -60,8 +60,7 @@ export interface User {
 
 /** Signed out, as on someone's shared chat, a way to sign in instead. */
 export function AccountMenu({ user }: { user?: User }) {
-  if (!user) return <SignedOut />;
-  return <SignedIn user={user} />;
+  return user ? <SignedIn user={user} /> : <SignedOut />;
 }
 
 function SignedOut() {
