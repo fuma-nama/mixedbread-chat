@@ -26,11 +26,10 @@ export interface ComposerHandle {
   focus: () => void;
   /** Puts text back, as after a send that did not go through. */
   restore: (text: string) => void;
-  /** Where the composer is right now, to glide it to its next spot. */
   element: () => HTMLElement | null;
 }
 
-/** A finger rather than a mouse: the keyboard opens on focus, and Enter makes a new line. */
+/** A finger rather than a mouse: focus opens the keyboard, and Enter makes a new line. */
 function coarse() {
   return window.matchMedia("(pointer: coarse)").matches;
 }
@@ -55,7 +54,6 @@ export const Composer = memo(function Composer({
   model: string;
   onModelChange: (model: string) => void;
   reasoning: Reasoning;
-  /** The model's efforts; without any, it thinks on Auto. */
   efforts?: Effort[];
   onReasoningChange: (reasoning: Reasoning) => void;
   onSubmit: (text: string) => void;
@@ -63,13 +61,17 @@ export const Composer = memo(function Composer({
   placeholder: string;
   /** Why sending is off for now, shown in place of the placeholder. */
   blocked?: string;
-  /** A new chat: it glows warm on focus, not only once there is something to send, and ⌘⇧O lands here. */
+  /** A new chat: it glows warm on focus, and ⌘⇧O lands here. */
   fresh?: boolean;
 }) {
   const [text, setText] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const online = useOnline();
+  const online = useSyncExternalStore(
+    subscribeOnline,
+    () => navigator.onLine,
+    () => true,
+  );
   const busy = status === "submitted" || status === "streaming";
   const reason = blocked ?? (online ? undefined : "You’re offline");
   const tooLong = text.length > MAX_LENGTH;
@@ -88,7 +90,6 @@ export const Composer = memo(function Composer({
     [],
   );
 
-  // Ready to type on arrival, except on phones where focus opens the keyboard.
   useEffect(() => {
     if (!coarse()) textareaRef.current?.focus();
   }, []);
@@ -108,7 +109,6 @@ export const Composer = memo(function Composer({
       !event.metaKey &&
       !event.ctrlKey &&
       !event.altKey;
-    // ⌘⇧O on a fresh chat has nowhere to go but here.
     const opened =
       fresh &&
       event.key.toLowerCase() === "o" &&
@@ -163,7 +163,6 @@ export const Composer = memo(function Composer({
             onStop();
             return;
           }
-          // On phones Enter makes a new line; the button sends.
           if (
             event.key === "Enter" &&
             !event.shiftKey &&
@@ -176,9 +175,7 @@ export const Composer = memo(function Composer({
         }}
         className="field-sizing-content max-h-[min(40vh,22rem)] min-h-[3.25rem] w-full resize-none scrollbar-thin bg-transparent px-4.5 pt-4 pb-1 text-base leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/70 disabled:cursor-not-allowed md:text-[15px]"
       />
-      {/* Three pickers and Send share one line down to a 375px phone: the
-          pickers sit close, their labels never wrap, and the sources and
-          model labels give way when the line runs short. */}
+      {/* Down to a 375px phone, the pickers and Send share one line. */}
       <div
         data-slot="composer-bar"
         className="flex cursor-text items-center gap-0.5 px-2.5 pb-2.5 whitespace-nowrap"
@@ -201,51 +198,37 @@ export const Composer = memo(function Composer({
               {text.length.toLocaleString()} / {MAX_LENGTH.toLocaleString()}
             </span>
           )}
-          <SendButton
-            busy={busy}
-            ready={ready}
-            onStop={() => {
-              onStop();
-              textareaRef.current?.focus();
-            }}
-          />
+          <button
+            type={busy ? "button" : "submit"}
+            aria-label={busy ? "Stop" : "Send"}
+            disabled={!busy && !ready}
+            onClick={
+              busy
+                ? () => {
+                    onStop();
+                    textareaRef.current?.focus();
+                  }
+                : undefined
+            }
+            data-state={busy ? "busy" : ready ? "ready" : "idle"}
+            className="group/send relative flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-raised outline-offset-2 outline-ring transition-[background-color,color,scale,box-shadow] duration-200 ease-spring focus-visible:outline-2 active:scale-90 disabled:cursor-default data-[state=idle]:bg-soft data-[state=idle]:text-muted-foreground data-[state=idle]:shadow-none motion-reduce:transition-none"
+          >
+            {/* Runs around the stop button while an answer is on its way. */}
+            <span
+              aria-hidden="true"
+              className="absolute -inset-[3px] rounded-full border-[1.5px] border-transparent border-t-crust opacity-0 transition-opacity duration-300 group-data-[state=busy]/send:opacity-100 group-data-[state=busy]/send:motion-safe:animate-spin"
+            />
+            <IconSwap
+              swapped={busy}
+              from={<ArrowUpIcon className="size-4" strokeWidth={2.25} />}
+              to={<SquareIcon className="size-3 fill-current" />}
+            />
+          </button>
         </div>
       </div>
     </form>
   );
 });
-
-function SendButton({
-  busy,
-  ready,
-  onStop,
-}: {
-  busy: boolean;
-  ready: boolean;
-  onStop: () => void;
-}) {
-  return (
-    <button
-      type={busy ? "button" : "submit"}
-      aria-label={busy ? "Stop" : "Send"}
-      disabled={!busy && !ready}
-      onClick={busy ? onStop : undefined}
-      data-state={busy ? "busy" : ready ? "ready" : "idle"}
-      className="group/send relative flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-raised outline-offset-2 outline-ring transition-[background-color,color,scale,box-shadow] duration-200 ease-spring focus-visible:outline-2 active:scale-90 disabled:cursor-default data-[state=idle]:bg-soft data-[state=idle]:text-muted-foreground data-[state=idle]:shadow-none motion-reduce:transition-none"
-    >
-      {/* Runs around the stop button while an answer is on its way. */}
-      <span
-        aria-hidden="true"
-        className="absolute -inset-[3px] rounded-full border-[1.5px] border-transparent border-t-crust opacity-0 transition-opacity duration-300 group-data-[state=busy]/send:opacity-100 group-data-[state=busy]/send:motion-safe:animate-spin"
-      />
-      <IconSwap
-        swapped={busy}
-        from={<ArrowUpIcon className="size-4" strokeWidth={2.25} />}
-        to={<SquareIcon className="size-3 fill-current" />}
-      />
-    </button>
-  );
-}
 
 function subscribeOnline(onChange: () => void) {
   window.addEventListener("online", onChange);
@@ -254,12 +237,4 @@ function subscribeOnline(onChange: () => void) {
     window.removeEventListener("online", onChange);
     window.removeEventListener("offline", onChange);
   };
-}
-
-function useOnline(): boolean {
-  return useSyncExternalStore(
-    subscribeOnline,
-    () => navigator.onLine,
-    () => true,
-  );
 }
