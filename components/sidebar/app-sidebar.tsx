@@ -2,7 +2,6 @@
 
 import { SearchIcon, SquarePenIcon } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { Logo } from "@/components/brand/logo";
 import { openLink } from "@/components/chat/chat-cache";
 import { Shortcut } from "@/components/ui/kbd";
@@ -28,8 +27,6 @@ export function AppSidebar({
   now: number;
   timeZone: string;
 }) {
-  const activeId = usePathname().match(/^\/c\/([^/]+)/)?.[1];
-
   return (
     <>
       <div className="flex h-13 shrink-0 items-center justify-between pr-2 pl-4">
@@ -69,7 +66,7 @@ export function AppSidebar({
         </HoverArea>
       </nav>
 
-      <Chats now={now} timeZone={timeZone} activeId={activeId}>
+      <Chats now={now} timeZone={timeZone}>
         <AccountMenu user={user} />
       </Chats>
     </>

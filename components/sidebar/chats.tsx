@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { mutate } from "swr";
 import { deleteChats } from "@/app/(chat)/actions";
@@ -31,14 +32,13 @@ import { useSelection } from "./use-selection";
 export function Chats({
   now,
   timeZone,
-  activeId,
   children,
 }: {
   now: number;
   timeZone: string;
-  activeId?: string;
   children: React.ReactNode;
 }) {
+  const activeId = usePathname().match(/^\/c\/([^/]+)/)?.[1];
   const chats = useChatList();
   const { remove, refresh } = useChats();
   const selection = useSelection(chats, activeId);
