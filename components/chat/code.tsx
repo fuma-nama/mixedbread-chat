@@ -35,11 +35,12 @@ export function Code({
     );
   }
 
-  const { "data-block": _block, ...rest } = props as typeof props & {
-    "data-block": string;
-  };
+  const { "data-block": _block, ...rest } = props;
   const language = className?.match(/language-(\S+)/)?.[1] ?? "";
-  const code = textOf(children);
+  const inner = isValidElement<{ children?: unknown }>(children)
+    ? children.props.children
+    : children;
+  const code = typeof inner === "string" ? inner : "";
 
   return (
     <CodeBlock
@@ -62,15 +63,6 @@ export function Code({
       )}
     </CodeBlock>
   );
-}
-
-function textOf(children: React.ReactNode): string {
-  if (typeof children === "string") return children;
-  if (isValidElement<{ children?: unknown }>(children)) {
-    const inner = children.props.children;
-    if (typeof inner === "string") return inner;
-  }
-  return "";
 }
 
 const extensions: Record<string, string> = {
