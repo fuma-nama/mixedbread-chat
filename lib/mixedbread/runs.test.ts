@@ -30,30 +30,33 @@ function labels() {
   return () => `S${next++}`;
 }
 
-test("an organization missing from the selection is on auto", () => {
-  const selection: SourceSelection = { web: true, organizations: {} };
-  const runs = planRuns(selection, connections);
+test("plans a run per organization with stores picked, and the web on one's token", () => {
+  const plan = (selection: SourceSelection) =>
+    planRuns(selection, connections).map((run) => [
+      run.label,
+      run.connection.accountId,
+      run.target,
+    ]);
+  // A missing organization is on auto.
+  assert.deepEqual(plan({ web: true, organizations: {} }), [
+    ["Organization 1", "acc-a", { kind: "stores", stores: "auto" }],
+    ["Organization 2", "acc-b", { kind: "stores", stores: "auto" }],
+    ["Web", "acc-a", { kind: "web" }],
+  ]);
   assert.deepEqual(
-    runs.map((run) => [run.label, run.target]),
+    plan({ web: true, organizations: { "org-a": [], "org-b": ["store-1"] } }),
     [
-      ["Organization 1", { kind: "stores", stores: "auto" }],
-      ["Organization 2", { kind: "stores", stores: "auto" }],
-      ["Web", { kind: "web" }],
+      ["Organization 2", "acc-b", { kind: "stores", stores: ["store-1"] }],
+      ["Web", "acc-b", { kind: "web" }],
     ],
   );
-});
-
-test("each organization's choice passes through to its run", () => {
-  const selection: SourceSelection = {
-    web: false,
-    organizations: { "org-a": "all", "org-b": ["store-1"] },
-  };
   assert.deepEqual(
-    planRuns(selection, connections).map((run) => run.target),
-    [
-      { kind: "stores", stores: "all" },
-      { kind: "stores", stores: ["store-1"] },
-    ],
+    plan({ web: false, organizations: { "org-a": "all", "org-b": [] } }),
+    [["Organization 1", "acc-a", { kind: "stores", stores: "all" }]],
+  );
+  assert.deepEqual(
+    plan({ web: false, organizations: { "org-a": [], "org-b": [] } }),
+    [],
   );
 });
 
@@ -99,29 +102,6 @@ test("a run resolves its stores once they are listed", () => {
     resolveTarget({ ...run, target: { kind: "web" } }, undefined),
     { kind: "web" },
   );
-});
-
-test("organizations with no stores picked are skipped, and the web borrows a picked one's token", () => {
-  const selection: SourceSelection = {
-    web: true,
-    organizations: { "org-a": [], "org-b": ["store-1"] },
-  };
-  const runs = planRuns(selection, connections);
-  assert.deepEqual(
-    runs.map((run) => [run.label, run.connection.accountId]),
-    [
-      ["Organization 2", "acc-b"],
-      ["Web", "acc-b"],
-    ],
-  );
-});
-
-test("nothing picked means no runs", () => {
-  const selection: SourceSelection = {
-    web: false,
-    organizations: { "org-a": [], "org-b": [] },
-  };
-  assert.deepEqual(planRuns(selection, connections), []);
 });
 
 test("citations are labelled across runs in order, and files learn their store", () => {
