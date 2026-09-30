@@ -22,15 +22,23 @@ export type StoresResult =
   | { status: "reconnect" }
   | { status: "error"; message: string };
 
-// Toast picks among the stores ("auto"), every store there is at search time
-// ("all"), or exactly these; none leaves the organization out.
-export type StoreChoice = "auto" | "all" | string[];
+/** The stores of an organization the picker lists: the first page. */
+export const MAX_STORES = 100;
 
-export interface SourceSelection {
-  web: boolean;
-  /** By organization ID; a missing organization is on auto. */
-  organizations: Record<string, StoreChoice>;
-}
+export const sourceSelectionSchema = z.object({
+  web: z.boolean(),
+  // By organization ID, a missing one on auto: Toast picks among the stores
+  // ("auto"), every store there is at search time ("all"), or exactly these;
+  // none leaves the organization out.
+  organizations: z.record(
+    z.string().max(100),
+    z.enum(["auto", "all"]).or(z.array(z.string().max(100)).max(MAX_STORES)),
+  ),
+});
+
+export type SourceSelection = z.infer<typeof sourceSelectionSchema>;
+
+export type StoreChoice = SourceSelection["organizations"][string];
 
 export type SearchScope = "web" | "docs" | "both" | "none";
 
@@ -55,21 +63,6 @@ export function scopeOf(
   if (selection.web) return docs ? "both" : "web";
   return docs ? "docs" : "none";
 }
-
-/** The stores of an organization the picker lists: the first page. */
-export const MAX_STORES = 100;
-
-export const sourceSelectionSchema = z.object({
-  web: z.boolean(),
-  organizations: z.record(
-    z.string().max(100),
-    z.union([
-      z.literal("auto"),
-      z.literal("all"),
-      z.array(z.string().max(100)).max(MAX_STORES),
-    ]),
-  ),
-});
 
 export const SELECTION_COOKIE = "sources";
 
