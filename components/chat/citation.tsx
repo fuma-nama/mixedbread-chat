@@ -2,9 +2,9 @@
 
 import { cn } from "cn";
 import { ArrowUpRightIcon, ScanSearchIcon } from "lucide-react";
-import { createContext, memo, use, useId, useRef, useState } from "react";
-import type { PageResult } from "@/app/(chat)/actions";
+import { createContext, memo, use, useId, useState } from "react";
 import { SliceGlyph } from "@/components/brand/slice";
+import { createDialogHandle, type DialogHandle } from "@/components/ui/dialog";
 import {
   createHoverCardHandle,
   HoverCard,
@@ -17,7 +17,12 @@ import { useCoarsePointer } from "@/hooks/use-media";
 import { createStore, type Store, useStore } from "@/hooks/use-store";
 import { originOf, type Source, sourceTitle } from "@/lib/mixedbread/citations";
 import type { Organization } from "@/lib/sources";
-import { loadPage, PageView } from "./page-view";
+import {
+  type FileSource,
+  loadPage,
+  PageView,
+  type ShownPage,
+} from "./page-view";
 import { useOrganizations } from "./sources-provider";
 
 type Lit = ReadonlySet<string> | undefined;
@@ -39,10 +44,7 @@ export function CitationHighlight({ children }: { children: React.ReactNode }) {
 export const badge =
   "cursor-pointer items-center justify-center rounded-[0.35rem] bg-soft font-mono font-medium text-muted-foreground tabular-nums no-underline outline-offset-1 outline-ring transition-[background-color,color] duration-150 ease-smooth hover:bg-berry/15 hover:text-berry focus-visible:outline-2 data-popup-open:bg-berry/15 data-popup-open:text-berry data-[lit=true]:bg-berry/15 data-[lit=true]:text-berry";
 
-/**
- * An inline citation: the source's number, with the source on hover.
- * Memoized, so settled citations sit still while the answer streams.
- */
+/** Memoized: streamdown makes these, and settled ones sit still while the answer streams. */
 export const Citation = memo(function Citation({
   number,
   source,
@@ -66,9 +68,6 @@ export const Citation = memo(function Citation({
   );
 });
 
-type FileSource = Extract<Source, { type: "file" }>;
-
-/** What the card shows, and by which trigger. */
 interface Preview {
   id: string;
   source: Source;
@@ -79,120 +78,69 @@ interface Preview {
   align: "start" | "center";
 }
 
-interface Page {
-  source: FileSource;
-  organization: Organization;
-  result: Promise<PageResult>;
-  /** Where focus goes back to once it closes. */
-  trigger: React.RefObject<HTMLElement | null>;
-  open: boolean;
-}
-
 interface Cards {
-  handle: HoverCardHandle<Preview>;
-  page: Store<Page | undefined>;
+  card: HoverCardHandle<Preview>;
+  page: DialogHandle<ShownPage>;
 }
 
 const CardsContext = createContext<Cards | null>(null);
 
 /**
- * One card for every source in a chat: moving to another source, it glides
- * there instead of one card fading out as the next fades in. And one view
- * for the pages they open.
+ * One card for every source in a chat, which glides from source to source,
+ * and one dialog for the pages they open.
  */
 export function SourceCards({ children }: { children: React.ReactNode }) {
   const [cards] = useState<Cards>(() => ({
-    handle: createHoverCardHandle<Preview>(),
-    page: createStore<Page | undefined>(undefined),
+    card: createHoverCardHandle(),
+    page: createDialogHandle(),
   }));
 
   return (
     <CardsContext value={cards}>
       {children}
       <Card cards={cards} />
-      <PageViews cards={cards} />
+      <PageView handle={cards.page} />
     </CardsContext>
   );
 }
 
-function view(cards: Cards, page: Omit<Page, "result" | "open">) {
-  cards.handle.close();
-  const result = loadPage(page.source, page.organization);
-  cards.page.set({ ...page, result, open: true });
-}
-
-function Card({ cards }: { cards: Cards }) {
-  return (
-    <HoverCard handle={cards.handle}>
-      {({ payload }) => <CardContent preview={payload} cards={cards} />}
-    </HoverCard>
-  );
+function view(
+  cards: Cards,
+  source: FileSource,
+  organization: Organization,
+  trigger: HTMLElement | null,
+) {
+  cards.card.close();
+  const result = loadPage(source, organization);
+  cards.page.openWithPayload({ source, organization, trigger, result });
 }
 
 /**
- * The card is only a preview: pointers pass through it to what lies under,
- * and a click on the trigger opens the source. Only a finger, which has no
- * hover, uses the links on it.
+ * Only a preview: pointers pass through it, and a click on the trigger opens
+ * the source. Only a finger, which has no hover, uses the links on it.
  */
-function CardContent({ preview, cards }: { preview?: Preview; cards: Cards }) {
-  const source = preview?.source;
-  const organization = preview?.organization;
-
+function Card({ cards }: { cards: Cards }) {
   return (
-    <HoverCardContent
-      side={preview?.side}
-      align={preview?.align}
-      className="pointer-events-none w-80 p-0 pointer-coarse:[&_:is(a,button)]:pointer-events-auto"
-    >
-      <HoverCardViewport>
-        {preview && source && (
-          <SourceCard
-            source={source}
-            number={preview.number}
-            onView={
-              organization && source.type === "file"
-                ? () =>
-                    view(cards, {
-                      source,
-                      organization,
-                      trigger: { current: document.getElementById(preview.id) },
-                    })
-                : undefined
-            }
-          />
-        )}
-      </HoverCardViewport>
-    </HoverCardContent>
-  );
-}
-
-function PageViews({ cards }: { cards: Cards }) {
-  const page = useStore(cards.page, (page) => page);
-  if (!page) return null;
-  return (
-    <PageView
-      key={page.source.label}
-      source={page.source}
-      organization={page.organization}
-      page={page.result}
-      onRetry={() =>
-        cards.page.set({
-          ...page,
-          result: loadPage(page.source, page.organization),
-        })
-      }
-      open={page.open}
-      onOpenChange={(open) => cards.page.set({ ...page, open })}
-      finalFocus={page.trigger}
-    />
+    <HoverCard handle={cards.card}>
+      {({ payload }) => (
+        <HoverCardContent
+          side={payload?.side}
+          align={payload?.align}
+          className="pointer-events-none w-80 p-0 pointer-coarse:[&_:is(a,button)]:pointer-events-auto"
+        >
+          <HoverCardViewport>
+            {payload && <SourceCard cards={cards} preview={payload} />}
+          </HoverCardViewport>
+        </HoverCardContent>
+      )}
+    </HoverCard>
   );
 }
 
 /**
  * Anything that previews a source in the chat's card. With a mouse it
  * previews on hover and opens the source on click: its site, or the page of
- * a file shown as one. On touch screens, which have no hover, a tap shows
- * the card, and a link on it opens the source.
+ * a file shown as one. On touch screens a tap shows the card instead.
  */
 export function SourcePreview({
   source,
@@ -201,10 +149,7 @@ export function SourcePreview({
   rest,
   side = "top",
   align = "center",
-  className,
-  children,
-  "aria-label": label,
-  "data-citation": citation,
+  ...props
 }: {
   source: Source;
   /** As the answer numbers it; the search trace lists sources it may not cite. */
@@ -224,7 +169,6 @@ export function SourcePreview({
   const cards = use(CardsContext);
   if (!cards) throw new Error("SourcePreview needs <SourceCards>");
   const id = useId();
-  const trigger = useRef<HTMLAnchorElement>(null);
   const coarse = useCoarsePointer();
   const highlight = useHighlight();
   const lit = useStore(highlight, (current) => {
@@ -239,18 +183,17 @@ export function SourcePreview({
     source.type === "file" && source.image
       ? organizations.find((entry) => entry.id === source.organizationId)
       : undefined;
-  const preview = { id, source, number, organization, side, align };
   const open =
     organization && source.type === "file"
-      ? () => view(cards, { source, organization, trigger })
+      ? (event: React.MouseEvent<HTMLElement>) =>
+          view(cards, source, organization, event.currentTarget)
       : undefined;
 
   return (
     <HoverCardTrigger
-      handle={cards.handle}
-      payload={preview}
+      handle={cards.card}
+      payload={{ id, source, number, organization, side, align }}
       id={id}
-      ref={trigger}
       {...(source.type === "url" && !coarse
         ? { href: source.url, target: "_blank", rel: "noreferrer" }
         : { render: <button type="button" /> })}
@@ -258,27 +201,16 @@ export function SourcePreview({
       onPointerLeave={() => highlight.set(rest)}
       onFocus={light}
       onBlur={() => highlight.set(undefined)}
-      onClick={coarse ? () => cards.handle.open(id) : open}
+      onClick={coarse ? () => cards.card.open(id) : open}
       aria-haspopup={!coarse && organization ? "dialog" : undefined}
       data-lit={lit}
-      data-citation={citation}
-      aria-label={label}
-      className={className}
-    >
-      {children}
-    </HoverCardTrigger>
+      {...props}
+    />
   );
 }
 
-function SourceCard({
-  source,
-  number,
-  onView,
-}: {
-  source: Source;
-  number?: number;
-  onView?: () => void;
-}) {
+function SourceCard({ cards, preview }: { cards: Cards; preview: Preview }) {
+  const { source, organization } = preview;
   const quote = source.excerpt && plain(source.excerpt);
 
   return (
@@ -286,7 +218,7 @@ function SourceCard({
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <SliceGlyph className="size-3 text-berry" />
         <span className="truncate font-mono">{originOf(source)}</span>
-        <span className="ml-auto font-mono tabular-nums">{number}</span>
+        <span className="ml-auto font-mono tabular-nums">{preview.number}</span>
       </div>
       <p className="line-clamp-3 text-[13.5px] leading-snug font-medium text-pretty text-foreground">
         {sourceTitle(source)}
@@ -309,10 +241,17 @@ function SourceCard({
           </span>
         </a>
       )}
-      {onView && (
+      {organization && source.type === "file" && (
         <button
           type="button"
-          onClick={onView}
+          onClick={() =>
+            view(
+              cards,
+              source,
+              organization,
+              document.getElementById(preview.id),
+            )
+          }
           className="flex cursor-pointer items-center gap-1 self-start text-xs text-muted-foreground outline-offset-2 outline-ring transition-colors hover:text-foreground focus-visible:outline-2"
         >
           <ScanSearchIcon className="size-3 shrink-0" />

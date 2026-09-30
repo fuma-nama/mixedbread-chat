@@ -10,6 +10,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  type DialogHandle,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -19,7 +20,15 @@ import type { Page } from "@/lib/mixedbread/files";
 import type { Organization } from "@/lib/sources";
 import { useConnect } from "./sources-provider";
 
-type FileSource = Extract<Source, { type: "file" }>;
+export type FileSource = Extract<Source, { type: "file" }>;
+
+export interface ShownPage {
+  source: FileSource;
+  organization: Organization;
+  /** Where focus goes back to once it closes. */
+  trigger: HTMLElement | null;
+  result: Promise<PageResult>;
+}
 
 // Its links expire within the hour, so a page opened again soon reuses them.
 const pages = new Map<
@@ -27,10 +36,7 @@ const pages = new Map<
   { expires: number; result: Promise<PageResult> }
 >();
 
-/**
- * Starts loading a cited page. Call it from the event that opens the page,
- * since a server action can't run while rendering.
- */
+/** Starts loading a cited page, from an event: a server action can't run while rendering. */
 export function loadPage(
   source: FileSource,
   organization: Organization,
@@ -54,64 +60,54 @@ export function loadPage(
 // holds still as it loads.
 const frame = "h-[min(60vh,40rem)] rounded-lg bg-soft";
 
-/** The cited page, loaded when opened, with the passage it stands for marked. */
-export function PageView({
-  source,
-  organization,
-  page,
-  onRetry,
-  open,
-  onOpenChange,
-  finalFocus,
-}: {
-  source: FileSource;
-  organization: Organization;
-  /** The page loading, from `loadPage`. */
-  page: Promise<PageResult>;
-  onRetry: () => void;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  /** Where focus goes back to once it closes. */
-  finalFocus: React.RefObject<HTMLElement | null>;
-}) {
+/** The cited page, with the passage it stands for marked. */
+export function PageView({ handle }: { handle: DialogHandle<ShownPage> }) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent finalFocus={finalFocus} className="max-w-xl gap-4">
-        <DialogHeader>
-          <p className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-            <SliceGlyph className="size-3 text-berry" />
-            <span className="truncate font-mono">{originOf(source)}</span>
-          </p>
-          <DialogTitle className="truncate">{source.filename}</DialogTitle>
-          {source.claim && (
-            <DialogDescription className="line-clamp-2">
-              Cited for “{source.claim}”
-            </DialogDescription>
-          )}
-        </DialogHeader>
-        <Suspense
-          fallback={
-            <p
-              role="status"
-              className={cn(
-                frame,
-                "flex items-center justify-center gap-2 text-[13px] text-muted-foreground",
-              )}
-            >
-              <Spinner aria-hidden="true" className="size-3.5" />
-              Loading the page…
-            </p>
-          }
-        >
-          <PageBody
-            source={source}
-            organization={organization}
-            page={page}
-            onRetry={onRetry}
-          />
-        </Suspense>
-      </DialogContent>
+    <Dialog handle={handle}>
+      {({ payload }) => payload && <PageDialog {...payload} />}
     </Dialog>
+  );
+}
+
+function PageDialog({ source, organization, trigger, result }: ShownPage) {
+  const [page, setPage] = useState(result);
+
+  return (
+    <DialogContent finalFocus={() => trigger} className="max-w-xl gap-4">
+      <DialogHeader>
+        <p className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+          <SliceGlyph className="size-3 text-berry" />
+          <span className="truncate font-mono">{originOf(source)}</span>
+        </p>
+        <DialogTitle className="truncate">{source.filename}</DialogTitle>
+        {source.claim && (
+          <DialogDescription className="line-clamp-2">
+            Cited for “{source.claim}”
+          </DialogDescription>
+        )}
+      </DialogHeader>
+      <Suspense
+        fallback={
+          <p
+            role="status"
+            className={cn(
+              frame,
+              "flex items-center justify-center gap-2 text-[13px] text-muted-foreground",
+            )}
+          >
+            <Spinner aria-hidden="true" className="size-3.5" />
+            Loading the page…
+          </p>
+        }
+      >
+        <PageBody
+          title={source.filename}
+          organization={organization}
+          page={page}
+          onRetry={() => setPage(loadPage(source, organization))}
+        />
+      </Suspense>
+    </DialogContent>
   );
 }
 
@@ -119,12 +115,12 @@ const notice =
   "flex flex-col items-center justify-center gap-3 rounded-lg bg-soft px-4 py-12 text-center text-[13px] text-pretty text-muted-foreground";
 
 function PageBody({
-  source,
+  title,
   organization,
   page,
   onRetry,
 }: {
-  source: FileSource;
+  title: string;
   organization: Organization;
   page: Promise<PageResult>;
   onRetry: () => void;
@@ -132,11 +128,7 @@ function PageBody({
   const result = use(page);
   if (result.status === "ok") {
     return (
-      <PageImage
-        page={result.page}
-        marked={result.marked}
-        title={source.filename}
-      />
+      <PageImage page={result.page} marked={result.marked} title={title} />
     );
   }
   if (result.status === "reconnect") {

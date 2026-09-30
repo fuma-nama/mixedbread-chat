@@ -16,6 +16,11 @@ const Dialog = DialogPrimitive.Root;
 
 const DialogTrigger = DialogPrimitive.Trigger;
 
+/** Opens one dialog from anywhere, with what it shows: `handle.openWithPayload(payload)`. */
+const createDialogHandle = DialogPrimitive.createHandle;
+
+type DialogHandle<Payload> = DialogPrimitive.Handle<Payload>;
+
 function DialogContent({
   className,
   children,
@@ -104,10 +109,12 @@ function DialogDescription({
 }
 
 export {
+  createDialogHandle,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
+  type DialogHandle,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
