@@ -135,19 +135,21 @@ function FileRow({ file, index }: { file: SourceFile; index: number }) {
         >
           {title}
         </span>
-        {shown.map(({ source, labels }) => (
-          <SourcePreview
-            key={source.label}
-            source={source}
-            labels={labels}
-            rest={file.labels}
-            align="start"
-            aria-label={`${title}, ${kind} ${place(source)}`}
-            className={cn(badge, marker)}
-          >
-            {place(source)}
-          </SourcePreview>
-        ))}
+        <span className="contents">
+          {shown.map(({ source, labels }) => (
+            <SourcePreview
+              key={source.label}
+              source={source}
+              labels={labels}
+              rest={file.labels}
+              align="start"
+              aria-label={`${title}, ${kind} ${place(source)}`}
+              className={cn(badge, marker)}
+            >
+              {place(source)}
+            </SourcePreview>
+          ))}
+        </span>
         {more > 0 && (
           <button
             type="button"

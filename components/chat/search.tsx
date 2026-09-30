@@ -272,7 +272,11 @@ function TaskList({ tasks }: { tasks: Task[] }) {
 
   return (
     <div className="flex flex-col gap-1.5">
-      <ol aria-label="Searches" className="flex flex-col gap-1.5">
+      <ol
+        aria-label="Searches"
+        tabIndex={-1}
+        className="flex flex-col gap-1.5 rounded-md outline-offset-2 outline-ring focus-visible:outline-2"
+      >
         {shown.map((task) => (
           <li
             key={task.id}

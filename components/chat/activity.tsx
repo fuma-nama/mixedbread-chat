@@ -3,6 +3,7 @@
 import { cn } from "cn";
 import { ChevronRightIcon } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
+import { flushSync } from "react-dom";
 import { CollapsibleTrigger } from "@/components/ui/collapsible";
 
 /*
@@ -90,14 +91,27 @@ export function ActivityPanel({
   );
 }
 
-/** The first `count` items, and how many more wait until they are asked for. */
+/**
+ * The first `count` items, and how many more wait until they are asked for.
+ * `showAll` is for a button right after the list: as the button goes, focus
+ * moves to the first new item that takes it, or else to the list.
+ */
 export function useFirst<T>(items: T[], count: number) {
   const [all, setAll] = useState(false);
   const more = all ? 0 : items.length - count;
   return {
     shown: more > 0 ? items.slice(0, count) : items,
     more,
-    showAll: () => setAll(true),
+    showAll(event: React.MouseEvent<HTMLElement>) {
+      const list = event.currentTarget.previousElementSibling as HTMLElement;
+      flushSync(() => setAll(true));
+      const item = list.children[count] as HTMLElement | undefined;
+      const focusable = "a[href], button";
+      (item?.matches(focusable)
+        ? item
+        : (item?.querySelector<HTMLElement>(focusable) ?? list)
+      ).focus();
+    },
   };
 }
 
@@ -107,7 +121,7 @@ export function More({
   onClick,
 }: {
   count: number;
-  onClick: () => void;
+  onClick: (event: React.MouseEvent<HTMLElement>) => void;
 }) {
   return (
     <button

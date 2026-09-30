@@ -77,7 +77,10 @@ function Steps({ steps, className }: { steps: Step[]; className?: string }) {
 
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <ol className="flex flex-col gap-1.5">
+      <ol
+        tabIndex={-1}
+        className="flex flex-col gap-1.5 rounded-md outline-offset-2 outline-ring focus-visible:outline-2"
+      >
         {shown.map((step) => (
           <StepRow key={step.id} step={step} />
         ))}
