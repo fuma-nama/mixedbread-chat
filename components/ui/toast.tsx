@@ -5,7 +5,6 @@ import { Toast } from "@base-ui/react/toast";
 /** Call from anywhere: `toast.add({ title: "Link copied" })`. */
 export const toast = Toast.createToastManager();
 
-/** Provides `toast` and draws the stack at the bottom of the screen. */
 export function Toaster({ children }: { children: React.ReactNode }) {
   return (
     <Toast.Provider toastManager={toast} timeout={4000} limit={3}>

@@ -1,6 +1,5 @@
 import { ChatHeader } from "@/components/chat/chat-header";
 
-/** A quiet stand-in while a chat loads: the shape of a turn, and the composer. */
 export default function ChatLoading() {
   return (
     <>

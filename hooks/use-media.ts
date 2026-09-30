@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-/** A hook for one media query: false on the server and while hydrating. */
+// False on the server and while hydrating.
 function mediaQuery(query: string) {
   let list: MediaQueryList | undefined;
   const media = () => {
@@ -21,7 +21,6 @@ function mediaQuery(query: string) {
 
 export const useReducedMotion = mediaQuery("(prefers-reduced-motion: reduce)");
 
-/** A finger rather than a mouse: no hover. */
 export const useCoarsePointer = mediaQuery("(pointer: coarse)");
 
 export const useMobile = mediaQuery("(max-width: 767px)");

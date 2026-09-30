@@ -4,7 +4,7 @@ import { type Theme, themeColors } from "@/lib/theme";
 
 const listeners = new Set<() => void>();
 
-/** Calls `onChange` when the theme is picked; the device's own switches come through `prefers-color-scheme`. */
+/** The device's own switches come through `prefers-color-scheme` instead. */
 export function subscribeTheme(onChange: () => void) {
   listeners.add(onChange);
   return () => {
@@ -17,15 +17,11 @@ function current(): Theme {
   return theme === "light" || theme === "dark" ? theme : "system";
 }
 
-/** The theme picked in the theme menu, or `system`. */
 export function useTheme(): Theme {
   return useSyncExternalStore(subscribeTheme, current, () => "system");
 }
 
-/**
- * Switches the page to `theme` and keeps it for the next visit. The page
- * crossfades as one where the browser can; elsewhere colors change at once.
- */
+/** Crossfades the page where the browser can; elsewhere colors change at once. */
 export function setTheme(theme: Theme) {
   remember("theme", theme);
 

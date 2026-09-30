@@ -12,14 +12,12 @@ import { authClient } from "@/lib/auth-client";
 import { PROVIDER_ID } from "@/lib/mixedbread/platform";
 import { withNext } from "@/lib/safe-next";
 
-/** The one way in: signing in with Mixedbread, which also picks an organization. */
 export function SignIn({
   next,
   error,
   configured,
 }: {
   next: string;
-  /** The error Better Auth sent back from a failed sign-in. */
   error?: string;
   /** The host registered an OAuth client, see the README. */
   configured: boolean;

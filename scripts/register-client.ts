@@ -31,7 +31,7 @@ if (urls.length > 0) {
   }
 }
 
-/** Where people open this deployment, from Vercel's system variables. */
+// From Vercel's system variables.
 function deploymentOrigins(): string[] {
   const env = process.env;
   if (env.BETTER_AUTH_URL) return [env.BETTER_AUTH_URL];

@@ -3,7 +3,6 @@ import { SliceGlyph } from "@/components/brand/slice";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { buttonVariants } from "@/components/ui/button";
 
-/** A private, deleted or mistyped chat, inside the app's panel. */
 export default function ChatNotFound() {
   return (
     <>

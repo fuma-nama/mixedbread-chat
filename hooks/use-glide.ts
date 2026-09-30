@@ -2,10 +2,8 @@ import { useLayoutEffect, useRef } from "react";
 import { useReducedMotion } from "./use-media";
 
 /**
- * Glides an element's width or height to its new size when a render changes
- * it, rather than letting it jump. Changed again mid-glide, it goes on from
- * where it is. While it glides, `--glide-to` holds the new size, so content
- * can take it at once rather than being squeezed on the way.
+ * Glides a width or height a render changed, going on from where it is if
+ * changed mid-glide. Meanwhile `--glide-to` holds the new size for content.
  */
 export function useGlide<T extends HTMLElement>(
   axis: "width" | "height",

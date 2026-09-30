@@ -3,10 +3,7 @@
 import { useEffect, useState } from "react";
 import { useReducedMotion } from "@/hooks/use-media";
 
-/**
- * Text that types itself out whenever it changes after the first render, the
- * way a chat's generated title arrives.
- */
+/** Types itself out whenever it changes after the first render. */
 export function TypedText({
   text,
   instant = false,

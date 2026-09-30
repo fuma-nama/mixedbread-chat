@@ -23,7 +23,6 @@ interface SidebarContextValue {
   openMobile: boolean;
   setOpenMobile: (open: boolean) => void;
   mobile: boolean;
-  /** Toggles whichever of the two the screen uses. */
   toggle: () => void;
 }
 
@@ -35,7 +34,6 @@ function useSidebar() {
   return context;
 }
 
-/** The app's frame: a sidebar beside a raised panel. ⌘B toggles the sidebar. */
 export function SidebarProvider({
   defaultOpen,
   children,
@@ -116,7 +114,6 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** The raised panel the page lives in. */
 export function SidebarInset({ children }: { children: React.ReactNode }) {
   return (
     <main className="flex min-w-0 flex-1 flex-col transition-[padding] duration-300 ease-smooth motion-reduce:transition-none md:py-2 md:pr-2 md:group-data-[sidebar=collapsed]/shell:pl-2">
