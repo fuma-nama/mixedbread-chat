@@ -7,14 +7,6 @@ import { account } from "../db/schema";
 import { MAX_STORES, type StoreOption } from "../sources";
 import { organizationOfKey, PROVIDER_ID } from "./platform";
 
-/** A grant to one organization, stored as a Better Auth account. */
-export interface Connection {
-  accountId: string;
-  organizationId: string;
-  name: string;
-  expiresAt: Date | null;
-}
-
 class ReconnectError extends Error {}
 
 /** Whether signing in to the organization again would fix `error`. */
@@ -26,7 +18,7 @@ export function needsReconnect(error: unknown): boolean {
   );
 }
 
-export async function listConnections(userId: string): Promise<Connection[]> {
+export async function listConnections(userId: string) {
   const rows = await db
     .select({
       id: account.id,
@@ -44,6 +36,9 @@ export async function listConnections(userId: string): Promise<Connection[]> {
     expiresAt: row.expiresAt,
   }));
 }
+
+/** A grant to one organization, stored as a Better Auth account. */
+export type Connection = Awaited<ReturnType<typeof listConnections>>[number];
 
 /** Forgets one grant. The last stays: it is how the user signs in. */
 export async function disconnect(userId: string, organizationId: string) {
