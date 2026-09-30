@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useMobile } from "@/hooks/use-media";
 import { useWindowEvent } from "@/hooks/use-window-event";
+import { remember } from "@/lib/remember";
 
 interface SidebarContextValue {
   /** Whether the sidebar is expanded on wide screens. */
@@ -59,8 +60,7 @@ export function SidebarProvider({
       return;
     }
     setOpen(!open);
-    // Read on the server, so the next page load starts the same way.
-    document.cookie = `sidebar_state=${!open}; path=/; max-age=31536000`;
+    remember("sidebar_state", String(!open));
   }
 
   useWindowEvent("keydown", (event) => {
