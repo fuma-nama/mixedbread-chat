@@ -9,21 +9,13 @@ import {
   DropdownMenuRadioGroup,
 } from "@/components/ui/dropdown-menu";
 import { setTheme, useTheme } from "@/hooks/use-theme";
-import { isTheme, type Theme, themes } from "@/lib/theme";
+import { type Theme, themes } from "@/lib/theme";
 
-const icons: Record<Theme, typeof SunIcon> = {
-  system: MonitorIcon,
-  light: SunIcon,
-  dark: MoonIcon,
-};
+const icons = { system: MonitorIcon, light: SunIcon, dark: MoonIcon };
 
 // Where each icon turns in from: the sun spins its rays round, the moon
 // swings up like a crescent rising, the screen just pops.
-const turns: Record<Theme, string> = {
-  system: "0deg",
-  light: "-90deg",
-  dark: "40deg",
-};
+const turns = { system: "0deg", light: "-90deg", dark: "40deg" };
 
 export function ThemeSwitch() {
   const theme = useTheme();
@@ -34,8 +26,7 @@ export function ThemeSwitch() {
   return (
     <DropdownMenuRadioGroup
       value={theme}
-      onValueChange={(value) => {
-        if (!isTheme(value)) return;
+      onValueChange={(value: Theme) => {
         setPicked(true);
         setTheme(value);
       }}
