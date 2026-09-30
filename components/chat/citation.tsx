@@ -7,10 +7,9 @@ import { createContext, memo, use, useId, useState } from "react";
 import { SliceGlyph } from "@/components/brand/slice";
 import { createDialogHandle, type DialogHandle } from "@/components/ui/dialog";
 import { useCoarsePointer } from "@/hooks/use-media";
-import { createStore, type Store, useStore } from "@/hooks/use-store";
+import { createStore, useStore } from "@/hooks/use-store";
 import { originOf, type Source, sourceTitle } from "@/lib/mixedbread/citations";
-import type { Organization } from "@/lib/sources";
-import { type FileSource, PageView, type ShownPage } from "./page-view";
+import { PageView, type ShownPage } from "./page-view";
 import { useOrganizations } from "./sources-provider";
 
 type Lit = ReadonlySet<string> | undefined;
@@ -18,7 +17,7 @@ type Lit = ReadonlySet<string> | undefined;
 /** The labels of the sources being pointed at: one, or all of a file's. */
 const HighlightContext = createContext(createStore<Lit>(undefined));
 
-export function useHighlight(): Store<Lit> {
+export function useHighlight() {
   return use(HighlightContext);
 }
 
@@ -56,11 +55,10 @@ export const Citation = memo(function Citation({
 });
 
 interface Preview {
-  id: string;
   source: Source;
   number?: number;
-  /** Whose page it is, for a page its reader can open. */
-  organization?: Organization;
+  /** Opens its page, for a page its reader can open. */
+  open?: () => void;
   side: "top" | "bottom";
   align: "start" | "center";
 }
@@ -72,6 +70,8 @@ interface Cards {
 
 const CardsContext = createContext<Cards | null>(null);
 
+// Pointers pass through the card, and a click on the trigger opens the source;
+// only a finger, which has no hover, uses the links on it.
 export function SourceCards({ children }: { children: React.ReactNode }) {
   const [cards] = useState<Cards>(() => ({
     card: PreviewCard.createHandle(),
@@ -81,44 +81,26 @@ export function SourceCards({ children }: { children: React.ReactNode }) {
   return (
     <CardsContext value={cards}>
       {children}
-      <Card cards={cards} />
+      <PreviewCard.Root handle={cards.card}>
+        {({ payload }) => (
+          <PreviewCard.Portal>
+            <PreviewCard.Positioner
+              align={payload?.align}
+              side={payload?.side}
+              sideOffset={8}
+              className="pointer-events-none isolate z-50 h-(--positioner-height) w-(--positioner-width) max-w-(--available-width) transition-[top,right,bottom,left] duration-240 ease-smooth data-instant:transition-none motion-reduce:transition-none"
+            >
+              <PreviewCard.Popup className="pointer-events-none relative h-(--popup-height,auto) w-80 origin-(--transform-origin) rounded-xl bg-popover p-0 text-sm text-popover-foreground shadow-float transition-[opacity,scale,height] duration-[150ms,150ms,240ms] ease-smooth outline-none data-ending-style:scale-[0.97] data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none pointer-coarse:[&_:is(a,button)]:pointer-events-auto">
+                <PreviewCard.Viewport className="relative size-full overflow-clip [&>*]:transition-[translate,opacity] [&>*]:duration-200 [&>*]:ease-smooth motion-reduce:[&>*]:transition-none [&>[data-current][data-starting-style]]:opacity-0 data-[activation-direction~='down']:[&>[data-current][data-starting-style]]:translate-y-2 data-[activation-direction~='left']:[&>[data-current][data-starting-style]]:-translate-x-3 data-[activation-direction~='right']:[&>[data-current][data-starting-style]]:translate-x-3 data-[activation-direction~='up']:[&>[data-current][data-starting-style]]:-translate-y-2 [&>[data-previous]]:w-(--popup-width) [&>[data-previous][data-ending-style]]:opacity-0 data-[activation-direction~='down']:[&>[data-previous][data-ending-style]]:-translate-y-2 data-[activation-direction~='left']:[&>[data-previous][data-ending-style]]:translate-x-3 data-[activation-direction~='right']:[&>[data-previous][data-ending-style]]:-translate-x-3 data-[activation-direction~='up']:[&>[data-previous][data-ending-style]]:translate-y-2">
+                  {payload && <SourceCard {...payload} />}
+                </PreviewCard.Viewport>
+              </PreviewCard.Popup>
+            </PreviewCard.Positioner>
+          </PreviewCard.Portal>
+        )}
+      </PreviewCard.Root>
       <PageView handle={cards.page} />
     </CardsContext>
-  );
-}
-
-function view(
-  cards: Cards,
-  source: FileSource,
-  organization: Organization,
-  trigger: HTMLElement | null,
-) {
-  cards.card.close();
-  cards.page.openWithPayload({ source, organization, trigger });
-}
-
-// Pointers pass through the card, and a click on the trigger opens the source;
-// only a finger, which has no hover, uses the links on it.
-function Card({ cards }: { cards: Cards }) {
-  return (
-    <PreviewCard.Root handle={cards.card}>
-      {({ payload }) => (
-        <PreviewCard.Portal>
-          <PreviewCard.Positioner
-            align={payload?.align}
-            side={payload?.side}
-            sideOffset={8}
-            className="pointer-events-none isolate z-50 h-(--positioner-height) w-(--positioner-width) max-w-(--available-width) transition-[top,right,bottom,left] duration-240 ease-smooth data-instant:transition-none motion-reduce:transition-none"
-          >
-            <PreviewCard.Popup className="pointer-events-none relative h-(--popup-height,auto) w-80 origin-(--transform-origin) rounded-xl bg-popover p-0 text-sm text-popover-foreground shadow-float transition-[opacity,scale,height] duration-[150ms,150ms,240ms] ease-smooth outline-none data-ending-style:scale-[0.97] data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none pointer-coarse:[&_:is(a,button)]:pointer-events-auto">
-              <PreviewCard.Viewport className="relative size-full overflow-clip [&>*]:transition-[translate,opacity] [&>*]:duration-200 [&>*]:ease-smooth motion-reduce:[&>*]:transition-none [&>[data-current][data-starting-style]]:opacity-0 data-[activation-direction~='down']:[&>[data-current][data-starting-style]]:translate-y-2 data-[activation-direction~='left']:[&>[data-current][data-starting-style]]:-translate-x-3 data-[activation-direction~='right']:[&>[data-current][data-starting-style]]:translate-x-3 data-[activation-direction~='up']:[&>[data-current][data-starting-style]]:-translate-y-2 [&>[data-previous]]:w-(--popup-width) [&>[data-previous][data-ending-style]]:opacity-0 data-[activation-direction~='down']:[&>[data-previous][data-ending-style]]:-translate-y-2 data-[activation-direction~='left']:[&>[data-previous][data-ending-style]]:translate-x-3 data-[activation-direction~='right']:[&>[data-previous][data-ending-style]]:-translate-x-3 data-[activation-direction~='up']:[&>[data-previous][data-ending-style]]:translate-y-2">
-                {payload && <SourceCard cards={cards} preview={payload} />}
-              </PreviewCard.Viewport>
-            </PreviewCard.Popup>
-          </PreviewCard.Positioner>
-        </PreviewCard.Portal>
-      )}
-    </PreviewCard.Root>
   );
 }
 
@@ -170,8 +152,11 @@ export function SourcePreview({
       : undefined;
   const open =
     organization && source.type === "file"
-      ? (event: React.MouseEvent<HTMLElement>) =>
-          view(cards, source, organization, event.currentTarget)
+      ? () => {
+          cards.card.close();
+          const trigger = document.getElementById(id);
+          cards.page.openWithPayload({ source, organization, trigger });
+        }
       : undefined;
 
   return (
@@ -179,7 +164,7 @@ export function SourcePreview({
       handle={cards.card}
       delay={250}
       closeDelay={150}
-      payload={{ id, source, number, organization, side, align }}
+      payload={{ source, number, open, side, align }}
       id={id}
       {...(source.type === "url" && !coarse
         ? { href: source.url, target: "_blank", rel: "noreferrer" }
@@ -189,15 +174,14 @@ export function SourcePreview({
       onFocus={light}
       onBlur={() => highlight.set(undefined)}
       onClick={coarse ? () => cards.card.open(id) : open}
-      aria-haspopup={!coarse && organization ? "dialog" : undefined}
+      aria-haspopup={!coarse && open ? "dialog" : undefined}
       data-lit={lit}
       {...props}
     />
   );
 }
 
-function SourceCard({ cards, preview }: { cards: Cards; preview: Preview }) {
-  const { source, organization } = preview;
+function SourceCard({ source, number, open }: Preview) {
   const quote = source.excerpt && plain(source.excerpt);
 
   return (
@@ -205,7 +189,7 @@ function SourceCard({ cards, preview }: { cards: Cards; preview: Preview }) {
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <SliceGlyph className="size-3 text-berry" />
         <span className="truncate font-mono">{originOf(source)}</span>
-        <span className="ml-auto font-mono tabular-nums">{preview.number}</span>
+        <span className="ml-auto font-mono tabular-nums">{number}</span>
       </div>
       <p className="line-clamp-3 text-[13.5px] leading-snug font-medium text-pretty text-foreground">
         {sourceTitle(source)}
@@ -228,17 +212,10 @@ function SourceCard({ cards, preview }: { cards: Cards; preview: Preview }) {
           </span>
         </a>
       )}
-      {organization && source.type === "file" && (
+      {open && (
         <button
           type="button"
-          onClick={() =>
-            view(
-              cards,
-              source,
-              organization,
-              document.getElementById(preview.id),
-            )
-          }
+          onClick={open}
           className="flex cursor-pointer items-center gap-1 self-start text-xs text-muted-foreground outline-offset-2 outline-ring transition-colors hover:text-foreground focus-visible:outline-2"
         >
           <ScanSearchIcon className="size-3 shrink-0" />
