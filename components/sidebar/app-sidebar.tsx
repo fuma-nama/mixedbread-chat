@@ -10,7 +10,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { AccountMenu, type User } from "./account-menu";
 import { Chats } from "./chats";
 import { HoverArea } from "./hover-area";
-import { useOpenSearch } from "./search-chats";
+import { openSearch } from "./search-chats";
 
 const navRow =
   "group/row relative flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 text-[13.5px] text-foreground/85 outline-offset-0 outline-ring transition-colors duration-150 hover:text-foreground focus-visible:outline-2 [&>svg]:size-4 [&>svg]:text-muted-foreground";
@@ -29,7 +29,6 @@ export function AppSidebar({
   timeZone: string;
 }) {
   const activeId = usePathname().match(/^\/c\/([^/]+)/)?.[1];
-  const openSearch = useOpenSearch();
 
   return (
     <>

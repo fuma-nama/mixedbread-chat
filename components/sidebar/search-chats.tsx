@@ -4,7 +4,7 @@ import { Autocomplete } from "@base-ui/react/autocomplete";
 import { Dialog } from "@base-ui/react/dialog";
 import { MessageSquareIcon, SearchIcon, SquarePenIcon } from "lucide-react";
 import Link from "next/link";
-import { createContext, use, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import useSWR from "swr";
 import { searchChats } from "@/app/(chat)/actions";
 import { navigate, openLink } from "@/components/chat/chat-cache";
@@ -13,26 +13,22 @@ import { Spinner } from "@/components/ui/spinner";
 import { useWindowEvent } from "@/hooks/use-window-event";
 import { useChatList } from "./chats-provider";
 
-const SearchContext = createContext<(open: boolean) => void>(() => {});
+const palette = Dialog.createHandle();
 
 /** Opens the ⌘K palette. */
-export function useOpenSearch() {
-  const setOpen = use(SearchContext);
-  return () => setOpen(true);
-}
+export const openSearch = () => palette.open(null);
 
 /**
  * The ⌘K palette, which searches chat titles and messages, and ⌘⇧O for a new
  * chat. Mounted once for the app, since the sidebar renders twice.
  */
 export function SearchChats({ children }: { children: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
-
   useWindowEvent("keydown", (event) => {
     if (!event.metaKey && !event.ctrlKey) return;
     if (event.key === "k") {
       event.preventDefault();
-      setOpen(!open);
+      if (palette.isOpen) palette.close();
+      else openSearch();
     } else if (event.key.toLowerCase() === "o" && event.shiftKey) {
       event.preventDefault();
       navigate("/");
@@ -40,9 +36,9 @@ export function SearchChats({ children }: { children: React.ReactNode }) {
   });
 
   return (
-    <SearchContext value={setOpen}>
+    <>
       {children}
-      <Dialog.Root open={open} onOpenChange={setOpen}>
+      <Dialog.Root handle={palette}>
         <Dialog.Portal>
           <Dialog.Backdrop className={backdropClassName} />
           {/* Drops in from the top third; on a short screen its list scrolls. */}
@@ -51,11 +47,11 @@ export function SearchChats({ children }: { children: React.ReactNode }) {
             <Dialog.Description className="sr-only">
               Find a chat by its title or anything said in it.
             </Dialog.Description>
-            <Palette onGo={() => setOpen(false)} />
+            <Palette onGo={() => palette.close()} />
           </Dialog.Popup>
         </Dialog.Portal>
       </Dialog.Root>
-    </SearchContext>
+    </>
   );
 }
 
