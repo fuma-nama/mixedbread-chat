@@ -12,7 +12,6 @@ export const TooltipTrigger = TooltipPrimitive.Trigger;
 export function TooltipContent({
   className,
   side,
-  children,
   ...props
 }: TooltipPrimitive.Popup.Props &
   Pick<TooltipPrimitive.Positioner.Props, "side">) {
@@ -30,9 +29,7 @@ export function TooltipContent({
             className,
           )}
           {...props}
-        >
-          {children}
-        </TooltipPrimitive.Popup>
+        />
       </TooltipPrimitive.Positioner>
     </TooltipPrimitive.Portal>
   );
