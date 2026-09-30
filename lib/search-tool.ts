@@ -64,13 +64,7 @@ async function* run(
             () => undefined,
           )
         : undefined;
-    // On auto, Toast searches while the names load; picks need them first.
-    const resolved = resolveTarget(
-      entry,
-      target.kind === "stores" && target.stores !== "auto"
-        ? await listing
-        : undefined,
-    );
+    const resolved = await resolveTarget(entry, listing);
     if ("error" in resolved) {
       yield { type: "failed", message: resolved.error };
       return;

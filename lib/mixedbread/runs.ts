@@ -37,17 +37,18 @@ export function planRuns(
 }
 
 /**
- * What a run searches once the stores are listed (`listed` is missing when
- * listing failed): "all" becomes every store there is now, and picks drop
- * stores deleted since, as a deleted one fails the whole run.
+ * What a run searches. Auto starts while the stores list; the rest wait for the
+ * listing (missing when it failed): "all" becomes every store there is now,
+ * and picks drop stores deleted since, as a deleted one fails the whole run.
  */
-export function resolveTarget(
+export async function resolveTarget(
   { label, target }: Run,
-  listed: ReadonlyMap<string, string> | undefined,
-): ResearchTarget | { error: string } {
+  listing: Promise<ReadonlyMap<string, string> | undefined> | undefined,
+): Promise<ResearchTarget | { error: string }> {
   if (target.kind === "web") return target;
   const { stores } = target;
   if (stores === "auto") return { kind: "stores", stores };
+  const listed = await listing;
   if (stores === "all") {
     return listed?.size
       ? { kind: "stores", stores: Array.from(listed.keys()) }
