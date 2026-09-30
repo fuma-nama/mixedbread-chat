@@ -7,7 +7,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { startTransition, useCallback, useOptimistic } from "react";
 import { Logo } from "@/components/brand/logo";
-import { Kbd, KbdGroup, ModKey } from "@/components/ui/kbd";
+import { Shortcut } from "@/components/ui/kbd";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useWindowEvent } from "@/hooks/use-window-event";
 import { AccountMenu, type User } from "./account-menu";
@@ -100,12 +100,10 @@ function NavRow({
         children: (
           <>
             {children}
-            <KbdGroup className="ml-auto opacity-0 transition-opacity duration-150 group-hover/row:opacity-100">
-              <ModKey />
-              {keys.map((key) => (
-                <Kbd key={key}>{key}</Kbd>
-              ))}
-            </KbdGroup>
+            <Shortcut
+              keys={keys}
+              className="ml-auto opacity-0 transition-opacity duration-150 group-hover/row:opacity-100"
+            />
           </>
         ),
       },

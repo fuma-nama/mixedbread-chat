@@ -2,7 +2,7 @@ import { cn } from "cn";
 import { SquarePenIcon } from "lucide-react";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
-import { Kbd, KbdGroup, ModKey } from "@/components/ui/kbd";
+import { Shortcut } from "@/components/ui/kbd";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   Tooltip,
@@ -64,11 +64,7 @@ function NewChatButton({ className }: { className: string }) {
       </TooltipTrigger>
       <TooltipContent side="bottom">
         New chat
-        <KbdGroup>
-          <ModKey />
-          <Kbd>⇧</Kbd>
-          <Kbd>O</Kbd>
-        </KbdGroup>
+        <Shortcut keys={["⇧", "O"]} />
       </TooltipContent>
     </Tooltip>
   );

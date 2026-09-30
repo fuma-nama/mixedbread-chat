@@ -6,7 +6,7 @@ import { PanelLeftIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { createContext, use, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Kbd, KbdGroup, ModKey } from "@/components/ui/kbd";
+import { Shortcut } from "@/components/ui/kbd";
 import {
   Tooltip,
   TooltipContent,
@@ -148,10 +148,7 @@ export function SidebarTrigger({ className }: { className?: string }) {
       </TooltipTrigger>
       <TooltipContent side="bottom">
         {label}
-        <KbdGroup>
-          <ModKey />
-          <Kbd>B</Kbd>
-        </KbdGroup>
+        <Shortcut keys={["B"]} />
       </TooltipContent>
     </Tooltip>
   );
