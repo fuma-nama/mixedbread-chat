@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { originOf, type Source } from "@/lib/mixedbread/citations";
-import type { Page } from "@/lib/mixedbread/files";
 import type { Organization } from "@/lib/sources";
 import { useConnect } from "./sources-provider";
 
@@ -72,11 +71,7 @@ export function PageView({ source, organization, trigger }: ShownPage) {
           Loading the page…
         </p>
       ) : result.status === "ok" ? (
-        <PageImage
-          page={result.page}
-          marked={result.marked}
-          title={source.filename}
-        />
+        <PageImage {...result} title={source.filename} />
       ) : result.status === "reconnect" ? (
         <Reconnect organization={organization} />
       ) : (
@@ -117,11 +112,7 @@ function PageImage({
   page,
   marked,
   title,
-}: {
-  page: Page;
-  marked: number[];
-  title: string;
-}) {
+}: Extract<PageResult, { status: "ok" }> & { title: string }) {
   const scroller = useRef<HTMLDivElement>(null);
   const [loaded, setLoaded] = useState(false);
   const first = page.blocks[marked[0]];
