@@ -16,12 +16,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useGlide } from "@/hooks/use-glide";
-import {
-  type Effort,
-  isReasoning,
-  type Reasoning,
-  reasoningLevels,
-} from "@/lib/reasoning";
+import { type Effort, type Reasoning, reasoningLevels } from "@/lib/reasoning";
 import { remember } from "@/lib/remember";
 import { Dial } from "./dial";
 
@@ -71,8 +66,7 @@ export function ReasoningPicker({
           <DropdownMenuContent side="top" sideOffset={8}>
             <DropdownMenuRadioGroup
               value={value}
-              onValueChange={(id) => {
-                if (!isReasoning(id)) return;
+              onValueChange={(id: Reasoning) => {
                 remember("reasoning", id);
                 onChange(id);
               }}
