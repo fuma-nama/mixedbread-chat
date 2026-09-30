@@ -7,15 +7,8 @@ import { More, plural, StatusDot, useFirst } from "./activity";
 
 const FIRST_STEPS = 6;
 
-export function runsOf(steps: Step[]): Map<string, Step[]> {
-  const runs = new Map<string, Step[]>();
-  for (const step of steps) {
-    const name = step.group ?? "";
-    const run = runs.get(name);
-    if (run) run.push(step);
-    else runs.set(name, [step]);
-  }
-  return runs;
+export function runsOf(steps: Step[]) {
+  return Map.groupBy(steps, (step) => step.group ?? "");
 }
 
 /** The step to show on a live line: the newest one, or what comes next. */
