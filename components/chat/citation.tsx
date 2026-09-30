@@ -5,7 +5,11 @@ import { cn } from "cn";
 import { ArrowUpRightIcon, ScanSearchIcon } from "lucide-react";
 import { createContext, memo, use, useId, useState } from "react";
 import { SliceGlyph } from "@/components/brand/slice";
-import { createDialogHandle, type DialogHandle } from "@/components/ui/dialog";
+import {
+  createDialogHandle,
+  Dialog,
+  type DialogHandle,
+} from "@/components/ui/dialog";
 import { useCoarsePointer } from "@/hooks/use-media";
 import { createStore, useStore } from "@/hooks/use-store";
 import { originOf, type Source, sourceTitle } from "@/lib/mixedbread/citations";
@@ -99,7 +103,9 @@ export function SourceCards({ children }: { children: React.ReactNode }) {
           </PreviewCard.Portal>
         )}
       </PreviewCard.Root>
-      <PageView handle={cards.page} />
+      <Dialog handle={cards.page}>
+        {({ payload }) => payload && <PageView {...payload} />}
+      </Dialog>
     </CardsContext>
   );
 }

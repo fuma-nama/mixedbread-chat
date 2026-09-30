@@ -8,10 +8,8 @@ import { openPage, type PageResult } from "@/app/(chat)/actions";
 import { SliceGlyph } from "@/components/brand/slice";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
   DialogContent,
   DialogDescription,
-  type DialogHandle,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -21,10 +19,8 @@ import type { Page } from "@/lib/mixedbread/files";
 import type { Organization } from "@/lib/sources";
 import { useConnect } from "./sources-provider";
 
-export type FileSource = Extract<Source, { type: "file" }>;
-
 export interface ShownPage {
-  source: FileSource;
+  source: Extract<Source, { type: "file" }>;
   organization: Organization;
   /** Where focus goes back to once it closes. */
   trigger: HTMLElement | null;
@@ -34,15 +30,10 @@ export interface ShownPage {
 // holds still as it loads.
 const frame = "h-[min(60vh,40rem)] rounded-lg bg-soft";
 
-export function PageView({ handle }: { handle: DialogHandle<ShownPage> }) {
-  return (
-    <Dialog handle={handle}>
-      {({ payload }) => payload && <PageDialog {...payload} />}
-    </Dialog>
-  );
-}
+const notice =
+  "flex flex-col items-center justify-center gap-3 rounded-lg bg-soft px-4 py-12 text-center text-[13px] text-pretty text-muted-foreground";
 
-function PageDialog({ source, organization, trigger }: ShownPage) {
+export function PageView({ source, organization, trigger }: ShownPage) {
   // Its links expire within the hour, so a page opened again soon reuses them.
   const { data: result, mutate } = useSWR(
     {
@@ -69,15 +60,7 @@ function PageDialog({ source, organization, trigger }: ShownPage) {
           </DialogDescription>
         )}
       </DialogHeader>
-      {result ? (
-        <PageBody
-          title={source.filename}
-          organization={organization}
-          result={result}
-          // Emptied first, so it shows as loading again.
-          onRetry={() => void mutate(undefined)}
-        />
-      ) : (
+      {!result ? (
         <p
           role="status"
           className={cn(
@@ -88,44 +71,32 @@ function PageDialog({ source, organization, trigger }: ShownPage) {
           <Spinner aria-hidden="true" className="size-3.5" />
           Loading the page…
         </p>
+      ) : result.status === "ok" ? (
+        <PageImage
+          page={result.page}
+          marked={result.marked}
+          title={source.filename}
+        />
+      ) : result.status === "reconnect" ? (
+        <Reconnect organization={organization} />
+      ) : (
+        <div className={notice}>
+          {result.status === "missing"
+            ? "This page isn’t available anymore."
+            : "Couldn’t load the page."}
+          {result.status === "error" && (
+            <Button
+              variant="outline"
+              size="sm"
+              // Emptied first, so it shows as loading again.
+              onClick={() => void mutate(undefined)}
+            >
+              Try again
+            </Button>
+          )}
+        </div>
       )}
     </DialogContent>
-  );
-}
-
-const notice =
-  "flex flex-col items-center justify-center gap-3 rounded-lg bg-soft px-4 py-12 text-center text-[13px] text-pretty text-muted-foreground";
-
-function PageBody({
-  title,
-  organization,
-  result,
-  onRetry,
-}: {
-  title: string;
-  organization: Organization;
-  result: PageResult;
-  onRetry: () => void;
-}) {
-  if (result.status === "ok") {
-    return (
-      <PageImage page={result.page} marked={result.marked} title={title} />
-    );
-  }
-  if (result.status === "reconnect") {
-    return <Reconnect organization={organization} />;
-  }
-  return (
-    <div className={notice}>
-      {result.status === "missing"
-        ? "This page isn’t available anymore."
-        : "Couldn’t load the page."}
-      {result.status === "error" && (
-        <Button variant="outline" size="sm" onClick={onRetry}>
-          Try again
-        </Button>
-      )}
-    </div>
   );
 }
 
