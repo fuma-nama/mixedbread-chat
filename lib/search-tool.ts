@@ -97,10 +97,14 @@ async function* run(
 
 export function searchTool(context: SearchContext) {
   const runs = planRuns(context.selection, context.connections);
+  const web = runs.some(({ target }) => target.kind === "web");
+  const reach = runs.some(({ target }) => target.kind === "stores")
+    ? `the user's Mixedbread stores${web ? " and the web" : ""}`
+    : "the web";
   let label = context.firstLabel;
 
   return tool({
-    description: describe(runs),
+    description: `Search ${reach} with Toast, Mixedbread's search agent. It does not see this conversation, so write a complete, self-contained request.`,
     inputSchema: z.object({
       query: z.string().describe("What to find out, with all needed context"),
     }),
@@ -183,14 +187,6 @@ function turnsOf(messages: ModelMessage[]): Turn[] {
     if (text) turns.push({ role, content: text });
   }
   return turns;
-}
-
-function describe(runs: Run[]): string {
-  const web = runs.some(({ target }) => target.kind === "web");
-  const reach = runs.some(({ target }) => target.kind === "stores")
-    ? `the user's Mixedbread stores${web ? " and the web" : ""}`
-    : "the web";
-  return `Search ${reach} with Toast, Mixedbread's search agent. It does not see this conversation, so write a complete, self-contained request.`;
 }
 
 export type ChatMessage = UIMessage<
