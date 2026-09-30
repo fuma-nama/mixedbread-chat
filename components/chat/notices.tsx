@@ -20,8 +20,7 @@ export function failureOf(error: Error): Failure {
 export function wasRejected(error: Error): boolean {
   return (
     APICallError.isInstance(error) &&
-    error.statusCode !== undefined &&
-    [400, 401, 404, 429].includes(error.statusCode)
+    [400, 401, 404, 429].includes(error.statusCode ?? 0)
   );
 }
 
