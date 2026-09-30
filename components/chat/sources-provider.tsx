@@ -62,6 +62,21 @@ export function SourcesProvider({
 
   useEffect(() => {
     sources.prefetch();
+    // Back from a connection that didn't finish, with Better Auth's reason.
+    const url = new URL(window.location.href);
+    const error = url.searchParams.get("error");
+    if (!error) return;
+    url.searchParams.delete("error");
+    window.history.replaceState(null, "", url);
+    // The toaster above subscribes in its own effect, which runs after this one.
+    queueMicrotask(() =>
+      toast.add({
+        title:
+          error === "access_denied"
+            ? "Connecting was cancelled."
+            : "Connecting didn’t finish. Try again.",
+      }),
+    );
   }, [sources]);
 
   return <SourcesContext value={sources}>{children}</SourcesContext>;
@@ -121,6 +136,7 @@ function createSources(
       const result = await authClient.linkSocial({
         provider: PROVIDER_ID,
         callbackURL: window.location.pathname,
+        errorCallbackURL: window.location.pathname,
       });
       if (result.error) throw new Error(result.error.message);
     },

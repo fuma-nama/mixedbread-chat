@@ -23,6 +23,9 @@ export const auth = betterAuth({
   },
   database: drizzleAdapter(db, { provider: "pg" }),
   advanced: { database: { joins: true } },
+  // An error with no page of its own, like a lost sign-in state, lands home:
+  // signed in, it's a toast there; signed out, the sign-in page says it.
+  onAPIError: { errorURL: "/" },
   account: {
     encryptOAuthTokens: true,
     // Signing in to another organization adds it to the same person.
