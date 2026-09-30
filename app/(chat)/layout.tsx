@@ -46,9 +46,7 @@ export default async function ChatLayout({
           <ModelsProvider
             models={models}
             model={
-              model && models.some((entry) => entry.id === model)
-                ? model
-                : defaultModel
+              models.find((entry) => entry.id === model)?.id ?? defaultModel
             }
             reasoning={isReasoning(reasoning) ? reasoning : defaultReasoning}
           >
