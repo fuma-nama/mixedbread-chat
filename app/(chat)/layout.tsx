@@ -77,8 +77,7 @@ export default async function ChatLayout({
 }
 
 /** The reader's time zone, remembered by the sidebar; UTC until it is. */
-function timeZoneOf(value: string | undefined): string {
-  if (!value) return "UTC";
+function timeZoneOf(value = "UTC"): string {
   try {
     return new Intl.DateTimeFormat("en", {
       timeZone: decodeURIComponent(value),
