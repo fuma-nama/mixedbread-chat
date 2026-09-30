@@ -12,12 +12,7 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useGlide } from "@/hooks/use-glide";
-import {
-  choiceFor,
-  type Organization,
-  type SourceSelection,
-  searchesStores,
-} from "@/lib/sources";
+import { choiceFor, searchesStores } from "@/lib/sources";
 import {
   ConnectButton,
   OrganizationStores,
@@ -25,10 +20,10 @@ import {
   separator,
 } from "./organization-stores";
 import {
-  type StoresState,
   storesOf,
   useAllStores,
   useOrganizations,
+  usePickedStores,
   useSelection,
   useSources,
 } from "./sources-provider";
@@ -37,11 +32,7 @@ import {
 const FILTER_FROM = 8;
 
 export function SourcesPicker() {
-  const { web, docs, lapsed, label } = reachOf(
-    useSelection(),
-    useOrganizations(),
-    useAllStores(),
-  );
+  const { web, docs, lapsed, label } = useReach();
   const [query, setQuery] = useState("");
   const glide = useGlide<HTMLButtonElement>("width", 240);
   // The words come in on a change, not on arrival.
@@ -119,64 +110,46 @@ export function SourcesPicker() {
 const glyph =
   "absolute top-0 left-0 size-3.5 transition-[translate,scale,opacity] duration-300 ease-smooth motion-reduce:transition-none data-[on=false]:scale-50 data-[on=false]:opacity-0";
 
-function reachOf(
-  selection: SourceSelection,
-  organizations: Organization[],
-  all: Record<string, StoresState> | undefined,
-) {
+function useReach() {
+  const selection = useSelection();
+  const organizations = useOrganizations();
+  const all = useAllStores();
+  const picked = usePickedStores();
   const { web } = selection;
   let docs = false;
   let lapsed = false;
   let auto = false;
   let whole = 0;
   let loading = false;
-  let count = 0;
-  let first: string | undefined;
+  // Once the stores load, picks count only while their stores are there.
+  let count = picked.length;
 
   for (const { id } of organizations) {
     const choice = choiceFor(selection, id);
     if (!searchesStores(choice)) continue;
     docs = true;
     const state = storesOf(all, id);
-    const stores = state.status === "ok" ? state.stores : undefined;
     lapsed ||= state.status === "reconnect";
-    if (choice === "auto") {
-      auto = true;
-      continue;
-    }
-    if (choice === "all") {
+    if (choice === "auto") auto = true;
+    else if (choice === "all") {
       whole++;
-      count += stores?.length ?? 0;
+      if (state.status === "ok") count += state.stores.length;
       loading ||= state.status === "loading";
-      continue;
-    }
-    if (!stores) {
-      count += choice.length;
-      continue;
-    }
-    // Once the stores load, picks count only while their stores are there.
-    const picked = new Set(choice);
-    for (const store of stores) {
-      if (!picked.has(store.id)) continue;
-      count++;
-      first ??= store.name;
-    }
+    } else if (state.status !== "ok") count += choice.length;
   }
 
+  const first = picked[0]?.name;
   // Where Toast picks, how many it looks through is up to it.
   let phrase = `${count} ${count === 1 ? "store" : "stores"}`;
-  if (auto) phrase = web ? "stores" : "Stores";
-  else if (whole === organizations.length)
+  if (whole === organizations.length)
     phrase = web ? "all stores" : "All stores";
+  else if (auto || loading) phrase = web ? "stores" : "Stores";
   else if (whole === 0 && count === 1 && first) phrase = first;
-  else if (loading) phrase = web ? "stores" : "Stores";
 
   let label = web ? "Web" : "No search";
   if (docs) label = web ? `Web + ${phrase}` : phrase;
   return { web, docs, lapsed, label };
 }
-
-const heading = "px-2 pt-1.5 pb-1 text-xs text-muted-foreground";
 
 function Panel({
   query,
@@ -191,7 +164,6 @@ function Panel({
   const all = useAllStores();
   const ref = useGlide<HTMLDivElement>("height", 240);
   const filterRef = useRef<HTMLInputElement>(null);
-  const several = organizations.length > 1;
   let total = 0;
   for (const { id } of organizations) {
     const state = storesOf(all, id);
@@ -217,9 +189,8 @@ function Panel({
     if (event.key === "ArrowDown") to = items[(index + 1) % items.length];
     else if (event.key === "ArrowUp") to = items.at(index - 1);
     else if (event.target === filter) {
-      if (event.key === "Enter" && words) {
+      if (event.key === "Enter" && words)
         event.currentTarget.querySelector<HTMLElement>("[data-store]")?.click();
-      }
       return;
     } else if (event.key === "Home") to = items[filter ? 1 : 0];
     else if (event.key === "End") to = items.at(-1);
@@ -265,7 +236,9 @@ function Panel({
       <div className="min-h-0 flex-1 scroll-py-1 scroll-pt-9 scrollbar-thin overflow-y-auto overscroll-contain p-1">
         {!words && (
           <>
-            <div className={heading}>Search in</div>
+            <div className="px-2 pt-1.5 pb-1 text-xs text-muted-foreground">
+              Search in
+            </div>
             <button
               type="button"
               role="switch"
@@ -292,7 +265,7 @@ function Panel({
             key={organization.id}
             organization={organization}
             state={storesOf(all, organization.id)}
-            named={several}
+            named={organizations.length > 1}
             words={words}
           />
         ))}
