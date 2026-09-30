@@ -1,24 +1,19 @@
 import { useSyncExternalStore } from "react";
 
-export interface Store<T> {
-  /** The value it was created with, which the server rendered. */
-  initial: T;
-  get: () => T;
-  set: (value: T) => void;
-  subscribe: (listener: () => void) => () => void;
-}
+export type Store<T> = ReturnType<typeof createStore<T>>;
 
-export function createStore<T>(value: T): Store<T> {
+export function createStore<T>(value: T) {
   const listeners = new Set<() => void>();
 
   return {
+    /** The value it was created with, which the server rendered. */
     initial: value,
     get: () => value,
-    set(next) {
+    set(next: T) {
       value = next;
       for (const listener of listeners) listener();
     },
-    subscribe(listener) {
+    subscribe(listener: () => void) {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
