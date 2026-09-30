@@ -28,10 +28,9 @@ export function ShareDialog({
   /** Its searches found files in the user's stores, which a shared chat quotes. */
   stores: boolean;
 }) {
-  const [visibility, setVisibility] = useState(initialVisibility);
+  const [shared, setShared] = useState(initialVisibility === "public");
   const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
-  const shared = visibility === "public";
 
   // Copies inside the click itself: Safari refuses clipboard writes after an await.
   function copy() {
@@ -50,7 +49,7 @@ export function ShareDialog({
     startTransition(async () => {
       try {
         await setChatVisibility(chatId, next);
-        setVisibility(next);
+        setShared(next === "public");
         onChange(next);
         if (next === "private") toast.add({ title: "Link turned off" });
       } catch {
