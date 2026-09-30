@@ -2,7 +2,7 @@
 
 import { createContext, use, useState } from "react";
 import { listChats } from "@/app/(chat)/actions";
-import { createStore, type Store, useStore } from "@/hooks/use-store";
+import { createStore, useStore } from "@/hooks/use-store";
 
 export interface ChatSummary {
   id: string;
@@ -10,14 +10,7 @@ export interface ChatSummary {
   updatedAt: Date;
 }
 
-interface Chats {
-  list: Store<ChatSummary[]>;
-  refresh: () => void;
-  /** Shows a change right away; a new id lists it first. */
-  update: (id: string, change: Partial<ChatSummary>) => void;
-  /** Takes chats off the list at once, returning what puts the list back. */
-  remove: (ids: ReadonlySet<string>) => () => void;
-}
+type Chats = ReturnType<typeof createChats>;
 
 const ChatsContext = createContext<Chats | null>(null);
 
@@ -34,12 +27,13 @@ export function ChatsProvider({
   return <ChatsContext value={chats}>{children}</ChatsContext>;
 }
 
-function createChats(initial: ChatSummary[]): Chats {
+function createChats(initial: ChatSummary[]) {
   const list = createStore(initial);
   return {
     list,
     refresh: () => void listChats().then(list.set),
-    update(id, change) {
+    /** Shows a change right away; a new id lists it first. */
+    update(id: string, change: Partial<ChatSummary>) {
       const chats = list.get();
       const index = chats.findIndex((chat) => chat.id === id);
       list.set(
@@ -51,7 +45,8 @@ function createChats(initial: ChatSummary[]): Chats {
           : chats.with(index, { ...chats[index], ...change }),
       );
     },
-    remove(ids) {
+    /** Takes chats off the list at once, returning what puts the list back. */
+    remove(ids: ReadonlySet<string>) {
       const before = list.get();
       list.set(before.filter((chat) => !ids.has(chat.id)));
       return () => list.set(before);
