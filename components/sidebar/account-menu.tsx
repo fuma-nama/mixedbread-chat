@@ -182,14 +182,7 @@ function SignedIn({ user }: { user: User }) {
           <DropdownMenuSeparator />
           <ThemeSwitch />
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={async () => {
-              // Loaded on demand: chat pages have no other use for the auth client.
-              const { authClient } = await import("@/lib/auth-client");
-              await authClient.signOut();
-              window.location.href = "/login";
-            }}
-          >
+          <DropdownMenuItem onClick={logOut}>
             <LogOutIcon />
             Log out
           </DropdownMenuItem>
@@ -221,6 +214,13 @@ function SignedIn({ user }: { user: User }) {
       </AlertDialog>
     </>
   );
+}
+
+async function logOut() {
+  // Loaded on demand: chat pages have no other use for the auth client.
+  const { authClient } = await import("@/lib/auth-client");
+  await authClient.signOut();
+  window.location.href = "/login";
 }
 
 /** Manage it on Mixedbread, sign in to it again when its grant lapsed, or disconnect it. */
