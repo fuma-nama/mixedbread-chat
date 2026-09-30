@@ -11,8 +11,7 @@ export function useSelection(chats: ChatSummary[], activeId?: string) {
     base: NONE,
   });
 
-  const selected: ChatSummary[] = [];
-  for (const chat of chats) if (selection.has(chat.id)) selected.push(chat);
+  const selected = chats.filter((chat) => selection.has(chat.id));
 
   return {
     selection,

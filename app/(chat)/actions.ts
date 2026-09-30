@@ -50,14 +50,14 @@ export async function listOrganizationStores(
 export async function listAllStores(): Promise<Record<string, StoresResult>> {
   const userId = await currentUserId();
   const connections = await listConnections(userId);
-  const results = await Promise.all(
-    connections.map((connection) => listStores(userId, connection)),
+  return Object.fromEntries(
+    await Promise.all(
+      connections.map(async (connection) => [
+        connection.organizationId,
+        await listStores(userId, connection),
+      ]),
+    ),
   );
-  const byOrganization: Record<string, StoresResult> = {};
-  for (let i = 0; i < connections.length; i++) {
-    byOrganization[connections[i].organizationId] = results[i];
-  }
-  return byOrganization;
 }
 
 export type PageResult =

@@ -36,17 +36,13 @@ export async function listConnections(userId: string): Promise<Connection[]> {
     .from(account)
     .where(and(eq(account.userId, userId), eq(account.providerId, PROVIDER_ID)))
     .orderBy(asc(account.createdAt));
-  const connections: Connection[] = [];
-  for (const row of rows) {
-    connections.push({
-      accountId: row.id,
-      organizationId: organizationOfKey(row.key),
-      // The platform shares no organization names yet.
-      name: `Organization ${connections.length + 1}`,
-      expiresAt: row.expiresAt,
-    });
-  }
-  return connections;
+  return rows.map((row, index) => ({
+    accountId: row.id,
+    organizationId: organizationOfKey(row.key),
+    // The platform shares no organization names yet.
+    name: `Organization ${index + 1}`,
+    expiresAt: row.expiresAt,
+  }));
 }
 
 /** Forgets one grant. The last stays: it is how the user signs in. */

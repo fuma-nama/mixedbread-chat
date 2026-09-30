@@ -9,9 +9,8 @@ export const getViewer = cache(async () => {
   if (!session) return undefined;
   const connections = await listConnections(session.user.id);
   if (connections.length === 0) return undefined;
-  const organizations: Organization[] = [];
-  for (const { organizationId, name } of connections) {
-    organizations.push({ id: organizationId, name });
-  }
+  const organizations: Organization[] = connections.map(
+    ({ organizationId, name }) => ({ id: organizationId, name }),
+  );
   return { user: session.user, connections, organizations };
 });

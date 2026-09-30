@@ -55,12 +55,9 @@ export function ModelPicker({
   if (text) {
     const words = text.split(/\s+/);
     for (const group of catalog.all) {
-      const found: Model[] = [];
-      for (const model of group.items) {
-        if (words.every((word) => contains(model, word, searchText))) {
-          found.push(model);
-        }
-      }
+      const found = group.items.filter((model) =>
+        words.every((word) => contains(model, word, searchText)),
+      );
       if (found.length > 0)
         shown.push({ provider: group.provider, items: found });
     }
