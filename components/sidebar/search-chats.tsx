@@ -22,7 +22,7 @@ export const openSearch = () => palette.open(null);
  * The ⌘K palette, which searches chat titles and messages, and ⌘⇧O for a new
  * chat. Mounted once for the app, since the sidebar renders twice.
  */
-export function SearchChats({ children }: { children: React.ReactNode }) {
+export function SearchChats() {
   useWindowEvent("keydown", (event) => {
     if (!event.metaKey && !event.ctrlKey) return;
     if (event.key === "k") {
@@ -36,22 +36,19 @@ export function SearchChats({ children }: { children: React.ReactNode }) {
   });
 
   return (
-    <>
-      {children}
-      <Dialog.Root handle={palette}>
-        <Dialog.Portal>
-          <Dialog.Backdrop className={backdropClassName} />
-          {/* Drops in from the top third; on a short screen its list scrolls. */}
-          <Dialog.Popup className="fixed top-[min(18vh,10rem)] left-1/2 z-50 flex max-h-[calc(100dvh-min(18vh,10rem)-1.5rem)] w-[min(36rem,calc(100%-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-2xl bg-popover text-popover-foreground shadow-float transition-[opacity,scale,translate] duration-200 ease-smooth outline-none data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-ending-style:duration-150 data-starting-style:-translate-y-2 data-starting-style:scale-[0.98] data-starting-style:opacity-0 motion-reduce:transition-none">
-            <Dialog.Title className="sr-only">Search chats</Dialog.Title>
-            <Dialog.Description className="sr-only">
-              Find a chat by its title or anything said in it.
-            </Dialog.Description>
-            <Palette onGo={() => palette.close()} />
-          </Dialog.Popup>
-        </Dialog.Portal>
-      </Dialog.Root>
-    </>
+    <Dialog.Root handle={palette}>
+      <Dialog.Portal>
+        <Dialog.Backdrop className={backdropClassName} />
+        {/* Drops in from the top third; on a short screen its list scrolls. */}
+        <Dialog.Popup className="fixed top-[min(18vh,10rem)] left-1/2 z-50 flex max-h-[calc(100dvh-min(18vh,10rem)-1.5rem)] w-[min(36rem,calc(100%-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-2xl bg-popover text-popover-foreground shadow-float transition-[opacity,scale,translate] duration-200 ease-smooth outline-none data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-ending-style:duration-150 data-starting-style:-translate-y-2 data-starting-style:scale-[0.98] data-starting-style:opacity-0 motion-reduce:transition-none">
+          <Dialog.Title className="sr-only">Search chats</Dialog.Title>
+          <Dialog.Description className="sr-only">
+            Find a chat by its title or anything said in it.
+          </Dialog.Description>
+          <Palette onGo={() => palette.close()} />
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 

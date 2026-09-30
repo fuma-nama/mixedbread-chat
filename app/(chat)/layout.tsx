@@ -50,23 +50,22 @@ export default async function ChatLayout({
             }
             reasoning={isReasoning(reasoning) ? reasoning : defaultReasoning}
           >
-            <SearchChats>
-              <Sidebar>
-                <AppSidebar
-                  user={
-                    viewer && {
-                      name: viewer.user.name,
-                      email: viewer.user.email,
-                      image: viewer.user.image,
-                    }
+            <SearchChats />
+            <Sidebar>
+              <AppSidebar
+                user={
+                  viewer && {
+                    name: viewer.user.name,
+                    email: viewer.user.email,
+                    image: viewer.user.image,
                   }
-                  // oxlint-disable-next-line react/purity -- rendered once per request
-                  now={Date.now()}
-                  timeZone={timeZoneOf(cookieStore.get("tz")?.value)}
-                />
-              </Sidebar>
-              <SidebarInset>{children}</SidebarInset>
-            </SearchChats>
+                }
+                // oxlint-disable-next-line react/purity -- rendered once per request
+                now={Date.now()}
+                timeZone={timeZoneOf(cookieStore.get("tz")?.value)}
+              />
+            </Sidebar>
+            <SidebarInset>{children}</SidebarInset>
           </ModelsProvider>
         </SourcesProvider>
       </ChatsProvider>
