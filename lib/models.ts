@@ -7,7 +7,6 @@ export interface Model {
   name: string;
   /** Its name in the featured list, or the Gateway's ID for the rest. */
   provider: string;
-  /** Listed up front; the rest of the catalog is a search away. */
   featured: boolean;
   /** The efforts it takes besides Auto, least to most. */
   efforts: Effort[];
@@ -38,7 +37,6 @@ const featured = new Map([
 
 export const defaultModel = "anthropic/claude-sonnet-5";
 
-/** Names chats; a small, fast model is enough. */
 export const titleModel = "openai/gpt-5.6-luna";
 
 const CATALOG = "https://ai-gateway.vercel.sh/v1/models";
@@ -49,10 +47,7 @@ let catalog: Model[] | undefined;
 let expires = 0;
 let refreshing: Promise<Model[]> | undefined;
 
-/**
- * AI Gateway's catalog, refreshed hourly per server. The last one serves
- * while a new one loads, or when loading fails; before any, it is empty.
- */
+/** Refreshed hourly per server; the last catalog serves while a new one loads or fails. */
 export async function listModels(): Promise<Model[]> {
   if (Date.now() > expires) {
     refreshing ??= refresh();

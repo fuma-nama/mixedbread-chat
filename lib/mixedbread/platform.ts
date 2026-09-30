@@ -5,15 +5,12 @@ export const PLATFORM_URL =
 
 export const SCOPES = ["openid", "profile", "email", "offline_access"];
 
-/** Where Better Auth receives Mixedbread's sign-in callback. */
 export function callbackURL(origin: string): string {
   return new URL(`/api/auth/callback/${PROVIDER_ID}`, origin).href;
 }
 
-/**
- * A token reaches only the organization picked while signing in, so each
- * organization is its own account, keyed by user then organization.
- */
+// A token reaches only the organization picked while signing in, so each
+// organization is its own account.
 export function accountKey(subject: string, organizationId: string): string {
   return `${subject}:${organizationId}`;
 }
@@ -22,7 +19,6 @@ export function organizationOfKey(key: string): string {
   return key.slice(key.lastIndexOf(":") + 1);
 }
 
-/** The organization an access token was granted for. */
 export function organizationOfToken(token: string): string {
   const payload = token.split(".")[1];
   const claims = payload

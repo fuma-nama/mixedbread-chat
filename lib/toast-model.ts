@@ -19,12 +19,8 @@ const usage = {
   outputTokens: { total: undefined, text: undefined, reasoning: undefined },
 };
 
-/**
- * The chat model when Toast answers: it hands the question to the search
- * tool, where Toast reads the conversation and searches, then replies with
- * Toast's findings. The chat stays one of plain tool calls, so any model can
- * pick it up afterwards.
- */
+// Hands the question to the search tool, then answers with its findings, so
+// the chat stays plain tool calls any model can pick up afterwards.
 export const toastModel: ModelV4 = {
   specificationVersion: "v4",
   provider: "mixedbread",

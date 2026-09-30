@@ -1,13 +1,10 @@
-/**
- * Messages form a tree: editing a message or retrying an answer adds a
- * sibling under the same parent. A conversation is one path through it.
- */
+// Messages form a tree: an edit or retry adds a sibling under the same
+// parent, and a conversation is one path through it.
 interface Branched {
   id: string;
   parentId: string | null;
 }
 
-/** The messages from the root down to `leafId`. */
 export function pathTo<T extends Branched>(
   messages: T[],
   leafId: string | null,

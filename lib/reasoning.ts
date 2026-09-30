@@ -1,8 +1,5 @@
-/**
- * How hard the model thinks before it answers. Auto leaves it to the
- * provider; the rest are the AI SDK's `reasoning` values, least effort to
- * most, and each model takes the ones AI Gateway lists for it.
- */
+// Auto leaves the effort to the provider; the rest are the AI SDK's
+// `reasoning` values, least to most.
 export const reasoningLevels = [
   { id: "auto", name: "Auto" },
   { id: "none", name: "Off" },

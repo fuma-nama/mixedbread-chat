@@ -6,7 +6,6 @@ import { splitChunkId } from "./files.ts";
 
 const WEB_STORE = "mixedbread/web";
 
-/** A step of a Toast run, as the search trace shows it. */
 export interface Step {
   id: string;
   kind: "search" | "grep" | "filter" | "metadata" | "read" | "stores" | "other";
@@ -22,17 +21,16 @@ export interface Step {
   filters?: { key: string; operator: string; value: unknown }[];
   /** The stores a `stores` step looked through. */
   stores?: { name: string }[];
-  /** Chunks the step returned or read. */
+  /** Chunks it returned or read. */
   results?: number;
 }
 
-/** A turn of the conversation Toast answers. */
 export interface Turn {
   role: "user" | "assistant";
   content: string;
 }
 
-/** What a run searches: the web, or its organization's stores, where Toast picks ("auto") or these. */
+/** The web, or the organization's stores: Toast picks among them ("auto"), or these. */
 export type ResearchTarget =
   | { kind: "web" }
   | { kind: "stores"; stores: "auto" | string[] };
@@ -55,8 +53,8 @@ const annotationSchema = z.discriminatedUnion("type", [
   }),
 ]);
 
-/** A marker in Toast's answer, at a code point offset, citing a chunk it read. */
-export type Citation = { at: number; excerpt?: string } & (
+/** A cited page or chunk; `excerpt` is the text Toast read there. */
+export type Cited = { excerpt?: string } & (
   | { type: "url"; url: string; title: string }
   | {
       type: "file";
@@ -66,10 +64,13 @@ export type Citation = { at: number; excerpt?: string } & (
       /** Its place in the file, from 0: for a visually parsed PDF, its page. */
       chunkIndex: number;
       storeId: string;
-      /** The chunk is an image, such as a page of a visually parsed PDF. */
+      /** An image, such as a page of a visually parsed PDF. */
       image?: true;
     }
 );
+
+/** A marker at a code point offset in Toast's answer. */
+export type Citation = Cited & { at: number };
 
 export type ResearchEvent =
   | { type: "step"; step: Step; chunks: string[] }
@@ -102,8 +103,7 @@ const callSchema = z.object({
   results: z.array(resultSchema).nullish(),
 });
 
-// Steps and annotations are parsed one by one, so a shape the app doesn't
-// know yet is skipped instead of failing the run.
+// Steps and annotations are parsed one by one, so an unknown shape is skipped.
 const chunkSchema = z.object({
   choices: z.array(
     z.object({
@@ -164,7 +164,7 @@ function toolsFor(target: ResearchTarget): ChatCreateCompletionParams.Tool[] {
   return tools;
 }
 
-/** Lets Toast 1 search `target` to answer `turns`, streaming each step, then its cited answer. */
+/** Streams each step of Toast's search, then its cited answer. */
 export async function* research(
   client: Mixedbread,
   turns: Turn[],
@@ -252,7 +252,6 @@ const EXCERPT_LENGTH = 600;
 // Where the harness shortened a chunk for Toast's context.
 const CUT = /…?\[(?:\.\.\. )?truncated: [^\]]*\]…?/g;
 
-/** The chunk's text as a citation preview shows it, cut at a word. */
 function excerptOf(result: z.infer<typeof resultSchema>): string | undefined {
   let text =
     result.text || result.ocr_text || result.transcription || result.summary;

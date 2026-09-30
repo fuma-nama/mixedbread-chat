@@ -37,10 +37,7 @@ interface SearchContext {
   selection: SourceSelection;
   /** Continues the conversation's source labels. */
   firstLabel: number;
-  /**
-   * Toast answers the chat itself: it reads the whole conversation, and its
-   * findings are the answer, see `lib/toast-model.ts`.
-   */
+  /** Toast answers the chat itself, from the whole conversation. */
   toast: boolean;
 }
 
@@ -190,7 +187,6 @@ export function searchTool(context: SearchContext) {
   });
 }
 
-/** The conversation's text, for Toast answering the chat itself. */
 function turnsOf(messages: ModelMessage[]): Turn[] {
   const turns: Turn[] = [];
   for (const { role, content } of messages) {

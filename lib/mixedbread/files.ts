@@ -32,16 +32,13 @@ const metadataSchema = z.object({
   }),
 });
 
-/** A chunk ID is `file_id:index`. */
+// A chunk ID is `file_id:index`.
 export function splitChunkId(chunkId: string): [fileId: string, index: number] {
   const split = chunkId.lastIndexOf(":");
   return [chunkId.slice(0, split), Number(chunkId.slice(split + 1))];
 }
 
-/**
- * The page behind a cited chunk, or nothing when the chunk isn't an image.
- * Visual parsing makes a chunk of each page.
- */
+/** The page behind a cited chunk, when visual parsing made the chunk from one. */
 export async function fetchPage(
   client: Mixedbread,
   storeId: string,

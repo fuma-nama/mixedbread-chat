@@ -1,31 +1,18 @@
-import type { Citation } from "./research";
+import type { Cited, Citation } from "./research";
 
-/** A cited page or chunk; `excerpt` is the text Toast read there. */
-export type Source = { label: string; excerpt?: string } & (
-  | { type: "url"; url: string; title: string }
-  | {
-      type: "file";
-      fileId: string;
-      filename: string;
-      chunkId: string;
-      /** Its place in the file, from 0: for a visually parsed PDF, its page. */
-      chunkIndex: number;
-      storeId: string;
+/** A cited page or chunk, labelled for the conversation. */
+export type Source = { label: string } & (
+  | Extract<Cited, { type: "url" }>
+  | (Extract<Cited, { type: "file" }> & {
       storeName?: string;
       /** Whose store it is, for showing its page. */
       organizationId?: string;
-      /** A page or picture that can be shown. */
-      image?: true;
       /** The sentence that cited it first, to find on its page. */
       claim?: string;
-    }
+    })
 );
 
-/**
- * Puts a `[label]` marker where each citation stood in Toast's answer, so
- * another model can cite the same evidence. Each cited page or chunk gets one
- * label from `nextLabel`.
- */
+/** Marks each citation `[label]` in the text, so another model can cite the same evidence. */
 export function labelCitations(
   text: string,
   citations: Citation[],

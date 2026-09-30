@@ -43,7 +43,7 @@ export const message = pgTable(
   ],
 );
 
-/** OAuth clients the build registered with Mixedbread, see `scripts/register-client.ts`. */
+/** OAuth clients the build registered with Mixedbread. */
 export const oauthClient = pgTable("oauth_client", {
   /** The callback URLs the client allows, space separated. */
   redirectUris: text("redirect_uris").primaryKey(),

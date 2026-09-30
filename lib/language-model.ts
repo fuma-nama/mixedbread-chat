@@ -9,7 +9,6 @@ const ollama =
     baseURL: process.env.OLLAMA_BASE_URL ?? "http://localhost:11434/v1",
   })(process.env.OLLAMA_MODEL);
 
-/** The model that answers for a model ID from `lib/models.ts`. */
 export function languageModel(id: string): LanguageModel {
   return ollama || id;
 }

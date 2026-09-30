@@ -8,13 +8,7 @@ import { labelCitations, type Source } from "./citations.ts";
 import type { Connection } from "./organizations.ts";
 import type { Citation, ResearchTarget } from "./research.ts";
 
-/*
- * A token reaches one organization, so a search takes a Toast run per
- * organization with stores picked, plus one for the web, side by side.
- */
-
 export interface Run {
-  /** "Web" or the organization's name. */
   label: string;
   /** Whose token the run uses; the web run borrows one, which it bills. */
   connection: Connection;
@@ -43,10 +37,9 @@ export function planRuns(
 }
 
 /**
- * What a run searches, once its organization's stores are listed (`listed`
- * is missing when listing failed): "all" becomes every store there is now,
- * and picks drop stores deleted since, as a deleted one fails the whole run.
- * An error says why the run can't search.
+ * What a run searches once the stores are listed (`listed` is missing when
+ * listing failed): "all" becomes every store there is now, and picks drop
+ * stores deleted since, as a deleted one fails the whole run.
  */
 export function resolveTarget(
   { label, target }: Run,
@@ -72,16 +65,11 @@ export type RunResult =
       status: "done";
       text: string;
       citations: Citation[];
-      /** By store ID. */
       storeNames: ReadonlyMap<string, string>;
     }
   | { status: "failed"; message: string };
 
-/**
- * Labels every run's citations in run order, so labels stay unique across
- * the search, and puts the findings under a heading per run when there are
- * several. `nextLabel` continues the conversation's labels.
- */
+/** Labels citations in run order, so labels stay unique, with a heading per run when there are several. */
 export function combine(
   runs: Run[],
   results: RunResult[],
@@ -114,10 +102,7 @@ export function combine(
   return { findings: sections.join("\n\n"), sources };
 }
 
-/**
- * Runs `generators` side by side, yielding each value as it comes with the
- * index of the generator it came from. A generator that throws stops them all.
- */
+/** Runs `generators` side by side; one that throws stops them all. */
 export async function* merge<T>(
   generators: AsyncGenerator<T>[],
 ): AsyncGenerator<{ index: number; value: T }> {

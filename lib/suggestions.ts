@@ -1,6 +1,5 @@
 import type { SearchScope } from "./sources";
 
-/** Questions the empty state offers, true to what the picked sources can answer. */
 const suggestions: Record<SearchScope, string[]> = {
   web: [
     "What's new in the latest Next.js?",
@@ -27,10 +26,7 @@ const suggestions: Record<SearchScope, string[]> = {
 /** Longer names crowd the pills, and a question is sent just as it reads. */
 const MAX_NAME = 24;
 
-/**
- * The questions for `scope`. With one or two stores picked, the first two
- * ask about them by name, so the page speaks to what was just chosen.
- */
+/** With one or two stores picked, the first two questions ask about them by name. */
 export function suggestionsFor(
   scope: SearchScope,
   picked: { name: string }[],

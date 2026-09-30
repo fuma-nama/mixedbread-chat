@@ -9,11 +9,9 @@ import { organizationOfKey, PROVIDER_ID } from "./platform";
 
 /** A grant to one organization, stored as a Better Auth account. */
 export interface Connection {
-  /** The Better Auth account row holding this organization's tokens. */
   accountId: string;
   organizationId: string;
   name: string;
-  /** When its access token runs out, as of listing the connection. */
   expiresAt: Date | null;
 }
 
@@ -28,7 +26,6 @@ export function needsReconnect(error: unknown): boolean {
   );
 }
 
-/** The organizations `userId` connected, oldest first. */
 export async function listConnections(userId: string): Promise<Connection[]> {
   const rows = await db
     .select({
@@ -66,18 +63,15 @@ export async function disconnect(userId: string, organizationId: string) {
     );
 }
 
-/** Refresh this early, so a token never runs out in the middle of a search. */
+// Refreshed this early, so a token never runs out in the middle of a search.
 const REFRESH_MARGIN = 60_000;
 
 function fresh(expiresAt: Date | null): boolean {
   return (expiresAt?.getTime() ?? 0) - Date.now() > REFRESH_MARGIN;
 }
 
-/**
- * An API client acting as `userId` in `connection`'s organization. Refresh
- * tokens are single-use and reusing one revokes the grant, so refreshes take
- * a lock per account.
- */
+// Refresh tokens are single-use and reusing one revokes the grant, so
+// refreshes take a lock per account.
 export async function clientFor(
   userId: string,
   { accountId, expiresAt }: Connection,
@@ -108,7 +102,6 @@ export async function clientFor(
   return new Mixedbread({ apiKey: token });
 }
 
-/** The first page of an organization's stores, most recently changed first. */
 export async function fetchStores(client: Mixedbread): Promise<StoreOption[]> {
   const page = await client.stores.list({ limit: MAX_STORES });
   const stores: StoreOption[] = [];

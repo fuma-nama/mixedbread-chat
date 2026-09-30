@@ -7,7 +7,6 @@ export type Citations = Map<string, { number: number; source: Source }>;
 const CITATION = /\]\(#(S\d+)\)/g;
 const CITATION_LINK = /\[[^\]]*\]\(#(S\d+)\)/g;
 
-/** What the message's finished searches found. */
 function* sourcesOf(message: ChatMessage): Generator<Source> {
   for (const part of message.parts) {
     if (
@@ -20,7 +19,6 @@ function* sourcesOf(message: ChatMessage): Generator<Source> {
   }
 }
 
-/** Whether a search in the messages found files in the user's stores. */
 export function searchedStores(messages: ChatMessage[]): boolean {
   for (const message of messages) {
     for (const source of sourcesOf(message)) {
@@ -44,10 +42,7 @@ export function nextLabel(messages: ChatMessage[]): number {
 // A message never changes once it is done, and neither do its citations.
 const cache = new WeakMap<ChatMessage, Citations>();
 
-/**
- * The citations of each message on a path: its `[S1](#S1)` links to sources
- * found up to and including it.
- */
+/** Each message's `[S1](#S1)` links to sources found up to and including it. */
 export function citationsAlong(messages: ChatMessage[]): Citations[] {
   const sources = new Map<string, Source>();
   const all: Citations[] = [];

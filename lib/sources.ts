@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-/** An organization the user connected; each sign-in grants one. */
 export interface Organization {
   id: string;
   name: string;
@@ -23,11 +22,8 @@ export type StoresResult =
   | { status: "reconnect" }
   | { status: "error"; message: string };
 
-/**
- * How an organization's stores are searched: Toast picks among them each
- * time ("auto"), every store there is at search time ("all"), or exactly
- * these, where none means the organization isn't searched.
- */
+// Toast picks among the stores ("auto"), every store there is at search time
+// ("all"), or exactly these; none leaves the organization out.
 export type StoreChoice = "auto" | "all" | string[];
 
 export interface SourceSelection {

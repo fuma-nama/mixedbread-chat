@@ -1,4 +1,3 @@
-/** Light, dark, or whichever the device uses. The theme menu lists them in this order. */
 export const themes = [
   { id: "system", name: "System" },
   { id: "light", name: "Light" },

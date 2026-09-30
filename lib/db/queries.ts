@@ -18,7 +18,6 @@ export async function getChat(id: string): Promise<Chat | undefined> {
   return row;
 }
 
-/** A chat's messages, oldest first, with what the UI and the model need. */
 export function getMessages(chatId: string) {
   return db
     .select({
@@ -75,7 +74,6 @@ export async function countAnswers(userId: string, since: Date) {
   return row.count;
 }
 
-/** Chats whose title or message text contains `query`. */
 export function searchChats(userId: string, query: string) {
   const pattern = `%${query.replace(/[\\%_]/g, "\\$&")}%`;
   const text = sql`jsonb_path_query_array(${message.parts}, '$[*] ? (@.type == "text").text')::text`;
