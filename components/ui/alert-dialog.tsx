@@ -15,8 +15,6 @@ export const AlertDialog = AlertDialogPrimitive.Root;
 
 export const createAlertDialogHandle = AlertDialogPrimitive.createHandle;
 
-export type AlertDialogHandle<Payload> = AlertDialogPrimitive.Handle<Payload>;
-
 export function AlertDialogContent(props: AlertDialogPrimitive.Popup.Props) {
   return (
     <AlertDialogPrimitive.Portal>
