@@ -4,43 +4,60 @@ import { cn } from "cn";
 import { ChevronRightIcon } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
-import { CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
-export function ActivityTrigger({
+export type State = "running" | "done" | "failed" | "stopped";
+
+export function Activity({
   indicator,
   label,
   detail,
   meta,
+  status,
+  disabled,
+  children,
 }: {
   indicator: React.ReactNode;
   label: React.ReactNode;
-  detail?: React.ReactNode;
+  detail?: string;
   meta?: React.ReactNode;
+  /** What it is doing now, under the label. */
+  status: React.ReactNode;
+  disabled?: boolean;
+  children: React.ReactNode;
 }) {
   return (
-    <CollapsibleTrigger className="group/trigger -ml-1 flex max-w-full cursor-pointer items-center gap-2 rounded-md py-0.5 pr-1.5 pl-1 text-left text-[13.5px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 not-data-disabled:hover:text-foreground focus-visible:outline-2 data-disabled:cursor-default">
-      <span className="flex w-5 shrink-0 justify-center">{indicator}</span>
-      <span className="flex min-w-0 items-baseline gap-1.5">
-        <span className="shrink-0">{label}</span>
-        {detail && (
-          <span className="truncate text-muted-foreground/75">{detail}</span>
-        )}
-        {meta && (
-          <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground/70 tabular-nums empty:hidden">
-            {meta}
-          </span>
-        )}
-      </span>
-      <ChevronRightIcon className="size-3.5 shrink-0 opacity-50 transition-transform duration-300 ease-smooth group-data-disabled/trigger:hidden group-data-panel-open/trigger:rotate-90 motion-reduce:transition-none" />
-    </CollapsibleTrigger>
+    <Collapsible data-slot="activity" disabled={disabled}>
+      <CollapsibleTrigger className="group/trigger -ml-1 flex max-w-full cursor-pointer items-center gap-2 rounded-md py-0.5 pr-1.5 pl-1 text-left text-[13.5px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 not-data-disabled:hover:text-foreground focus-visible:outline-2 data-disabled:cursor-default">
+        <span className="flex w-5 shrink-0 justify-center">{indicator}</span>
+        <span className="flex min-w-0 items-baseline gap-1.5">
+          <span className="shrink-0">{label}</span>
+          {detail && (
+            <span className="truncate text-muted-foreground/75">{detail}</span>
+          )}
+          {meta && (
+            <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground/70 tabular-nums empty:hidden">
+              {meta}
+            </span>
+          )}
+        </span>
+        <ChevronRightIcon className="size-3.5 shrink-0 opacity-50 transition-transform duration-300 ease-smooth group-data-disabled/trigger:hidden group-data-panel-open/trigger:rotate-90 motion-reduce:transition-none" />
+      </CollapsibleTrigger>
+      {status}
+      <CollapsibleContent hiddenUntilFound>
+        <div className="mt-2 ml-[9.5px] flex flex-col gap-3 border-l border-soft pb-1 pl-[17.5px]">
+          {children}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
-export function StatusDot({
-  state,
-}: {
-  state: "running" | "done" | "failed" | "stopped";
-}) {
+export function StatusDot({ state }: { state: State }) {
   return (
     <span
       key={state}
@@ -63,14 +80,6 @@ export function LiveLine({ text }: { text?: string }) {
       <p key={text} className="truncate motion-safe:animate-swap-in">
         {text}
       </p>
-    </div>
-  );
-}
-
-export function ActivityPanel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mt-2 ml-[9.5px] flex flex-col gap-3 border-l border-soft pb-1 pl-[17.5px]">
-      {children}
     </div>
   );
 }

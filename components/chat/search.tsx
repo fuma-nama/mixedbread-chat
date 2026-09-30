@@ -2,17 +2,16 @@
 
 import { memo } from "react";
 import { Toasting } from "@/components/brand/bakery";
-import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import type { Source } from "@/lib/mixedbread/citations";
 import type { Step } from "@/lib/mixedbread/research";
 import type { ChatMessage } from "@/lib/search-tool";
 import {
-  ActivityPanel,
-  ActivityTrigger,
+  Activity,
   formatSeconds,
   LiveLine,
   More,
   plural,
+  type State,
   StatusDot,
   useElapsed,
   useFirst,
@@ -25,8 +24,6 @@ export type SearchPart = Extract<
   { type: "tool-search" }
 >;
 
-type State = "running" | "done" | "failed" | "stopped";
-
 /** Searches that keep a live line while they run; the rest are a count. */
 const LIVE_TASKS = 4;
 const FIRST_TASKS = 6;
@@ -37,6 +34,15 @@ interface Task {
   state: State;
   steps: Step[];
 }
+
+const labels: Record<State, React.ReactNode> = {
+  running: (
+    <span className="text-shimmer motion-safe:animate-shimmer">Searching</span>
+  ),
+  done: "Searched",
+  failed: <span className="text-destructive">Search failed</span>,
+  stopped: "Search stopped",
+};
 
 export const Search = memo(
   function Search({
@@ -115,8 +121,16 @@ export const Search = memo(
             : undefined;
 
     return (
-      <Collapsible
-        data-slot="activity"
+      <Activity
+        indicator={<Toasting state={state} />}
+        label={labels[state]}
+        detail={queries}
+        meta={
+          (state === "running" || state === "done") && (
+            <Meta what={what} ms={state === "done" ? ms : undefined} />
+          )
+        }
+        status={state === "running" && <Live tasks={tasks} />}
         disabled={
           state !== "running" &&
           !several &&
@@ -124,37 +138,10 @@ export const Search = memo(
           files.length === 0
         }
       >
-        <ActivityTrigger
-          indicator={<Toasting state={state} />}
-          label={
-            state === "running" ? (
-              <span className="text-shimmer motion-safe:animate-shimmer">
-                Searching
-              </span>
-            ) : state === "done" ? (
-              "Searched"
-            ) : state === "failed" ? (
-              <span className="text-destructive">Search failed</span>
-            ) : (
-              "Search stopped"
-            )
-          }
-          detail={queries}
-          meta={
-            (state === "running" || state === "done") && (
-              <Meta what={what} ms={state === "done" ? ms : undefined} />
-            )
-          }
-        />
-        {state === "running" && <Live tasks={tasks} />}
-        <CollapsibleContent hiddenUntilFound>
-          <ActivityPanel>
-            {several && <TaskList tasks={tasks} />}
-            {calls.length > 0 && <StepList steps={calls} />}
-            {files.length > 0 && <SourceList files={files} />}
-          </ActivityPanel>
-        </CollapsibleContent>
-      </Collapsible>
+        {several && <TaskList tasks={tasks} />}
+        {calls.length > 0 && <StepList steps={calls} />}
+        {files.length > 0 && <SourceList files={files} />}
+      </Activity>
     );
   },
   // While the answer streams, finished searches keep their input and output.
@@ -194,12 +181,8 @@ function Meta({ what, ms }: { what?: string; ms?: number }) {
 }
 
 function Live({ tasks }: { tasks: Task[] }) {
-  const lines: {
-    key: string;
-    state: Step["status"];
-    name?: string;
-    text: string;
-  }[] = [];
+  const lines: { key: string; state: State; name?: string; text: string }[] =
+    [];
   let more = 0;
   if (tasks.length > 1) {
     for (const task of tasks) {

@@ -2,14 +2,7 @@
 
 import { memo } from "react";
 import { Proofing } from "@/components/brand/bakery";
-import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
-import {
-  ActivityPanel,
-  ActivityTrigger,
-  formatSeconds,
-  LiveLine,
-  useDuration,
-} from "./activity";
+import { Activity, formatSeconds, LiveLine, useDuration } from "./activity";
 import { LazyMarkdown } from "./lazy-markdown";
 
 /** Memoized, so finished thoughts sit still while the answer streams. */
@@ -27,34 +20,29 @@ export const Reasoning = memo(function Reasoning({
   if (!text && !live) return null;
 
   return (
-    <Collapsible data-slot="activity">
-      <ActivityTrigger
-        indicator={<Proofing live={live} />}
-        label={
-          live ? (
-            <span className="text-shimmer motion-safe:animate-shimmer">
-              Thinking
-            </span>
-          ) : seconds !== undefined && seconds >= 1 ? (
-            `Thought for ${formatSeconds(seconds)}`
-          ) : (
-            "Thought"
-          )
-        }
-      />
-      {live && <LiveLine text={latestThought(text)} />}
-      <CollapsibleContent hiddenUntilFound>
-        <ActivityPanel>
-          <LazyMarkdown
-            deferred={deferred}
-            isAnimating={live}
-            className="text-[13px]/relaxed text-muted-foreground"
-          >
-            {text}
-          </LazyMarkdown>
-        </ActivityPanel>
-      </CollapsibleContent>
-    </Collapsible>
+    <Activity
+      indicator={<Proofing live={live} />}
+      label={
+        live ? (
+          <span className="text-shimmer motion-safe:animate-shimmer">
+            Thinking
+          </span>
+        ) : seconds !== undefined && seconds >= 1 ? (
+          `Thought for ${formatSeconds(seconds)}`
+        ) : (
+          "Thought"
+        )
+      }
+      status={live && <LiveLine text={latestThought(text)} />}
+    >
+      <LazyMarkdown
+        deferred={deferred}
+        isAnimating={live}
+        className="text-[13px]/relaxed text-muted-foreground"
+      >
+        {text}
+      </LazyMarkdown>
+    </Activity>
   );
 });
 
