@@ -1,18 +1,11 @@
 "use client";
 
+import { PreviewCard } from "@base-ui/react/preview-card";
 import { cn } from "cn";
 import { ArrowUpRightIcon, ScanSearchIcon } from "lucide-react";
 import { createContext, memo, use, useId, useState } from "react";
 import { SliceGlyph } from "@/components/brand/slice";
 import { createDialogHandle, type DialogHandle } from "@/components/ui/dialog";
-import {
-  createHoverCardHandle,
-  HoverCard,
-  HoverCardContent,
-  type HoverCardHandle,
-  HoverCardTrigger,
-  HoverCardViewport,
-} from "@/components/ui/hover-card";
 import { useCoarsePointer } from "@/hooks/use-media";
 import { createStore, type Store, useStore } from "@/hooks/use-store";
 import { originOf, type Source, sourceTitle } from "@/lib/mixedbread/citations";
@@ -79,7 +72,7 @@ interface Preview {
 }
 
 interface Cards {
-  card: HoverCardHandle<Preview>;
+  card: PreviewCard.Handle<Preview>;
   page: DialogHandle<ShownPage>;
 }
 
@@ -91,7 +84,7 @@ const CardsContext = createContext<Cards | null>(null);
  */
 export function SourceCards({ children }: { children: React.ReactNode }) {
   const [cards] = useState<Cards>(() => ({
-    card: createHoverCardHandle(),
+    card: PreviewCard.createHandle(),
     page: createDialogHandle(),
   }));
 
@@ -117,23 +110,30 @@ function view(
 
 /**
  * Only a preview: pointers pass through it, and a click on the trigger opens
- * the source. Only a finger, which has no hover, uses the links on it.
+ * the source. Only a finger, which has no hover, uses the links on it. Moving
+ * to another source, it glides there, the old content fading out as the new
+ * comes in from the side the pointer went.
  */
 function Card({ cards }: { cards: Cards }) {
   return (
-    <HoverCard handle={cards.card}>
+    <PreviewCard.Root handle={cards.card}>
       {({ payload }) => (
-        <HoverCardContent
-          side={payload?.side}
-          align={payload?.align}
-          className="pointer-events-none w-80 p-0 pointer-coarse:[&_:is(a,button)]:pointer-events-auto"
-        >
-          <HoverCardViewport>
-            {payload && <SourceCard cards={cards} preview={payload} />}
-          </HoverCardViewport>
-        </HoverCardContent>
+        <PreviewCard.Portal>
+          <PreviewCard.Positioner
+            align={payload?.align}
+            side={payload?.side}
+            sideOffset={8}
+            className="pointer-events-none isolate z-50 h-(--positioner-height) w-(--positioner-width) max-w-(--available-width) transition-[top,right,bottom,left] duration-240 ease-smooth data-instant:transition-none motion-reduce:transition-none"
+          >
+            <PreviewCard.Popup className="pointer-events-none relative h-(--popup-height,auto) w-80 origin-(--transform-origin) rounded-xl bg-popover p-0 text-sm text-popover-foreground shadow-float transition-[opacity,scale,height] duration-[150ms,150ms,240ms] ease-smooth outline-none data-ending-style:scale-[0.97] data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none pointer-coarse:[&_:is(a,button)]:pointer-events-auto">
+              <PreviewCard.Viewport className="relative size-full overflow-clip [&>*]:transition-[translate,opacity] [&>*]:duration-200 [&>*]:ease-smooth motion-reduce:[&>*]:transition-none [&>[data-current][data-starting-style]]:opacity-0 data-[activation-direction~='down']:[&>[data-current][data-starting-style]]:translate-y-2 data-[activation-direction~='left']:[&>[data-current][data-starting-style]]:-translate-x-3 data-[activation-direction~='right']:[&>[data-current][data-starting-style]]:translate-x-3 data-[activation-direction~='up']:[&>[data-current][data-starting-style]]:-translate-y-2 [&>[data-previous]]:w-(--popup-width) [&>[data-previous][data-ending-style]]:opacity-0 data-[activation-direction~='down']:[&>[data-previous][data-ending-style]]:-translate-y-2 data-[activation-direction~='left']:[&>[data-previous][data-ending-style]]:translate-x-3 data-[activation-direction~='right']:[&>[data-previous][data-ending-style]]:-translate-x-3 data-[activation-direction~='up']:[&>[data-previous][data-ending-style]]:translate-y-2">
+                {payload && <SourceCard cards={cards} preview={payload} />}
+              </PreviewCard.Viewport>
+            </PreviewCard.Popup>
+          </PreviewCard.Positioner>
+        </PreviewCard.Portal>
       )}
-    </HoverCard>
+    </PreviewCard.Root>
   );
 }
 
@@ -190,8 +190,10 @@ export function SourcePreview({
       : undefined;
 
   return (
-    <HoverCardTrigger
+    <PreviewCard.Trigger
       handle={cards.card}
+      delay={250}
+      closeDelay={150}
       payload={{ id, source, number, organization, side, align }}
       id={id}
       {...(source.type === "url" && !coarse

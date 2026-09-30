@@ -1,5 +1,6 @@
 "use client";
 
+import { Popover } from "@base-ui/react/popover";
 import { cn } from "cn";
 import {
   ChevronDownIcon,
@@ -10,11 +11,6 @@ import {
   SearchSlashIcon,
 } from "lucide-react";
 import { useRef, useState } from "react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { useGlide } from "@/hooks/use-glide";
 import {
   choiceFor,
@@ -56,7 +52,7 @@ export function SourcesPicker() {
   if (shown.label !== label) setShown({ label, changed: true });
 
   return (
-    <Popover
+    <Popover.Root
       onOpenChange={(open, details) => {
         // Escape clears a filter before it closes the panel.
         if (!open && details.reason === "escape-key" && query) {
@@ -67,7 +63,7 @@ export function SourcesPicker() {
         if (open) setQuery("");
       }}
     >
-      <PopoverTrigger
+      <Popover.Trigger
         ref={glide}
         aria-label={`Sources: ${label}`}
         className="relative min-w-0 cursor-pointer rounded-full text-[13px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 hover:bg-soft hover:text-foreground focus-visible:outline-2 aria-expanded:bg-soft aria-expanded:text-foreground max-sm:min-w-fit"
@@ -103,16 +99,23 @@ export function SourcesPicker() {
           </span>
         </span>
         <ChevronDownIcon className="absolute inset-y-0 right-2 my-auto size-3.5 opacity-60 max-sm:hidden" />
-      </PopoverTrigger>
-      <PopoverContent
-        side="top"
-        sideOffset={8}
-        aria-label="Sources"
-        className="w-[min(21rem,calc(100vw-1.5rem))]"
-      >
-        <Panel query={query} onQuery={setQuery} />
-      </PopoverContent>
-    </Popover>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Positioner
+          className="isolate z-50 outline-none"
+          align="start"
+          side="top"
+          sideOffset={8}
+        >
+          <Popover.Popup
+            aria-label="Sources"
+            className="max-h-(--available-height) w-[min(21rem,calc(100vw-1.5rem))] max-w-(--available-width) origin-(--transform-origin) rounded-xl bg-popover text-popover-foreground shadow-float transition-[opacity,scale] duration-150 ease-smooth outline-none data-ending-style:scale-[0.97] data-ending-style:opacity-0 data-ending-style:duration-100 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none"
+          >
+            <Panel query={query} onQuery={setQuery} />
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }
 

@@ -14,7 +14,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { IconSwap } from "@/components/ui/icon-swap";
-import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 
 export function ShareDialog({
@@ -83,12 +82,12 @@ export function ShareDialog({
 
         {shared && (
           <div className="flex gap-2 motion-safe:animate-rise">
-            <Input
+            <input
               aria-label="Link"
               value={shareUrl(chatId)}
               readOnly
               onFocus={(event) => event.currentTarget.select()}
-              className="h-9 font-mono text-[12.5px] text-muted-foreground"
+              className="h-9 w-full min-w-0 rounded-lg bg-card px-3 font-mono text-[12.5px] text-muted-foreground shadow-[0_0_0_1px_var(--input),0_1px_2px_oklch(0.235_0.02_48/0.04)] transition-shadow duration-150 ease-smooth outline-none focus-visible:shadow-[0_0_0_1px_var(--crust),0_0_0_4px_oklch(from_var(--crust)_l_c_h/0.16)] md:text-[14.5px]"
             />
             <Button
               variant="outline"
