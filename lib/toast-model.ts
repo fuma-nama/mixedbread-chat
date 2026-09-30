@@ -1,13 +1,13 @@
-import { generateId, type LanguageModel } from "ai";
+import {
+  generateId,
+  type LanguageModel,
+  simulateStreamingMiddleware,
+  wrapLanguageModel,
+} from "ai";
 
-type ModelV4 = Extract<LanguageModel, { specificationVersion: "v4" }>;
-type Part =
-  Awaited<ReturnType<ModelV4["doStream"]>>["stream"] extends ReadableStream<
-    infer P
-  >
-    ? P
-    : never;
-type Message = Parameters<ModelV4["doStream"]>[0]["prompt"][number];
+type Message = Parameters<
+  Extract<LanguageModel, { specificationVersion: "v4" }>["doGenerate"]
+>[0]["prompt"][number];
 
 const usage = {
   inputTokens: {
@@ -21,57 +21,48 @@ const usage = {
 
 // Hands the question to the search tool, then answers with its findings, so
 // the chat stays plain tool calls any model can pick up afterwards.
-export const toastModel: ModelV4 = {
-  specificationVersion: "v4",
-  provider: "mixedbread",
-  modelId: "toast-1",
-  supportedUrls: {},
-  doGenerate() {
-    throw new Error("Toast answers by streaming.");
-  },
-  async doStream({ prompt, tools }) {
-    const last = prompt.at(-1);
-    const parts: Part[] = [{ type: "stream-start", warnings: [] }];
-    if (last?.role === "user" && tools?.some(({ name }) => name === "search")) {
-      let query = "";
-      for (const part of last.content)
-        if (part.type === "text") query += part.text;
-      parts.push(
-        {
-          type: "tool-call",
-          toolCallId: generateId(),
-          toolName: "search",
-          input: JSON.stringify({ query }),
-        },
-        {
-          type: "finish",
+export const toastModel = wrapLanguageModel({
+  model: {
+    specificationVersion: "v4",
+    provider: "mixedbread",
+    modelId: "toast-1",
+    supportedUrls: {},
+    async doGenerate({ prompt, tools }) {
+      const last = prompt.at(-1);
+      if (
+        last?.role === "user" &&
+        tools?.some(({ name }) => name === "search")
+      ) {
+        let query = "";
+        for (const part of last.content)
+          if (part.type === "text") query += part.text;
+        return {
+          content: [
+            {
+              type: "tool-call",
+              toolCallId: generateId(),
+              toolName: "search",
+              input: JSON.stringify({ query }),
+            },
+          ],
           finishReason: { unified: "tool-calls", raw: undefined },
           usage,
-        },
-      );
-    } else {
-      const id = generateId();
-      parts.push(
-        { type: "text-start", id },
-        { type: "text-delta", id, delta: answerOf(last) },
-        { type: "text-end", id },
-        {
-          type: "finish",
-          finishReason: { unified: "stop", raw: undefined },
-          usage,
-        },
-      );
-    }
-    return {
-      stream: new ReadableStream({
-        start(controller) {
-          for (const part of parts) controller.enqueue(part);
-          controller.close();
-        },
-      }),
-    };
+          warnings: [],
+        };
+      }
+      return {
+        content: [{ type: "text", text: answerOf(last) }],
+        finishReason: { unified: "stop", raw: undefined },
+        usage,
+        warnings: [],
+      };
+    },
+    doStream() {
+      throw new Error("Toast streams through its middleware.");
+    },
   },
-};
+  middleware: simulateStreamingMiddleware(),
+});
 
 function answerOf(message: Message | undefined): string {
   if (message?.role !== "tool") {
