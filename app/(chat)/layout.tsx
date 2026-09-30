@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { ModelsProvider } from "@/components/chat/models-provider";
 import { SourcesProvider } from "@/components/chat/sources-provider";
-import { AppSidebar, NewChatShortcut } from "@/components/sidebar/app-sidebar";
+import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { ChatsProvider } from "@/components/sidebar/chats-provider";
 import { SearchChats } from "@/components/sidebar/search-chats";
 import {
@@ -41,7 +41,6 @@ export default async function ChatLayout({
         >
           <ModelsProvider models={models}>
             <SearchChats>
-              <NewChatShortcut />
               <Sidebar>
                 <AppSidebar
                   user={

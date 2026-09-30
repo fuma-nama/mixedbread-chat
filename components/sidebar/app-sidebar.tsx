@@ -1,7 +1,5 @@
 "use client";
 
-import { mergeProps } from "@base-ui/react/merge-props";
-import { useRender } from "@base-ui/react/use-render";
 import { SearchIcon, SquarePenIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -9,11 +7,15 @@ import { startTransition, useCallback, useOptimistic } from "react";
 import { Logo } from "@/components/brand/logo";
 import { Shortcut } from "@/components/ui/kbd";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { useWindowEvent } from "@/hooks/use-window-event";
 import { AccountMenu, type User } from "./account-menu";
 import { Chats } from "./chats";
 import { HoverArea } from "./hover-area";
 import { useOpenSearch } from "./search-chats";
+
+const navRow =
+  "group/row relative flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 text-[13.5px] text-foreground/85 outline-offset-0 outline-ring transition-colors duration-150 hover:text-foreground focus-visible:outline-2 [&>svg]:size-4 [&>svg]:text-muted-foreground";
+const hint =
+  "ml-auto opacity-0 transition-opacity duration-150 group-hover/row:opacity-100";
 
 export function AppSidebar({
   user,
@@ -59,18 +61,26 @@ export function AppSidebar({
 
       <nav className="px-2 pb-1">
         <HoverArea className="flex flex-col gap-px">
-          <NavRow
+          <Link
             data-row=""
-            render={<Link href="/" onNavigate={(event) => open(event, "/")} />}
-            keys={["⇧", "O"]}
+            href="/"
+            onNavigate={(event) => open(event, "/")}
+            className={navRow}
           >
             <SquarePenIcon />
             New chat
-          </NavRow>
-          <NavRow data-row="" onClick={openSearch} keys={["K"]}>
+            <Shortcut keys={["⇧", "O"]} className={hint} />
+          </Link>
+          <button
+            type="button"
+            data-row=""
+            onClick={openSearch}
+            className={navRow}
+          >
             <SearchIcon />
             Search
-          </NavRow>
+            <Shortcut keys={["K"]} className={hint} />
+          </button>
         </HoverArea>
       </nav>
 
@@ -79,55 +89,6 @@ export function AppSidebar({
       </Chats>
     </>
   );
-}
-
-function NavRow({
-  render,
-  keys,
-  children,
-  ...props
-}: useRender.ComponentProps<"button"> & {
-  /** Keys after the platform's modifier. */
-  keys: string[];
-}) {
-  return useRender({
-    defaultTagName: "button",
-    render,
-    props: mergeProps<"button">(
-      {
-        className:
-          "group/row relative flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 text-[13.5px] text-foreground/85 outline-offset-0 outline-ring transition-colors duration-150 hover:text-foreground focus-visible:outline-2 [&>svg]:size-4 [&>svg]:text-muted-foreground",
-        children: (
-          <>
-            {children}
-            <Shortcut
-              keys={keys}
-              className="ml-auto opacity-0 transition-opacity duration-150 group-hover/row:opacity-100"
-            />
-          </>
-        ),
-      },
-      props,
-    ),
-  });
-}
-
-/** ⌘⇧O starts a new chat. Mounted once, beside the sidebar. */
-export function NewChatShortcut() {
-  const router = useRouter();
-
-  useWindowEvent("keydown", (event) => {
-    if (
-      event.key.toLowerCase() === "o" &&
-      event.shiftKey &&
-      (event.metaKey || event.ctrlKey)
-    ) {
-      event.preventDefault();
-      router.push("/");
-    }
-  });
-
-  return null;
 }
 
 function chatIdOf(pathname: string): string | undefined {

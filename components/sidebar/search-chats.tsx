@@ -4,6 +4,7 @@ import { Autocomplete } from "@base-ui/react/autocomplete";
 import { Dialog } from "@base-ui/react/dialog";
 import { MessageSquareIcon, SearchIcon, SquarePenIcon } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createContext, use, useEffect, useState } from "react";
 import { searchChats } from "@/app/(chat)/actions";
 import { backdropClassName } from "@/components/ui/dialog";
@@ -20,16 +21,21 @@ export function useOpenSearch() {
 }
 
 /**
- * Searches chat titles and messages. Mounted once for the app, since the
- * sidebar renders twice (beside the panel, and in the phone drawer).
+ * The ⌘K palette, which searches chat titles and messages, and ⌘⇧O for a new
+ * chat. Mounted once for the app, since the sidebar renders twice.
  */
 export function SearchChats({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
 
   useWindowEvent("keydown", (event) => {
-    if (event.key === "k" && (event.metaKey || event.ctrlKey)) {
+    if (!event.metaKey && !event.ctrlKey) return;
+    if (event.key === "k") {
       event.preventDefault();
       setOpen(!open);
+    } else if (event.key.toLowerCase() === "o" && event.shiftKey) {
+      event.preventDefault();
+      router.push("/");
     }
   });
 
