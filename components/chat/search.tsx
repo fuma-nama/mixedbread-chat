@@ -76,13 +76,9 @@ export const Search = memo(
                 ? "running"
                 : "stopped";
         const query = part.input?.query;
-        tasks.push({
-          id: part.toolCallId,
-          query,
-          state,
-          steps: output?.calls ?? [],
-        });
-        for (const call of output?.calls ?? []) calls.push(call);
+        const taskSteps = output?.calls ?? [];
+        tasks.push({ id: part.toolCallId, query, state, steps: taskSteps });
+        for (const call of taskSteps) calls.push(call);
         if (query) queries += `${queries && ", "}“${query}”`;
         if (state === "done" || state === "failed") settled++;
         if (!done) continue;
