@@ -40,12 +40,10 @@ export function latestLeaf(
   id: string,
 ): string {
   let leaf = id;
-  for (
-    let replies = children.get(leaf);
-    replies;
-    replies = children.get(leaf)
-  ) {
+  let replies = children.get(leaf);
+  while (replies) {
     leaf = replies[replies.length - 1].id;
+    replies = children.get(leaf);
   }
   return leaf;
 }
