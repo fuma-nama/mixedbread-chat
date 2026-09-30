@@ -20,9 +20,7 @@ export function createStore<T>(value: T): Store<T> {
     },
     subscribe(listener) {
       listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
+      return () => listeners.delete(listener);
     },
   };
 }

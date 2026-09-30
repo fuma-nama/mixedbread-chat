@@ -7,9 +7,7 @@ const listeners = new Set<() => void>();
 /** The device's own switches come through `prefers-color-scheme` instead. */
 export function subscribeTheme(onChange: () => void) {
   listeners.add(onChange);
-  return () => {
-    listeners.delete(onChange);
-  };
+  return () => listeners.delete(onChange);
 }
 
 function current(): Theme {

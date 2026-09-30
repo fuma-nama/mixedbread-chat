@@ -3,10 +3,7 @@ import { useSyncExternalStore } from "react";
 // False on the server and while hydrating.
 function mediaQuery(query: string) {
   let list: MediaQueryList | undefined;
-  const media = () => {
-    list ??= window.matchMedia(query);
-    return list;
-  };
+  const media = () => (list ??= window.matchMedia(query));
   const subscribe = (onChange: () => void) => {
     media().addEventListener("change", onChange);
     return () => media().removeEventListener("change", onChange);
