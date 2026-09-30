@@ -203,8 +203,7 @@ export async function* research(
   if (!finished) {
     throw new Error("The Mixedbread stream ended before the answer finished.");
   }
-  const citations: Citation[] = [];
-  for (const annotation of annotations) {
+  const citations = annotations.map((annotation) => {
     const citation: Citation =
       annotation.type === "url_citation"
         ? {
@@ -225,8 +224,8 @@ export async function* research(
     const read = seen.get(annotation.chunk_id);
     if (read?.excerpt) citation.excerpt = read.excerpt;
     if (read?.image && citation.type === "file") citation.image = true;
-    citations.push(citation);
-  }
+    return citation;
+  });
   yield { type: "answer", text, citations };
 }
 

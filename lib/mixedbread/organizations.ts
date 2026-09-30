@@ -99,17 +99,14 @@ export async function clientFor(
 }
 
 export async function fetchStores(client: Mixedbread): Promise<StoreOption[]> {
-  const page = await client.stores.list({ limit: MAX_STORES });
-  const stores: StoreOption[] = [];
-  for (const store of page.data) {
-    stores.push({
-      id: store.id,
-      name: store.name,
-      description: store.description ?? null,
-      files: store.file_counts?.completed ?? 0,
-      status: store.status ?? "completed",
-      updatedAt: store.updated_at,
-    });
-  }
+  const { data } = await client.stores.list({ limit: MAX_STORES });
+  const stores = data.map((store) => ({
+    id: store.id,
+    name: store.name,
+    description: store.description ?? null,
+    files: store.file_counts?.completed ?? 0,
+    status: store.status ?? "completed",
+    updatedAt: store.updated_at,
+  }));
   return stores.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }

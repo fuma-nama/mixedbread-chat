@@ -61,16 +61,15 @@ export async function fetchPage(
   if (metadata.success) {
     const { width, height, elements } = metadata.data.layout;
     page.aspect = width / height;
-    for (const { bbox, text } of elements) {
-      const [left, top, right, bottom] = bbox;
-      page.blocks.push({
+    page.blocks = elements.map(
+      ({ bbox: [left, top, right, bottom], text }) => ({
         x: left / width,
         y: top / height,
         width: (right - left) / width,
         height: (bottom - top) / height,
         text: text ?? "",
-      });
-    }
+      }),
+    );
   }
   return page;
 }
