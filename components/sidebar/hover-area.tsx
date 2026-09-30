@@ -1,9 +1,8 @@
 import { cn } from "cn";
 
 /**
- * Rows with a soft block that glides to whichever one the mouse is over (or
- * keyboard focus is on) and fades once the pointer leaves. Rows are the
- * `[data-row]` elements inside; they need a position so they paint above it.
+ * A soft block glides to the `[data-row]` the mouse is over, or keyboard focus
+ * is on. Rows need a position so they paint above it.
  */
 export function HoverArea({
   className,
@@ -23,7 +22,6 @@ export function HoverArea({
   );
 }
 
-/** Moves the area's block, its first child, to the row being pointed at. */
 function follow(area: HTMLDivElement | null) {
   const block = area?.firstElementChild;
   if (!area || !(block instanceof HTMLElement)) return;

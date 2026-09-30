@@ -16,11 +16,7 @@ const layer =
   "col-start-1 row-start-1 transition-[opacity,translate] duration-200 ease-smooth motion-reduce:transition-none";
 const away = "translate-y-1 opacity-0";
 
-/**
- * Takes the place of `children`, the account row, while chats are selected: a
- * way out, how many, and delete. The count rolls the way it changed, and
- * holds while the bar fades out.
- */
+/** Takes the place of `children` while chats are selected; the count holds as the bar fades out. */
 export function SelectionBar({
   count,
   onClear,

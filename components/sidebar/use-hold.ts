@@ -1,6 +1,5 @@
 import { useRef } from "react";
 
-/** A press on the list: how it began, and a long hold on a row in the making. */
 interface Press {
   type: string;
   x: number;
@@ -11,10 +10,7 @@ interface Press {
   held?: boolean;
 }
 
-/**
- * A finger held on a row presses it in, then hands its chat to `onHold`.
- * Spread `handlers` on the list; a mouse never holds.
- */
+/** A finger held on a row presses it in, then hands its chat to `onHold`; a mouse never holds. */
 export function useHold(onHold: (id: string) => void) {
   const press = useRef<Press>({ type: "", x: 0, y: 0, timer: 0 });
 
@@ -66,7 +62,6 @@ export function useHold(onHold: (id: string) => void) {
         hold();
       },
     },
-    /** Whether the last press was a finger or a pen. */
     touch: () => press.current.type !== "mouse",
     /** Swallows the click a hold ends with, and says whether `event` was it. */
     ended(event: React.MouseEvent) {

@@ -3,10 +3,7 @@ import type { ChatSummary } from "./chats-provider";
 
 const NONE: ReadonlySet<string> = new Set();
 
-/**
- * Chats picked the way desktop lists pick them: a toggle anchors the next
- * range, and a range adds to what was picked before it.
- */
+// A toggle anchors the next range, and a range adds to what was picked before it.
 export function useSelection(chats: ChatSummary[], activeId?: string) {
   const [selection, setSelection] = useState(NONE);
   // Where ranges start, and the selection they add to.
@@ -14,7 +11,6 @@ export function useSelection(chats: ChatSummary[], activeId?: string) {
     base: NONE,
   });
 
-  // The selected chats still listed, in the list's order.
   const selected: ChatSummary[] = [];
   for (const chat of chats) if (selection.has(chat.id)) selected.push(chat);
 
@@ -51,7 +47,6 @@ export function useSelection(chats: ChatSummary[], activeId?: string) {
       anchor.current = { base: NONE };
       setSelection(NONE);
     },
-    /** Puts back a selection that was cleared. */
     restore: setSelection,
     /** The chat the next range starts from. */
     anchor: () => anchor.current.id,

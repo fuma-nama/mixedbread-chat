@@ -29,7 +29,7 @@ export const ChatItem = memo(function ChatItem({
   active: boolean;
   /** Listed after the page loaded, so it slides into place. */
   fresh: boolean;
-  /** Whether it is selected; undefined while no chat is. */
+  /** Undefined while no chat is selected. */
   selected?: boolean;
   onOpen: (event: { preventDefault: () => void }, href: string) => void;
   onDelete: (chats: ChatSummary[]) => void;

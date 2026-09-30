@@ -25,10 +25,6 @@ const turns: Record<Theme, string> = {
   dark: "40deg",
 };
 
-/**
- * The theme as a row of three in a menu. A pill glides to the one picked
- * while the page crossfades behind it, and the icon turns into place.
- */
 export function ThemeSwitch() {
   const theme = useTheme();
   // Icons turn only when picked here, not each time the menu opens.

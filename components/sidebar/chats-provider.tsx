@@ -12,7 +12,6 @@ export interface ChatSummary {
 
 interface Chats {
   list: Store<ChatSummary[]>;
-  /** Replaces the list with the saved one. */
   refresh: () => void;
   /** Shows a change right away; a new id lists it first. */
   update: (id: string, change: Partial<ChatSummary>) => void;
@@ -22,11 +21,8 @@ interface Chats {
 
 const ChatsContext = createContext<Chats | null>(null);
 
-/**
- * The sidebar's chat list, shared with the open chat. A `router.refresh()`
- * would remount a new chat whose URL was just rewritten to `/c/[id]`, so
- * changes land here instead.
- */
+// Shared with the open chat. A `router.refresh()` would remount a new chat
+// whose URL was just rewritten to `/c/[id]`, so changes land here instead.
 export function ChatsProvider({
   initialChats,
   children,
