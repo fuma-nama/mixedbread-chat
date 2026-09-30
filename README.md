@@ -51,7 +51,7 @@ Create a store in the [Mixedbread platform](https://platform.mixedbread.com), th
 
 | What                                  | Where                                       |
 | ------------------------------------- | ------------------------------------------- |
-| Featured models and system prompt     | `lib/models.ts`, `app/api/chat/route.ts`    |
+| Models and system prompt              | `lib/models.ts`, `app/api/chat/route.ts`    |
 | Daily limits                          | `lib/limits.ts`                             |
 | Suggested questions on a new chat     | `lib/suggestions.ts`                        |
 | The search tool and what it can reach | `lib/search-tool.ts`, `lib/sources.ts`      |

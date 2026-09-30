@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { listModels } from "./models.ts";
 
-test("lists tool-calling language models, featured first, with the efforts they take", async () => {
+test("lists tool-calling language models, Toast first, then by provider and newest, with the efforts they take", async () => {
   const language = { type: "language", tags: ["tool-use"] };
   globalThis.fetch = async () =>
     Response.json({
@@ -33,6 +33,7 @@ test("lists tool-calling language models, featured first, with the efforts they 
           id: "anthropic/claude-sonnet-5",
           name: "Claude Sonnet 5",
           owned_by: "anthropic",
+          released: 1,
           reasoning_options: [
             { type: "effort", values: ["none", "low", "high", "xhigh", "max"] },
           ],
@@ -42,6 +43,7 @@ test("lists tool-calling language models, featured first, with the efforts they 
           id: "anthropic/claude-fable-5.1",
           name: "Claude Fable 5.1",
           owned_by: "anthropic",
+          released: 2,
         },
         {
           ...language,
@@ -71,44 +73,38 @@ test("lists tool-calling language models, featured first, with the efforts they 
     {
       id: "mixedbread/toast-1",
       name: "Toast 1",
-      provider: "Mixedbread",
-      featured: true,
+      provider: "mixedbread",
       efforts: [],
       toast: true,
     },
     {
       id: "anthropic/claude-fable-5.1",
       name: "Claude Fable 5.1",
-      provider: "Anthropic",
-      featured: true,
+      provider: "anthropic",
       efforts: [],
     },
     {
       id: "anthropic/claude-sonnet-5",
       name: "Claude Sonnet 5",
-      provider: "Anthropic",
-      featured: true,
+      provider: "anthropic",
       efforts: ["none", "low", "high", "xhigh"],
     },
     {
       id: "openai/gpt-oss-20b",
       name: "gpt-oss-20b",
-      provider: "OpenAI",
-      featured: false,
+      provider: "openai",
       efforts: [],
     },
     {
       id: "zai/glm-6",
       name: "GLM 6",
       provider: "zai",
-      featured: false,
       efforts: [],
     },
     {
       id: "zai/glm-5",
       name: "GLM 5",
       provider: "zai",
-      featured: false,
       efforts: ["none"],
     },
   ]);

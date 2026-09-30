@@ -5,9 +5,8 @@ import { type Effort, reasoningLevels } from "./reasoning.ts";
 export interface Model {
   id: string;
   name: string;
-  /** Its provider's name in the featured list, or else the Gateway's ID. */
+  /** The Gateway's ID for its provider, which groups it in the picker. */
   provider: string;
-  featured: boolean;
   /** The efforts it takes besides Auto, least to most. */
   efforts: Effort[];
   /** Toast itself, answering straight from the user's sources. */
@@ -15,29 +14,6 @@ export interface Model {
 }
 
 const TOAST_MODEL = "mixedbread/toast-1";
-
-/** Featured models by provider, grouped in this order. */
-const featured = new Map([
-  [TOAST_MODEL, "Mixedbread"],
-  ["anthropic/claude-fable-5.1", "Anthropic"],
-  ["anthropic/claude-opus-5.5", "Anthropic"],
-  ["anthropic/claude-sonnet-5.5", "Anthropic"],
-  ["anthropic/claude-sonnet-5", "Anthropic"],
-  ["openai/gpt-6-sol", "OpenAI"],
-  ["openai/gpt-6-luna", "OpenAI"],
-  ["openai/gpt-5.6-terra", "OpenAI"],
-  ["google/gemini-3.8-flash", "Google"],
-  ["spacexai/grok-4.7", "xAI"],
-  ["meta/muse-spark-1.3", "Meta"],
-  ["mistral/mistral-medium-3.5", "Mistral"],
-  ["deepseek/deepseek-v4-pro", "DeepSeek"],
-  ["moonshotai/kimi-k3", "Moonshot AI"],
-  ["alibaba/qwen3.8-max", "Alibaba"],
-]);
-
-// A featured provider's name, which its other models share.
-const providers = new Map<string, string>();
-for (const [id, name] of featured) providers.set(id.split("/")[0], name);
 
 /** A deployment's own list, such as a demo's, the first picked by default. */
 const allowed = process.env.ALLOWED_MODELS?.match(/[^\s,]+/g) ?? undefined;
@@ -98,8 +74,7 @@ async function fetchCatalog(): Promise<Model[]> {
     .object({ data: z.array(z.unknown()) })
     .parse(await response.json());
 
-  const picks = new Map<string, Model>();
-  const rest: { model: Model; released: number }[] = [];
+  const entries: { model: Model; released: number }[] = [];
   for (const raw of data) {
     // Entries are parsed one by one, so a shape the app doesn't know is skipped.
     const entry = entrySchema.safeParse(raw);
@@ -107,32 +82,24 @@ async function fetchCatalog(): Promise<Model[]> {
     const { id, name, type, owned_by, released, tags } = entry.data;
     if (type !== "language" || !tags?.includes("tool-use")) continue;
     if (allowed && !allowed.includes(id)) continue;
-    const provider = featured.get(id);
     const model: Model = {
       id,
       name,
-      provider: provider ?? providers.get(owned_by) ?? owned_by,
-      // Models listed by hand show without searching.
-      featured: provider !== undefined || allowed !== undefined,
+      provider: owned_by,
       efforts: effortsOf(entry.data.reasoning_options),
     };
     if (id === TOAST_MODEL) model.toast = true;
-    if (provider) picks.set(id, model);
-    else rest.push({ model, released: released ?? 0 });
+    entries.push({ model, released: released ?? 0 });
   }
 
-  const models: Model[] = [];
-  for (const id of featured.keys()) {
-    const model = picks.get(id);
-    if (model) models.push(model);
-  }
-  rest.sort(
+  // Toast first, then by provider, newest first.
+  entries.sort(
     (a, b) =>
+      (b.model.toast ? 1 : 0) - (a.model.toast ? 1 : 0) ||
       a.model.provider.localeCompare(b.model.provider) ||
       b.released - a.released,
   );
-  for (const { model } of rest) models.push(model);
-  return models;
+  return entries.map(({ model }) => model);
 }
 
 function effortsOf(
