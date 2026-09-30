@@ -26,10 +26,6 @@ function groupsOf(models: Model[]) {
   return { featured, more, all };
 }
 
-function searchText(model: Model) {
-  return `${model.name} ${model.provider}`;
-}
-
 export function ModelPicker({
   value,
   onChange,
@@ -55,9 +51,10 @@ export function ModelPicker({
   if (text) {
     const words = text.split(/\s+/);
     for (const group of catalog.all) {
-      const found = group.items.filter((model) =>
-        words.every((word) => contains(model, word, searchText)),
-      );
+      const found = group.items.filter((model) => {
+        const label = `${model.name} ${model.provider}`;
+        return words.every((word) => contains(label, word));
+      });
       if (found.length > 0)
         shown.push({ provider: group.provider, items: found });
     }
