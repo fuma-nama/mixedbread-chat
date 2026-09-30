@@ -35,7 +35,10 @@ const featured = new Map([
   ["alibaba/qwen3.8-max", "Alibaba"],
 ]);
 
-export const defaultModel = "anthropic/claude-sonnet-5";
+/** A deployment's own list, such as a demo's, the first picked by default. */
+const allowed = process.env.ALLOWED_MODELS?.match(/[^\s,]+/g) ?? undefined;
+
+export const defaultModel = allowed?.[0] ?? "anthropic/claude-sonnet-5";
 
 export const titleModel = "openai/gpt-5.6-luna";
 
@@ -98,12 +101,14 @@ async function fetchCatalog(): Promise<Model[]> {
     if (!entry.success) continue;
     const { id, name, type, owned_by, released, tags } = entry.data;
     if (type !== "language" || !tags?.includes("tool-use")) continue;
+    if (allowed && !allowed.includes(id)) continue;
     const provider = featured.get(id);
     const model: Model = {
       id,
       name,
       provider: provider ?? owned_by,
-      featured: provider !== undefined,
+      // Models listed by hand show without searching.
+      featured: provider !== undefined || allowed !== undefined,
       efforts: effortsOf(entry.data.reasoning_options),
     };
     if (id === TOAST_MODEL) model.toast = true;
