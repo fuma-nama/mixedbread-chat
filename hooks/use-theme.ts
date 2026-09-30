@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { remember } from "@/lib/remember";
 import { type Theme, themeColors } from "@/lib/theme";
 
 const listeners = new Set<() => void>();
@@ -26,12 +27,7 @@ export function useTheme(): Theme {
  * crossfades as one where the browser can; elsewhere colors change at once.
  */
 export function setTheme(theme: Theme) {
-  // Read by the server to render the page in it on the next visit.
-  void cookieStore.set({
-    name: "theme",
-    value: theme,
-    expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
-  });
+  remember("theme", theme);
 
   if (
     document.startViewTransition &&

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { remember } from "@/lib/remember";
 import { ChatItem } from "./chat-item";
 import type { ChatSummary } from "./chats-provider";
 import { HoverArea } from "./hover-area";
@@ -31,13 +32,7 @@ export function ChatList({
   // Lets the server group chats by the reader's own days on the next load.
   useEffect(() => {
     const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (zone !== timeZone) {
-      void cookieStore.set({
-        name: "tz",
-        value: zone,
-        expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
-      });
-    }
+    if (zone !== timeZone) remember("tz", zone);
   }, [timeZone]);
 
   return (

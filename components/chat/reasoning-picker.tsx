@@ -22,13 +22,10 @@ import {
   type Reasoning,
   reasoningLevels,
 } from "@/lib/reasoning";
+import { remember } from "@/lib/remember";
 import { Dial } from "./dial";
 
-/**
- * Picks how hard the model thinks; the choice is kept for the next visit.
- * For a model that takes no effort it folds away, and unfolds again for one
- * that does.
- */
+/** Folds away for a model that takes no effort, and unfolds for one that does. */
 export function ReasoningPicker({
   value,
   efforts,
@@ -78,12 +75,7 @@ export function ReasoningPicker({
               value={value}
               onValueChange={(id) => {
                 if (!isReasoning(id)) return;
-                // Read by the server to preselect the level on the next visit.
-                void cookieStore.set({
-                  name: "reasoning",
-                  value: id,
-                  expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
-                });
+                remember("reasoning", id);
                 onChange(id);
               }}
             >
@@ -110,10 +102,9 @@ export function ReasoningPicker({
 }
 
 /**
- * The level's name. On a change the old word rolls out as the new one rolls
- * in, the way the dial turned, and the width glides between them. The words
- * share one cell, so the width holds the old one until it leaves, and the
- * new one waits for the width to all but land: neither runs past the edge.
+ * On a change the old word rolls out as the new one rolls in, the way the
+ * dial turned, while the width glides between them. The words share one
+ * cell, so neither runs past the edge.
  */
 function Rolling({ text, rank }: { text: string; rank: number }) {
   const ref = useGlide<HTMLSpanElement>("width", 360);

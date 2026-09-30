@@ -10,6 +10,7 @@ import { toast } from "@/components/ui/toast";
 import { createStore, type Store, useStore } from "@/hooks/use-store";
 import { useWindowEvent } from "@/hooks/use-window-event";
 import { PROVIDER_ID } from "@/lib/mixedbread/platform";
+import { remember } from "@/lib/remember";
 import {
   choiceFor,
   type Organization,
@@ -102,11 +103,7 @@ function createSources(
     stores,
     select(next) {
       selection.set(next);
-      void cookieStore.set({
-        name: SELECTION_COOKIE,
-        value: serializeSelection(next),
-        expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
-      });
+      remember(SELECTION_COOKIE, serializeSelection(next));
     },
     load(organizationId, force = false) {
       const current = stores.get()[organizationId];
@@ -173,12 +170,9 @@ export function useStoresOf(organizationId: string): StoresState | undefined {
 
 /** What the next question can search, for placeholders and suggestions. */
 export function useSearchScope(): SearchScope {
-  const organizations = useOrganizations();
-  const selection = useSelection();
-  return scopeOf(selection, organizations);
+  return scopeOf(useSelection(), useOrganizations());
 }
 
-/** Every organization's stores, by organization ID; missing until first loaded. */
 export function useAllStores(): Record<string, StoresState> {
   return useStore(useSources().stores, (all) => all);
 }

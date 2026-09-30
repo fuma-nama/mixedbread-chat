@@ -18,6 +18,7 @@ import {
   useComboboxFilter,
 } from "@/components/ui/combobox";
 import type { Model } from "@/lib/models";
+import { remember } from "@/lib/remember";
 import { useModels } from "./models-provider";
 
 // A type, not an interface, so it fits Base UI's indexed `Group`.
@@ -44,7 +45,6 @@ function searchText(model: Model) {
   return `${model.name} ${model.provider}`;
 }
 
-/** Picks the chat model; the choice is kept for the next visit. */
 export function ModelPicker({
   value,
   onChange,
@@ -102,19 +102,13 @@ export function ModelPicker({
       value={value}
       onValueChange={(id) => {
         if (!id) return;
-        // Read by the server to preselect the model on the next visit.
-        void cookieStore.set({
-          name: "model",
-          value: id,
-          expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
-        });
+        remember("model", id);
         onChange(id);
       }}
       autoHighlight
     >
       <ComboboxTrigger
         aria-label="Model"
-        // Its label starts where the text above it does: 10px of bar + 8px here.
         className="flex h-8 min-w-0 cursor-pointer items-center gap-1 rounded-full px-2 text-[13px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 hover:bg-soft hover:text-foreground focus-visible:outline-2 aria-expanded:bg-soft aria-expanded:text-foreground"
       >
         <span className="truncate">
