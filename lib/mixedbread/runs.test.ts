@@ -80,10 +80,11 @@ test("a run resolves its stores once they are listed", async () => {
     kind: "stores",
     stores: "auto",
   });
-  // "all" is every store there is now, stores made since the pick included.
+  // "all" is every store there is now, stores made since the pick included,
+  // by name as a question would say it.
   assert.deepEqual(await resolveTarget(on("all"), listed), {
     kind: "stores",
-    stores: ["store-1", "store-2"],
+    stores: ["HR", "Legal"],
   });
   // Without a listing, or with nothing in it, "all" can't search.
   const none = { error: "No stores to search in Organization 1." };
@@ -95,7 +96,7 @@ test("a run resolves its stores once they are listed", async () => {
   // Picks drop stores deleted since; with all of them gone, the run fails.
   assert.deepEqual(await resolveTarget(on(["store-2", "gone"]), listed), {
     kind: "stores",
-    stores: ["store-2"],
+    stores: ["Legal"],
   });
   assert.deepEqual(await resolveTarget(on(["gone"]), listed), {
     error: "The stores picked in Organization 1 no longer exist.",

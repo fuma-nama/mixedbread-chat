@@ -40,6 +40,7 @@ export function planRuns(
  * What a run searches. Auto starts while the stores list; the rest wait for the
  * listing (missing when it failed): "all" becomes every store there is now,
  * and picks drop stores deleted since, as a deleted one fails the whole run.
+ * Listed stores go by name, so Toast knows the one a question names.
  */
 export async function resolveTarget(
   { label, target }: Run,
@@ -51,11 +52,15 @@ export async function resolveTarget(
   const listed = await listing;
   if (stores === "all") {
     return listed?.size
-      ? { kind: "stores", stores: Array.from(listed.keys()) }
+      ? { kind: "stores", stores: Array.from(listed.values()) }
       : { error: `No stores to search in ${label}.` };
   }
   if (!listed) return { kind: "stores", stores };
-  const kept = stores.filter((id) => listed.has(id));
+  const kept: string[] = [];
+  for (const id of stores) {
+    const name = listed.get(id);
+    if (name) kept.push(name);
+  }
   return kept.length > 0
     ? { kind: "stores", stores: kept }
     : { error: `The stores picked in ${label} no longer exist.` };
