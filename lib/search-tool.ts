@@ -113,7 +113,6 @@ export function searchTool(context: SearchContext) {
       { abortSignal, messages },
     ): AsyncGenerator<SearchOutput> {
       const started = Date.now();
-      const several = runs.length > 1;
       const steps = new Map<string, Step>();
       const read = new Set<string>();
       const results: RunResult[] = [];
@@ -137,7 +136,7 @@ export function searchTool(context: SearchContext) {
           results[index] = value;
           continue;
         }
-        if (several) value.step.group = runs[index].label;
+        if (runs.length > 1) value.step.group = runs[index].label;
         steps.set(value.step.id, value.step);
         for (const chunk of value.chunks) read.add(chunk);
         yield { status: "searching", calls: Array.from(steps.values()) };
