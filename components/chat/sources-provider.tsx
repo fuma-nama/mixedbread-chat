@@ -5,14 +5,13 @@ import { mutate } from "swr";
 import useSWRImmutable from "swr/immutable";
 import { disconnectOrganization, listAllStores } from "@/app/(chat)/actions";
 import { toast } from "@/components/ui/toast";
-import { createStore, type Store, useStore } from "@/hooks/use-store";
+import { createStore, useStore } from "@/hooks/use-store";
 import { useWindowEvent } from "@/hooks/use-window-event";
 import { PROVIDER_ID } from "@/lib/mixedbread/platform";
 import { remember } from "@/lib/remember";
 import {
   choiceFor,
   type Organization,
-  type SearchScope,
   SELECTION_COOKIE,
   type SourceSelection,
   type StoreOption,
@@ -23,13 +22,7 @@ import {
 
 export type StoresState = { status: "loading" } | StoresResult;
 
-interface Sources {
-  organizations: Store<Organization[]>;
-  selection: Store<SourceSelection>;
-  /** Also remembered for the next visit. */
-  select: (selection: SourceSelection) => void;
-  disconnect: (organizationId: string) => Promise<void>;
-}
+type Sources = ReturnType<typeof createSources>;
 
 const SourcesContext = createContext<Sources | null>(null);
 
@@ -81,50 +74,52 @@ export function SourcesProvider({
 function createSources(
   initialOrganizations: Organization[],
   initialSelection: SourceSelection,
-): Sources {
+) {
   const organizations = createStore(initialOrganizations);
   const selection = createStore(initialSelection);
 
-  const sources: Sources = {
+  /** Also remembered for the next visit. */
+  function select(next: SourceSelection) {
+    selection.set(next);
+    remember(SELECTION_COOKIE, serializeSelection(next));
+  }
+
+  return {
     organizations,
     selection,
-    select(next) {
-      selection.set(next);
-      remember(SELECTION_COOKIE, serializeSelection(next));
-    },
-    async disconnect(organizationId) {
+    select,
+    async disconnect(organizationId: string) {
       await disconnectOrganization(organizationId);
       organizations.set(
         organizations.get().filter((entry) => entry.id !== organizationId),
       );
       const { [organizationId]: _, ...rest } = selection.get().organizations;
-      sources.select({ ...selection.get(), organizations: rest });
+      select({ ...selection.get(), organizations: rest });
     },
   };
-  return sources;
 }
 
 /** The actions and stores; reading them never re-renders. */
-export function useSources(): Sources {
+export function useSources() {
   const sources = use(SourcesContext);
   if (!sources) throw new Error("useSources needs a <SourcesProvider>");
   return sources;
 }
 
-export function useOrganizations(): Organization[] {
+export function useOrganizations() {
   return useStore(useSources().organizations, (list) => list);
 }
 
-export function useSelection(): SourceSelection {
+export function useSelection() {
   return useStore(useSources().selection, (selection) => selection);
 }
 
-export function useSearchScope(): SearchScope {
+export function useSearchScope() {
   return scopeOf(useSelection(), useOrganizations());
 }
 
 /** Every organization's stores, loaded on first use; see `storesOf`. */
-export function useAllStores(): Record<string, StoresState> | undefined {
+export function useAllStores() {
   return useSWRImmutable(STORES, loadStores).data;
 }
 
@@ -159,7 +154,7 @@ async function linkOrganization() {
 }
 
 /** Connecting, with a pending state that a return through the back button resets. */
-export function useConnect(): { pending: boolean; connect: () => void } {
+export function useConnect() {
   const [pending, setPending] = useState(false);
 
   useWindowEvent("pageshow", (event) => {
@@ -179,7 +174,7 @@ export function useConnect(): { pending: boolean; connect: () => void } {
 }
 
 /** The stores picked one by one; an organization on Auto or searched whole adds none. */
-export function usePickedStores(): StoreOption[] {
+export function usePickedStores() {
   const organizations = useOrganizations();
   const selection = useSelection();
   const all = useAllStores();
