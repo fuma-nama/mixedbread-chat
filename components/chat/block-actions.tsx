@@ -11,8 +11,7 @@ export function BlockActions({
   download,
   className,
 }: {
-  /** What the block is, for the buttons' names: "code" or "table". */
-  what: string;
+  what: "code" | "table";
   copy: () => Promise<void>;
   download: () => void;
   className?: string;
