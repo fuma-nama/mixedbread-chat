@@ -30,41 +30,41 @@ export function Suggestions({
 }) {
   const questions = suggestionsFor(scope, usePickedStores());
   const [first] = useState(() => new Set(questions));
+  const items: React.ReactNode[] = [];
   let fresh = 0;
+  for (const [index, question] of questions.entries()) {
+    const arrival = first.has(question);
+    items.push(
+      <li
+        key={question}
+        className={cn(
+          "shrink-0",
+          arrival ? "motion-safe:animate-rise" : "motion-safe:animate-swap-in",
+        )}
+        style={{
+          animationDelay: arrival
+            ? `${240 + index * 50}ms`
+            : `${fresh++ * 40}ms`,
+          animationFillMode: arrival ? undefined : "backwards",
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => onPick(question)}
+          className="cursor-pointer rounded-full px-3.5 py-1.5 text-[13px] whitespace-nowrap text-muted-foreground ring-1 ring-soft outline-offset-1 outline-ring transition-[color,background-color,box-shadow] duration-150 hover:bg-card hover:text-foreground hover:shadow-raised hover:ring-foreground/15 focus-visible:outline-2"
+        >
+          {question}
+        </button>
+      </li>,
+    );
+  }
 
   return (
     <ul
       aria-label="Suggestions"
       className="flex flex-wrap justify-center gap-2 px-4 outline-offset-2 outline-ring focus-visible:outline-2 max-md:scroll-fade-x max-md:scrollbar-none max-md:flex-nowrap max-md:justify-start max-md:overflow-x-auto max-md:py-1 max-md:[--scroll-fade-size:1.25rem]"
     >
-      {questions.map((question, index) => {
-        const arrival = first.has(question);
-        return (
-          <li
-            key={question}
-            className={cn(
-              "shrink-0",
-              arrival
-                ? "motion-safe:animate-rise"
-                : "motion-safe:animate-swap-in",
-            )}
-            style={{
-              animationDelay: arrival
-                ? `${240 + index * 50}ms`
-                : `${fresh++ * 40}ms`,
-              animationFillMode: arrival ? undefined : "backwards",
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => onPick(question)}
-              className="cursor-pointer rounded-full px-3.5 py-1.5 text-[13px] whitespace-nowrap text-muted-foreground ring-1 ring-soft outline-offset-1 outline-ring transition-[color,background-color,box-shadow] duration-150 hover:bg-card hover:text-foreground hover:shadow-raised hover:ring-foreground/15 focus-visible:outline-2"
-            >
-              {question}
-            </button>
-          </li>
-        );
-      })}
+      {items}
     </ul>
   );
 }
