@@ -164,20 +164,18 @@ function PageImage({
             marked.map((index) => {
               const block = page.blocks[index];
               return (
-                block && (
-                  <mark
-                    key={index}
-                    style={{
-                      left: `${block.x * 100}%`,
-                      top: `${block.y * 100}%`,
-                      width: `${block.width * 100}%`,
-                      height: `${block.height * 100}%`,
-                    }}
-                    className="absolute rounded-[3px] bg-berry/12 outline-2 outline-offset-2 outline-berry/75 motion-safe:animate-fade"
-                  >
-                    <span className="sr-only">{block.text}</span>
-                  </mark>
-                )
+                <mark
+                  key={index}
+                  style={{
+                    left: `${block.x * 100}%`,
+                    top: `${block.y * 100}%`,
+                    width: `${block.width * 100}%`,
+                    height: `${block.height * 100}%`,
+                  }}
+                  className="absolute rounded-[3px] bg-berry/12 outline-2 outline-offset-2 outline-berry/75 motion-safe:animate-fade"
+                >
+                  <span className="sr-only">{block.text}</span>
+                </mark>
               );
             })}
         </div>
