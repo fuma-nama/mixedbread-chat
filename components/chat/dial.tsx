@@ -6,30 +6,21 @@ import type { Reasoning } from "@/lib/reasoning";
 const ARC = "M3.93 12.97A5.75 5.75 0 1 1 12.07 12.97";
 
 // Even steps round the arc, so a level sits in the same place for any model.
-const settings: Record<Reasoning, { turn: number; heat: string }> = {
-  auto: { turn: 0.5, heat: "var(--honey)" },
-  none: { turn: 0, heat: "var(--honey)" },
-  minimal: {
-    turn: 0.2,
-    heat: "color-mix(in oklch, var(--crust) 20%, var(--honey))",
-  },
-  low: {
-    turn: 0.4,
-    heat: "color-mix(in oklch, var(--crust) 45%, var(--honey))",
-  },
-  medium: {
-    turn: 0.6,
-    heat: "color-mix(in oklch, var(--crust) 75%, var(--honey))",
-  },
-  high: { turn: 0.8, heat: "var(--crust)" },
-  xhigh: {
-    turn: 1,
-    heat: "oklch(from var(--crust) calc(l - 0.08) calc(c + 0.04) calc(h - 10))",
-  },
+const settings: Record<Reasoning, [turn: number, heat: string]> = {
+  auto: [0.5, "var(--honey)"],
+  none: [0, "var(--honey)"],
+  minimal: [0.2, "color-mix(in oklch, var(--crust) 20%, var(--honey))"],
+  low: [0.4, "color-mix(in oklch, var(--crust) 45%, var(--honey))"],
+  medium: [0.6, "color-mix(in oklch, var(--crust) 75%, var(--honey))"],
+  high: [0.8, "var(--crust)"],
+  xhigh: [
+    1,
+    "oklch(from var(--crust) calc(l - 0.08) calc(c + 0.04) calc(h - 10))",
+  ],
 };
 
 export function Dial({ level }: { level: Reasoning }) {
-  const { turn, heat } = settings[level];
+  const [turn, heat] = settings[level];
   const auto = level === "auto";
   // Off has nothing to fill; a round cap would still paint a dot at the start.
   const filled = !auto && turn > 0;
