@@ -1,32 +1,21 @@
-/*
- * Halftone prints of the Mixedbread mark and of a slice of bread, on the same
- * hex grid, with each dot of one paired to a dot of the other so the mark can
- * flow into the bread and back. Pure layout: `HalftoneMark` animates it.
- */
+// Halftone prints of the Mixedbread mark and of a slice of bread on one hex
+// grid, each dot of one paired with a dot of the other; `HalftoneMark` animates.
+import { SLICE_PATH } from "./slice";
 
-/**
- * `SliceGlyph`'s slice, and its bounds in its 16 × 16 box. A copy, so pages
- * with only the mark don't load the glyph.
- */
-const SLICE =
-  "M2.9 8.2C1.9 7.9 1.2 7.2 1.2 6.2 1.2 3.6 4.3 1.6 8 1.6s6.8 2 6.8 4.6c0 1-.7 1.7-1.7 2v5.2c0 .8-.6 1.4-1.4 1.4H4.3c-.8 0-1.4-.6-1.4-1.4z";
+/** The slice's bounds in its 16 × 16 box. */
 const SLICE_BOX = { x: 1.2, y: 1.6, width: 13.6, height: 13.2 };
 
-/** The bread's inks, read from CSS so they follow the theme. */
+/** Read from CSS, so they follow the theme. */
 export const INKS = ["--honey", "--crust", "--shade"];
 const CRUMB = 0;
 const CRUST = 1;
 const SHADE = 2;
 
-/** How long a dot takes to settle, and how far apart the first and last start. */
+/** Seconds a dot takes to settle, and between the first and last starting. */
 export const SETTLE = 0.7;
 export const SPREAD = 0.6;
 
-/**
- * Each dot rides a spring between the mark and the bread. `stagger` is how
- * far apart, in seconds, the first and last dot leave; the springs land in
- * about half a second with a touch of overshoot, and a little sooner going home.
- */
+/** Springs between mark and bread; `stagger` is seconds between the first and last to leave. */
 export const MORPH = {
   out: { stagger: 0.3, stiffness: 170, damping: 18 },
   back: { stagger: 0.22, stiffness: 220, damping: 22 },
@@ -36,7 +25,6 @@ const PULL = 0.3;
 
 export type Rgb = [number, number, number];
 
-/** A dot at rest in one of the two prints. */
 interface Spot {
   x: number;
   y: number;
@@ -54,11 +42,10 @@ interface MarkSpot extends Spot {
 }
 
 interface BreadSpot extends Spot {
-  /** Which of `INKS` it is printed in. */
+  /** An index into `INKS`. */
   ink: number;
 }
 
-/** One dot, travelling between its spot in the mark and its spot in the bread. */
 export interface Dot {
   home: MarkSpot;
   slot: BreadSpot;
@@ -75,7 +62,6 @@ export interface Dot {
   /** Where the path bows through, set each time the dot leaves from rest. */
   bendX: number;
   bendY: number;
-  /** Where it was last drawn. */
   x: number;
   y: number;
   /** Per dot, so the crowd doesn't move in lockstep. */
@@ -91,7 +77,6 @@ function noise(seed: number): number {
   return n - Math.floor(n);
 }
 
-/** A layer averaged over one cell of the grid. */
 interface Tone {
   x: number;
   y: number;
@@ -100,9 +85,8 @@ interface Tone {
 }
 
 /**
- * Paints a layer at twice the size, then averages each cell of a hex grid over
- * it: how much of the cell it covers, and in what colour. Layers painted onto
- * the same size come back cell for cell in the same order.
+ * Paints a layer at twice the size, then averages each cell of a hex grid
+ * over it. Layers of one size come back cell for cell in the same order.
  */
 function sample(
   width: number,
@@ -126,7 +110,6 @@ function sample(
 
   for (let row = 0, y = cell / 2; y < height; row++, y += rowStep) {
     for (let x = cell / 2 + (row % 2) * (cell / 2); x < width; x += cell) {
-      // The pixels around the cell's center, within the canvas.
       const cx = Math.round(x * scale);
       const cy = Math.round(y * scale);
       const left = Math.max(cx - reach, 0);
@@ -159,7 +142,6 @@ function sample(
   return tones;
 }
 
-/** Samples the mark into dots that fit `width` × `height`. */
 function printMark(
   image: HTMLImageElement,
   width: number,
@@ -203,10 +185,7 @@ function printMark(
   return spots;
 }
 
-/**
- * Prints a slice of bread, face on, on the same grid: honey crumb inside a
- * denser ring of crust, with a little shade dropped to the lower right.
- */
+/** Honey crumb inside a denser ring of crust, with shade to the lower right. */
 function printBread(width: number, height: number, cell: number): BreadSpot[] {
   const size = Math.min(
     (height * 0.86) / SLICE_BOX.height,
@@ -221,20 +200,15 @@ function printBread(width: number, height: number, cell: number): BreadSpot[] {
   const lean = cell * 0.35;
   const drop = cell * 0.9;
 
-  /** The slice scaled into place, nudged by `dx`, `dy`. */
   const placed = (dx = 0, dy = 0) => {
     const path = new Path2D();
-    path.addPath(
-      new Path2D(SLICE),
-      new DOMMatrix([
-        size,
-        0,
-        0,
-        size,
+    const matrix = new DOMMatrix()
+      .translateSelf(
         left - SLICE_BOX.x * size + dx,
         top - SLICE_BOX.y * size + dy,
-      ]),
-    );
+      )
+      .scaleSelf(size);
+    path.addPath(new Path2D(SLICE_PATH), matrix);
     return path;
   };
   const body = placed();
@@ -281,7 +255,6 @@ function printBread(width: number, height: number, cell: number): BreadSpot[] {
   return spots;
 }
 
-/** The part of `items` in strip `index` of `count` equal strips. */
 function strip<T>(items: T[], index: number, count: number): T[] {
   return items.slice(
     Math.floor((index * items.length) / count),
@@ -290,12 +263,10 @@ function strip<T>(items: T[], index: number, count: number): T[] {
 }
 
 /**
- * The mark's dots paired with the bread's for a `width` × `height` box, so
- * paths flow side by side instead of crossing: both are cut into the same
- * number of strips from left to right, then paired from top to bottom within
- * each strip. Where one side has fewer dots, some of its spots are shared,
- * and the extra copy has no size there: it splits off a dot on the way out,
- * or merges into one on arrival.
+ * Pairs the mark's dots with the bread's, so paths flow side by side: both
+ * are cut into the same strips from left to right and paired top to bottom
+ * within each. Where one side has fewer dots, spots are shared, and the copy
+ * has no size: it splits off a dot on the way out, or merges into one.
  */
 export function print(
   image: HTMLImageElement,
@@ -358,7 +329,6 @@ export function rest(dot: Dot, at: number) {
   dot.next = at;
 }
 
-/** Bows a dot's path towards `x`, `y`, less so for short trips. */
 function bend(dot: Dot, x: number, y: number) {
   const { home, slot } = dot;
   const midX = (home.x + slot.x) / 2;
@@ -377,9 +347,9 @@ function bend(dot: Dot, x: number, y: number) {
 }
 
 /**
- * Advances a dot's spring by `dt` seconds towards its goal. Leaving from rest
- * it takes a new path; turned around mid-flight it keeps the one it is on, so
- * it heads back from exactly where it is. Returns whether it is still moving.
+ * Advances a dot's spring by `dt` seconds. Leaving from rest it bows towards
+ * the pointer; turned around mid-flight it heads back along the same path.
+ * Returns whether it is still moving.
  */
 export function step(
   dot: Dot,

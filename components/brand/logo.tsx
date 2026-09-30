@@ -1,4 +1,3 @@
-/** The Mixedbread mark, the same file the browser tab shows. */
 export function Logo() {
   return (
     // oxlint-disable-next-line nextjs/no-img-element -- a static SVG gains nothing from next/image

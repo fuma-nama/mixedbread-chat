@@ -4,13 +4,6 @@ import { cn } from "cn";
 import { useState } from "react";
 import { SLICE_PATH } from "./slice";
 
-/*
- * The small bread that marks work in progress. Searches run on Toast 1, so a
- * search is a slice in a toaster; thinking is crumbs proofing into a slice.
- * Motion is CSS only and plays on a change of state, never on a first
- * render, so an answer loaded from history shows its bread already baked.
- */
-
 // The toaster's metal: muted ink mixed into the page, so the slice behind it
 // stays hidden in both themes.
 const metal =
@@ -18,7 +11,6 @@ const metal =
 const slot =
   "fill-[color-mix(in_oklch,var(--muted-foreground)_25%,var(--panel))]";
 
-/** Toast 1 at work: the slice toasts while the search runs and pops up when it is done. */
 export function Toasting({
   state,
 }: {
@@ -50,7 +42,6 @@ export function Toasting({
         rx="0.6"
         className={slot}
       />
-      {/* The heat under the slice while it toasts. */}
       <rect
         x="4.6"
         y="8.1"
@@ -70,7 +61,6 @@ export function Toasting({
         rx="0.7"
         className={metal}
       />
-      {/* The lever: pressed while toasting, springing back up when it pops. */}
       <rect
         x="16.9"
         y="10"
@@ -107,11 +97,7 @@ function round(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-/**
- * Thinking: crumbs circle like dough proofing. When the thought is done they
- * spiral in, spinning faster as the ring closes, and bake into a slice. A
- * thought loaded already finished is just the slice, with nothing running.
- */
+/** Motion plays on a change of state, so a thought loaded from history is just the slice. */
 export function Proofing({ live }: { live: boolean }) {
   const [phase, setPhase] = useState<Phase>(live ? "live" : "baked");
   if (live && phase !== "live") setPhase("live");

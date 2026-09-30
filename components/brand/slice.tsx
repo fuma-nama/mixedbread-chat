@@ -1,10 +1,8 @@
 import { cn } from "cn";
 
-/** A slice of bread, face on, in a 16 × 16 box. */
 export const SLICE_PATH =
   "M2.9 8.2C1.9 7.9 1.2 7.2 1.2 6.2 1.2 3.6 4.3 1.6 8 1.6s6.8 2 6.8 4.6c0 1-.7 1.7-1.7 2v5.2c0 .8-.6 1.4-1.4 1.4H4.3c-.8 0-1.4-.6-1.4-1.4z";
 
-/** A slice of bread, the mark for a cited source. */
 export function SliceGlyph({
   className,
   style,

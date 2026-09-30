@@ -14,14 +14,8 @@ import {
   step,
 } from "./halftone";
 
-/*
- * The Mixedbread mark, printed in halftone: one dot per cell of a hex grid,
- * sized by how much of the mark covers it and inked in the mark's own colour.
- * On arrival the dots settle into place like ink, left to right. Afterwards a
- * band of light passes over now and then. A pointer resting on the mark pulls
- * its dots into a slice of bread, printed on the same grid, and they flow back
- * when it leaves. Drawn on a 2D canvas, and only while something moves.
- */
+// The dots settle in like ink, a band of light passes now and then, and a
+// resting pointer pulls them into a slice of bread. Drawn only while moving.
 
 /** Seconds between two passes of light, and how long one takes. */
 const EVERY = 7;
@@ -62,11 +56,8 @@ function readInks(element: Element): Rgb[] {
   });
 }
 
-/**
- * Dots are filled a colour at a time. Colours are rounded to 64 steps a
- * channel and alpha to 8, too fine to see at this size, so a frame needs a
- * few dozen fills instead of one per dot.
- */
+// Colours rounded to 64 steps a channel and alpha to 8, too fine to see, so a
+// frame takes a few dozen fills instead of one per dot.
 const styles = new Map<number, string>();
 
 const level = (value: number) => Math.round(clamp01(value / 255) * 63);
@@ -97,7 +88,6 @@ export function HalftoneMark() {
   );
 }
 
-/** Draws the mark on `canvas` until it unmounts. */
 function animate(canvas: HTMLCanvasElement | null) {
   const context = canvas?.getContext("2d");
   if (!canvas || !context) return;
@@ -164,7 +154,6 @@ function animate(canvas: HTMLCanvasElement | null) {
       const intro = still ? 1 : clamp01((time - home.delay) / SETTLE);
       if (intro < 1) moving = true;
 
-      // Along a curve from home, bowed through the bend, to the slot.
       const t = dot.progress;
       const u = 1 - t;
       const settle = easeOutCubic(intro);
@@ -186,7 +175,6 @@ function animate(canvas: HTMLCanvasElement | null) {
       const alpha = Math.min(1, intro * 2.2);
       if (radius < 0.1 || alpha <= 0) continue;
 
-      // The logo's colour gives way to the bread's ink along the way.
       const ink = inks[slot.ink] ?? home.color;
       const mix = smooth(clamp01((along - 0.15) / 0.7));
       const key = colorKey(
@@ -214,12 +202,10 @@ function animate(canvas: HTMLCanvasElement | null) {
     if (moving || passing || since <= 0) {
       frame = requestAnimationFrame(draw);
     } else {
-      // Sleep until the next pass of light.
       wake = window.setTimeout(schedule, (EVERY - into) * 1000);
     }
   };
 
-  // Starts drawing unless a frame is already on its way.
   const schedule = () => {
     if (frame || !image || signal.aborted || !visible || document.hidden) {
       return;
@@ -229,7 +215,7 @@ function animate(canvas: HTMLCanvasElement | null) {
     frame = requestAnimationFrame(draw);
   };
 
-  /** Sends every dot towards `goal`, those nearest the pointer first. */
+  // Those nearest the pointer leave first.
   const aim = (goal: number) => {
     if (reduced.matches) return;
     const { stagger } = goal === 1 ? MORPH.out : MORPH.back;
