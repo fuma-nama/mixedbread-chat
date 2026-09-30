@@ -57,6 +57,7 @@ function OpenChat({ id, fallback }: { id: string; fallback?: CachedChat }) {
 export function ChatSkeleton() {
   return (
     <>
+      <title>Bread Chat</title>
       <ChatHeader />
       <div
         role="status"
@@ -78,6 +79,7 @@ export function ChatSkeleton() {
 export function ChatMissing() {
   return (
     <>
+      <title>Chat not available · Bread Chat</title>
       <ChatHeader />
       <div className="flex flex-1 flex-col items-center justify-center gap-5 px-4 pb-16 text-center">
         <SliceGlyph className="size-9 text-muted-foreground/35 motion-safe:animate-settle" />

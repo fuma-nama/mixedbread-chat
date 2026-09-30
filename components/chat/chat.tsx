@@ -3,14 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, generateId } from "ai";
 import { cn } from "cn";
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { mutate } from "swr";
 import { setChatLeaf } from "@/app/(chat)/actions";
 import { useChats, useChatTitle } from "@/components/sidebar/chats-provider";
@@ -199,10 +192,6 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
     [empty, title, readonly, id, saved.visibility, stores, keep],
   );
 
-  useEffect(() => {
-    document.title = title ? `${title} · Bread Chat` : "Bread Chat";
-  }, [title]);
-
   // The first message glides the composer from the middle to its dock.
   useLayoutEffect(() => {
     const from = glideFrom.current;
@@ -332,6 +321,7 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
 
   return (
     <div ref={frameRef} className="relative flex min-h-0 flex-1 flex-col">
+      <title>{title ? `${title} · Bread Chat` : "Bread Chat"}</title>
       {header}
 
       {!empty && (
