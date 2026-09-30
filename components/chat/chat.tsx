@@ -3,7 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, generateId } from "ai";
 import { cn } from "cn";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { mutate } from "swr";
 import { setChatLeaf } from "@/app/(chat)/actions";
 import { useChats, useChatTitle } from "@/components/sidebar/chats-provider";
@@ -51,15 +51,12 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
   const [tree, setTree] = useState(saved.messages);
   const { models, model, setModel, reasoning, setReasoning } = useModels();
   // SWR keeps the chat as shown, so switching back to it is instant.
-  const keep = useCallback(
-    (change: Partial<CachedChat>) =>
-      void mutate(
-        chatKey(id),
-        (cached?: CachedChat | null) => ({ ...(cached ?? saved), ...change }),
-        { revalidate: false },
-      ),
-    [id, saved],
-  );
+  const keep = (change: Partial<CachedChat>) =>
+    void mutate(
+      chatKey(id),
+      (cached?: CachedChat | null) => ({ ...(cached ?? saved), ...change }),
+      { revalidate: false },
+    );
   const [stopped, setStopped] = useState<ReadonlySet<string>>(() => new Set());
   const [announcement, setAnnouncement] = useState("");
   const [initial] = useState(() => {
@@ -77,13 +74,8 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
   const frameRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const glideFrom = useRef<DOMRect | null>(null);
-  // The last request, so one the server turns away can be taken back.
-  const lastSend = useRef<{
-    text?: string;
-    first: boolean;
-    /** The version to show again, rather than dropping the last message. */
-    restore?: string;
-  }>(null);
+  // The server turned the last request away before saving it.
+  const refused = useRef(false);
   const [leaving, setLeaving] = useState<React.CSSProperties | null>(null);
   const [turn, setTurn] = useState<{ id: string; key: number }>();
   const reduced = useReducedMotion();
@@ -130,6 +122,8 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
     },
     // Also when leaving mid-answer stops it, so the chat reopens as it was left.
     onFinish({ message, messages: path, isAbort }) {
+      // `request` takes a refused one back.
+      if (refused.current) return;
       keep({
         messages: withPath(tree, path),
         leafId: path.at(-1)?.id ?? null,
@@ -143,17 +137,7 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
       chats.refresh();
     },
     onError(error) {
-      // The server turned the message away before saving it: take it back.
-      const send = lastSend.current;
-      if (!send || !wasRejected(error)) return;
-      lastSend.current = null;
-      if (send.restore) switchTo(send.restore);
-      else setMessages((messages) => messages.slice(0, -1));
-      if (send.text) composer.current?.restore(send.text);
-      if (send.first) {
-        window.history.replaceState(null, "", "/");
-        chats.remove(new Set([id]));
-      }
+      refused.current = wasRejected(error);
     },
   });
 
@@ -171,26 +155,6 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
   // Screen readers hear where a search is, not every token of it.
   const spoken = (busy && searchStatus(messages.at(-1))) || announcement;
   const stores = searchedStores(messages);
-  // Made again only when it changes, not with every streamed update.
-  const header = useMemo(
-    () => (
-      <ChatHeader
-        title={empty ? undefined : title}
-        share={
-          !readonly &&
-          !empty && (
-            <ShareDialog
-              chatId={id}
-              initialVisibility={saved.visibility}
-              onChange={(visibility) => keep({ visibility })}
-              stores={stores}
-            />
-          )
-        }
-      />
-    ),
-    [empty, title, readonly, id, saved.visibility, stores, keep],
-  );
 
   // The first message glides the composer from the middle to its dock.
   useLayoutEffect(() => {
@@ -206,85 +170,28 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
     });
   }, [empty]);
 
-  const answer = useCallback((questionId: string) => {
+  function answer(questionId: string) {
     setTurn((turn) => ({ id: questionId, key: (turn?.key ?? 0) + 1 }));
     setAnnouncement("");
-  }, []);
+  }
 
   // The id is made here, so the view can pin the question as it appears.
-  const sendQuestion = useCallback(
-    (text: string) => {
-      const question = generateId();
-      answer(question);
-      preloadMarkdown();
-      void sendMessage({
-        id: question,
-        role: "user",
-        parts: [{ type: "text", text }],
-      });
-    },
-    [answer, sendMessage],
-  );
-
-  function answerAgain() {
-    // The question is already there, so a refusal has nothing to take back.
-    lastSend.current = null;
-    const question = messages.findLast((message) => message.role === "user");
-    if (question) answer(question.id);
-    void regenerate();
+  function ask(text: string) {
+    const question = generateId();
+    answer(question);
+    preloadMarkdown();
+    return sendMessage({
+      id: question,
+      role: "user",
+      parts: [{ type: "text", text }],
+    });
   }
 
-  // The same function while an answer streams, so the composer sits still.
-  const send = useCallback(
-    (text: string) => {
-      clearError();
-      lastSend.current = { text, first: empty };
-      if (empty) {
-        const hero = heroRef.current?.getBoundingClientRect();
-        const frame = frameRef.current?.getBoundingClientRect();
-        if (!reduced && hero && frame) {
-          glideFrom.current =
-            composer.current?.element()?.getBoundingClientRect() ?? null;
-          setLeaving({
-            top: hero.top - frame.top,
-            left: hero.left - frame.left,
-            width: hero.width,
-          });
-        }
-        window.history.replaceState(null, "", `/c/${id}`);
-        chats.update(id, {
-          title: text.split("\n")[0].slice(0, 80),
-          updatedAt: new Date(),
-        });
-      }
-      sendQuestion(text);
-    },
-    [clearError, empty, reduced, id, chats, sendQuestion],
-  );
-
-  function edit(messageId: string, text: string) {
-    clearError();
-    lastSend.current = { text, first: false, restore: messageId };
-    setTree(withPath(tree, messages));
-    setMessages(
-      messages.slice(
-        0,
-        messages.findIndex((message) => message.id === messageId),
-      ),
-    );
-    sendQuestion(text);
-    composer.current?.focus();
-  }
-
-  function retry(messageId: string) {
-    clearError();
-    lastSend.current = { first: false, restore: messageId };
-    setTree(withPath(tree, messages));
-    const index = messages.findIndex((message) => message.id === messageId);
-    const question = messages[index - 1];
-    if (question) answer(question.id);
-    void regenerate({ messageId });
-    composer.current?.focus();
+  /** Runs a request; `undo` takes it back if the server turns it away unsaved. */
+  async function request(run: () => Promise<void>, undo?: () => void) {
+    refused.current = false;
+    await run();
+    if (refused.current) undo?.();
   }
 
   function switchTo(messageId: string) {
@@ -312,6 +219,76 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
     if (target) switchTo(target.id);
   }
 
+  function answerAgain() {
+    const question = messages.findLast((message) => message.role === "user");
+    if (question) answer(question.id);
+    void request(regenerate);
+  }
+
+  function send(text: string) {
+    clearError();
+    if (empty) {
+      const hero = heroRef.current?.getBoundingClientRect();
+      const frame = frameRef.current?.getBoundingClientRect();
+      if (!reduced && hero && frame) {
+        glideFrom.current =
+          composer.current?.element()?.getBoundingClientRect() ?? null;
+        setLeaving({
+          top: hero.top - frame.top,
+          left: hero.left - frame.left,
+          width: hero.width,
+        });
+      }
+      window.history.replaceState(null, "", `/c/${id}`);
+      chats.update(id, {
+        title: text.split("\n")[0].slice(0, 80),
+        updatedAt: new Date(),
+      });
+    }
+    void request(
+      () => ask(text),
+      () => {
+        setMessages((messages) => messages.slice(0, -1));
+        composer.current?.restore(text);
+        if (!empty) return;
+        window.history.replaceState(null, "", "/");
+        chats.remove(new Set([id]));
+      },
+    );
+  }
+
+  function edit(messageId: string, text: string) {
+    clearError();
+    setTree(withPath(tree, messages));
+    setMessages(
+      messages.slice(
+        0,
+        messages.findIndex((message) => message.id === messageId),
+      ),
+    );
+    void request(
+      () => ask(text),
+      () => {
+        switchTo(messageId);
+        composer.current?.restore(text);
+      },
+    );
+    composer.current?.focus();
+  }
+
+  function retry(messageId: string) {
+    clearError();
+    setTree(withPath(tree, messages));
+    const index = messages.findIndex((message) => message.id === messageId);
+    const question = messages[index - 1];
+    if (question) answer(question.id);
+    void request(
+      () => regenerate({ messageId }),
+      () => switchTo(messageId),
+    );
+    composer.current?.focus();
+  }
+
   // Messages there at load stay still; sent ones rise in, and versions
   // brought back from the saved tree fade in.
   function appearOf(messageId: string): Appear {
@@ -322,7 +299,20 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
   return (
     <div ref={frameRef} className="relative flex min-h-0 flex-1 flex-col">
       <title>{title ? `${title} · Bread Chat` : "Bread Chat"}</title>
-      {header}
+      <ChatHeader
+        title={empty ? undefined : title}
+        share={
+          !readonly &&
+          !empty && (
+            <ShareDialog
+              chatId={id}
+              initialVisibility={saved.visibility}
+              onChange={(visibility) => keep({ visibility })}
+              stores={stores}
+            />
+          )
+        }
+      />
 
       {!empty && (
         <Conversation turn={turn} streaming={busy}>
