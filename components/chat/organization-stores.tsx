@@ -28,15 +28,13 @@ import {
 export const row =
   "group/row flex min-h-8 w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-[13.5px] text-foreground/90 transition-colors duration-100 outline-none select-none scroll-my-1 hover:bg-soft hover:text-foreground focus-visible:bg-soft focus-visible:text-foreground disabled:cursor-default disabled:opacity-60 [&_svg]:shrink-0";
 
-// A separator that ends up first, as while filtering, hides.
+// One that ends up first, as while filtering, hides.
 export const separator = "-mx-1 my-1 h-px bg-soft first:hidden";
 
 /**
- * One organization's stores, on Auto, where Toast picks where to look, or
- * Manual, where the stores ticked are searched: all of them, stores made
- * later included, or just some. Manual with none ticked leaves the
- * organization out. Ticking a store found by the filter on Auto turns to
- * Manual with just that one.
+ * On Auto, Toast picks where to look; on Manual, the stores ticked are
+ * searched, and none leaves the organization out. Ticking a store found by
+ * the filter on Auto turns to Manual with just that one.
  */
 export function OrganizationStores({
   organization,
@@ -55,7 +53,6 @@ export function OrganizationStores({
   const selection = useSelection();
   const choice = choiceFor(selection, organization.id);
   const auto = choice === "auto";
-  // Rows that load or unfold after the panel opens slide in.
   const [unfold, setUnfold] = useState(() => state?.status !== "ok" || auto);
   const stores = state?.status === "ok" ? state.stores : undefined;
   let shown = auto ? [] : (stores ?? []);
@@ -101,44 +98,29 @@ export function OrganizationStores({
           </div>
         )}
         {!words && !auto && searchable && (
-          <button
-            type="button"
-            role="checkbox"
-            aria-checked={choice === "all"}
-            data-row=""
+          <Check
+            checked={choice === "all"}
+            unfold={unfold}
             onClick={() => choose(choice === "all" ? [] : "all")}
-            className={cn(row, unfold && "motion-safe:animate-swap-in")}
           >
-            <Box />
             <span className="flex-1 truncate">All stores</span>
-          </button>
+          </Check>
         )}
         {shown.map((store, index) => (
-          <button
+          <Check
             key={store.id}
-            type="button"
-            role="checkbox"
-            aria-checked={choice === "all" || picked.has(store.id)}
-            data-row=""
+            checked={choice === "all" || picked.has(store.id)}
+            unfold={unfold}
+            delay={Math.min(index + 1, 8) * 16}
             data-store=""
             title={store.description ?? undefined}
             onClick={() => choose(toggle(choice, store.id, stores))}
-            style={
-              unfold
-                ? {
-                    animationDelay: `${Math.min(index + 1, 8) * 16}ms`,
-                    animationFillMode: "backwards",
-                  }
-                : undefined
-            }
-            className={cn(row, unfold && "motion-safe:animate-swap-in")}
           >
-            <Box />
             <span className="min-w-0 flex-1 truncate">{store.name}</span>
             <span className="ml-auto flex shrink-0 items-center gap-1.5 pl-2 text-[11.5px] text-muted-foreground/80 tabular-nums">
               {storeStatus(store)}
             </span>
-          </button>
+          </Check>
         ))}
         {!words && (
           <StoresNotice
@@ -169,10 +151,6 @@ function toggle(
   return rest;
 }
 
-/**
- * Auto or Manual, as a pill that glides to the one picked; the slice pops up
- * while Toast gets to pick. Arrow keys switch, as in any set of radios.
- */
 function Mode({
   auto,
   label,
@@ -227,7 +205,6 @@ function matches(store: StoreOption, words: string[]): boolean {
   return words.every((word) => text.includes(word));
 }
 
-/** What a store holds, or why it may not answer in full. */
 function storeStatus(store: StoreOption): React.ReactNode {
   switch (store.status) {
     case "in_progress":
@@ -253,10 +230,7 @@ function storeStatus(store: StoreOption): React.ReactNode {
   }
 }
 
-/**
- * Loading, failed, signed out, or empty: what stands in for the list. Toast
- * finds the stores itself on Auto, so only Manual waits for the list.
- */
+// Toast finds the stores itself on Auto, so only Manual waits for the list.
 function StoresNotice({
   organization,
   state,
@@ -326,7 +300,6 @@ function StoresNotice({
   );
 }
 
-/** Leaves for Mixedbread, which asks which organization to connect. */
 export function ConnectButton({
   icon,
   hint,
@@ -368,17 +341,42 @@ export function ConnectButton({
   );
 }
 
-/** A checkbox's box, checked with the row it is in. The tick springs in. */
-function Box() {
+function Check({
+  checked,
+  unfold,
+  delay = 0,
+  children,
+  ...props
+}: React.ComponentProps<"button"> & {
+  checked: boolean;
+  /** Loaded or unfolded after the panel opened, so it slides in. */
+  unfold: boolean;
+  delay?: number;
+}) {
   return (
-    <span
-      aria-hidden="true"
-      className="grid size-3.5 shrink-0 place-items-center rounded-[4px] bg-card shadow-[inset_0_0_0_1.5px_var(--input)] transition-[background-color,box-shadow] duration-150 group-aria-checked/row:bg-primary group-aria-checked/row:shadow-none motion-reduce:transition-none"
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      data-row=""
+      style={
+        unfold
+          ? { animationDelay: `${delay}ms`, animationFillMode: "backwards" }
+          : undefined
+      }
+      className={cn(row, unfold && "motion-safe:animate-swap-in")}
+      {...props}
     >
-      <CheckIcon
-        strokeWidth={3}
-        className="size-2.5 scale-50 text-primary-foreground! opacity-0 transition-[scale,opacity] duration-200 ease-spring group-aria-checked/row:scale-100 group-aria-checked/row:opacity-100 motion-reduce:transition-none"
-      />
-    </span>
+      <span
+        aria-hidden="true"
+        className="grid size-3.5 shrink-0 place-items-center rounded-[4px] bg-card shadow-[inset_0_0_0_1.5px_var(--input)] transition-[background-color,box-shadow] duration-150 group-aria-checked/row:bg-primary group-aria-checked/row:shadow-none motion-reduce:transition-none"
+      >
+        <CheckIcon
+          strokeWidth={3}
+          className="size-2.5 scale-50 text-primary-foreground! opacity-0 transition-[scale,opacity] duration-200 ease-spring group-aria-checked/row:scale-100 group-aria-checked/row:opacity-100 motion-reduce:transition-none"
+        />
+      </span>
+      {children}
+    </button>
   );
 }
