@@ -35,26 +35,23 @@ export function filesOf(sources: Source[]): SourceFile[] {
     file.labels.add(source.label);
     const at = url ? source.url : source.chunkId;
     const chunk = chunks.get(at);
-    if (chunk) {
-      chunk.labels.add(source.label);
-      continue;
+    if (chunk) chunk.labels.add(source.label);
+    else {
+      const entry = { source, labels: new Set([source.label]) };
+      chunks.set(at, entry);
+      file.chunks.push(entry);
     }
-    const entry = { source, labels: new Set([source.label]) };
-    chunks.set(at, entry);
-    file.chunks.push(entry);
   }
   const list = Array.from(files.values());
-  for (const file of list) file.chunks.sort(byPlace);
+  for (const file of list) {
+    file.chunks.sort((a, b) => place(a.source) - place(b.source));
+  }
   return list;
 }
 
 /** Where a chunk sits in its file, from 1: for a visually parsed PDF, its page. */
 function place(source: Source): number {
   return source.type === "file" ? source.chunkIndex + 1 : 0;
-}
-
-function byPlace(a: Chunk, b: Chunk): number {
-  return place(a.source) - place(b.source);
 }
 
 export function SourceList({ files }: { files: SourceFile[] }) {
