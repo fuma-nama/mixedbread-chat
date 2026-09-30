@@ -2,9 +2,9 @@
 
 import { SearchIcon, SquarePenIcon } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { startTransition, useCallback, useOptimistic } from "react";
+import { usePathname } from "next/navigation";
 import { Logo } from "@/components/brand/logo";
+import { openLink } from "@/components/chat/chat-cache";
 import { Shortcut } from "@/components/ui/kbd";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { AccountMenu, type User } from "./account-menu";
@@ -28,29 +28,15 @@ export function AppSidebar({
   now: number;
   timeZone: string;
 }) {
-  const pathname = usePathname();
-  const router = useRouter();
+  const activeId = usePathname().match(/^\/c\/([^/]+)/)?.[1];
   const openSearch = useOpenSearch();
-  // The chat being opened shows as open from the click, not from its arrival.
-  const [activeId, setActiveId] = useOptimistic(chatIdOf(pathname));
-
-  const open = useCallback(
-    (event: { preventDefault: () => void }, href: string) => {
-      event.preventDefault();
-      startTransition(() => {
-        setActiveId(chatIdOf(href));
-        router.push(href);
-      });
-    },
-    [router, setActiveId],
-  );
 
   return (
     <>
       <div className="flex h-13 shrink-0 items-center justify-between pr-2 pl-4">
         <Link
           href="/"
-          onNavigate={(event) => open(event, "/")}
+          onNavigate={(event) => openLink(event, "/")}
           className="-ml-1 flex items-center gap-2 rounded-md px-1 py-0.5 text-[14px] font-medium tracking-[-0.01em] outline-offset-2 outline-ring focus-visible:outline-2"
         >
           <Logo />
@@ -64,7 +50,7 @@ export function AppSidebar({
           <Link
             data-row=""
             href="/"
-            onNavigate={(event) => open(event, "/")}
+            onNavigate={(event) => openLink(event, "/")}
             className={navRow}
           >
             <SquarePenIcon />
@@ -84,13 +70,9 @@ export function AppSidebar({
         </HoverArea>
       </nav>
 
-      <Chats now={now} timeZone={timeZone} activeId={activeId} onOpen={open}>
+      <Chats now={now} timeZone={timeZone} activeId={activeId}>
         <AccountMenu user={user} />
       </Chats>
     </>
   );
-}
-
-function chatIdOf(pathname: string): string | undefined {
-  return pathname.match(/^\/c\/([^/]+)/)?.[1];
 }

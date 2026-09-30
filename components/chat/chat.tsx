@@ -11,14 +11,15 @@ import {
   useRef,
   useState,
 } from "react";
+import { mutate } from "swr";
 import { setChatLeaf } from "@/app/(chat)/actions";
 import { useChats, useChatTitle } from "@/components/sidebar/chats-provider";
 import { useReducedMotion } from "@/hooks/use-media";
 import { childrenOf, latestLeaf, pathTo, withPath } from "@/lib/branches";
 import { citationsAlong, searchedStores } from "@/lib/messages";
-import type { Reasoning } from "@/lib/reasoning";
 import type { ChatMessage } from "@/lib/search-tool";
 import type { SearchScope } from "@/lib/sources";
+import { type CachedChat, chatKey } from "./chat-cache";
 import { ChatHeader } from "./chat-header";
 import { Composer, type ComposerHandle } from "./composer";
 import { Conversation } from "./conversation";
@@ -36,8 +37,6 @@ import {
 import { ShareDialog } from "./share-dialog";
 import { useSearchScope, useSources } from "./sources-provider";
 
-type TreeMessage = ChatMessage & { parentId: string | null };
-
 const placeholders: Record<SearchScope, string> = {
   web: "Ask anything",
   docs: "Ask about your stores",
@@ -48,44 +47,37 @@ const placeholders: Record<SearchScope, string> = {
 // Holds the answer's place while waiting, so the real one takes over the view.
 const PENDING: ChatMessage = { id: "pending", role: "assistant", parts: [] };
 
-export function Chat({
-  id,
-  initialMessages,
-  initialLeafId,
-  initialModel,
-  initialReasoning,
-  initialTitle,
-  visibility,
-  readonly = false,
-}: {
-  id: string;
-  initialMessages: TreeMessage[];
-  initialLeafId: string | null;
-  initialModel: string;
-  initialReasoning: Reasoning;
-  initialTitle?: string;
-  visibility: "private" | "public";
-  /** Someone else's shared chat. */
-  readonly?: boolean;
-}) {
+/** A chat, from how it was saved or last left. */
+export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
   const chats = useChats();
   const sources = useSources();
   const scope = useSearchScope();
-  const title = useChatTitle(id) ?? initialTitle;
-  const [tree, setTree] = useState(initialMessages);
-  const [model, setModel] = useState(initialModel);
-  const [reasoning, setReasoning] = useState(initialReasoning);
+  // Someone else's shared chat.
+  const readonly = !saved.owner;
+  const title = useChatTitle(id) ?? (saved.title || undefined);
+  const [tree, setTree] = useState(saved.messages);
+  const { models, model, setModel, reasoning, setReasoning } = useModels();
+  // SWR keeps the chat as shown, so switching back to it is instant.
+  const keep = useCallback(
+    (change: Partial<CachedChat>) =>
+      void mutate(
+        chatKey(id),
+        (cached?: CachedChat | null) => ({ ...(cached ?? saved), ...change }),
+        { revalidate: false },
+      ),
+    [id, saved],
+  );
   const [stopped, setStopped] = useState<ReadonlySet<string>>(() => new Set());
   const [announcement, setAnnouncement] = useState("");
   const [initial] = useState(() => {
     const path = pathTo(
-      initialMessages,
-      initialLeafId ?? initialMessages.at(-1)?.id ?? null,
+      saved.messages,
+      saved.leafId ?? saved.messages.at(-1)?.id ?? null,
     );
     return {
       path,
       shown: new Set(path.map((message) => message.id)),
-      known: new Set(initialMessages.map((message) => message.id)),
+      known: new Set(saved.messages.map((message) => message.id)),
     };
   });
   const composer = useRef<ComposerHandle>(null);
@@ -102,7 +94,7 @@ export function Chat({
   const [leaving, setLeaving] = useState<React.CSSProperties | null>(null);
   const [turn, setTurn] = useState<{ id: string; key: number }>();
   const reduced = useReducedMotion();
-  const current = useModels().find((entry) => entry.id === model);
+  const current = models.find((entry) => entry.id === model);
   // A model that doesn't take the effort picked for another thinks on Auto.
   const effort =
     reasoning !== "auto" && current?.efforts.includes(reasoning)
@@ -143,7 +135,12 @@ export function Chat({
     onData(part) {
       if (part.type === "data-title") chats.update(id, { title: part.data });
     },
-    onFinish({ message, isAbort }) {
+    // Also when leaving mid-answer stops it, so the chat reopens as it was left.
+    onFinish({ message, messages: path, isAbort }) {
+      keep({
+        messages: withPath(tree, path),
+        leafId: path.at(-1)?.id ?? null,
+      });
       if (isAbort) {
         setStopped((stopped) => new Set(stopped).add(message.id));
         setAnnouncement("Stopped.");
@@ -191,14 +188,15 @@ export function Chat({
           !empty && (
             <ShareDialog
               chatId={id}
-              initialVisibility={visibility}
+              initialVisibility={saved.visibility}
+              onChange={(visibility) => keep({ visibility })}
               stores={stores}
             />
           )
         }
       />
     ),
-    [empty, title, readonly, id, visibility, stores],
+    [empty, title, readonly, id, saved.visibility, stores, keep],
   );
 
   useEffect(() => {
@@ -308,6 +306,7 @@ export function Chat({
     clearError();
     setMessages(pathTo(all, leaf));
     void setChatLeaf(id, leaf);
+    keep({ messages: all, leafId: leaf });
     const versions =
       replies.get(
         all.find((message) => message.id === messageId)?.parentId ?? null,

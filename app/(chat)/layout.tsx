@@ -11,7 +11,8 @@ import {
 } from "@/components/ui/sidebar";
 import { getSession } from "@/lib/auth";
 import { getChats } from "@/lib/db/queries";
-import { listModels } from "@/lib/models";
+import { defaultModel, listModels } from "@/lib/models";
+import { defaultReasoning, isReasoning } from "@/lib/reasoning";
 import { parseSelection, SELECTION_COOKIE } from "@/lib/sources";
 import { getViewer } from "@/lib/viewer";
 
@@ -27,6 +28,9 @@ export default async function ChatLayout({
     // Chats need only the session, not the viewer's connections.
     getSession().then((session) => (session ? getChats(session.user.id) : [])),
   ]);
+  // The model and effort picked last, remembered by their pickers.
+  const model = cookieStore.get("model")?.value;
+  const reasoning = cookieStore.get("reasoning")?.value;
 
   return (
     <SidebarProvider
@@ -39,7 +43,15 @@ export default async function ChatLayout({
             cookieStore.get(SELECTION_COOKIE)?.value,
           )}
         >
-          <ModelsProvider models={models}>
+          <ModelsProvider
+            models={models}
+            model={
+              model && models.some((entry) => entry.id === model)
+                ? model
+                : defaultModel
+            }
+            reasoning={isReasoning(reasoning) ? reasoning : defaultReasoning}
+          >
             <SearchChats>
               <Sidebar>
                 <AppSidebar

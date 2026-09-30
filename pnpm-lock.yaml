@@ -59,6 +59,9 @@ importers:
       streamdown:
         specifier: ^2.6.0
         version: 2.6.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      swr:
+        specifier: ^2.5.1
+        version: 2.5.1(react@19.3.0)
       zod:
         specifier: ^4.6.5
         version: 4.6.5

@@ -37,7 +37,7 @@ export function ModelPicker({
   value: string;
   onChange: (model: string) => void;
 }) {
-  const models = useModels();
+  const { models } = useModels();
   const { contains } = Combobox.useFilter();
   const [query, setQuery] = useState("");
   const catalog = groupsOf(models);

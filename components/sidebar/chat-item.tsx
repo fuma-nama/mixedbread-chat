@@ -4,7 +4,9 @@ import { cn } from "cn";
 import { EllipsisIcon, PencilIcon, TrashIcon } from "lucide-react";
 import Link from "next/link";
 import { memo, useRef, useState } from "react";
+import { preload } from "swr";
 import { renameChat } from "@/app/(chat)/actions";
+import { chatKey, fetchChat, openLink } from "@/components/chat/chat-cache";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,7 +24,6 @@ export const ChatItem = memo(function ChatItem({
   active,
   fresh,
   selected,
-  onOpen,
   onDelete,
 }: {
   chat: ChatSummary;
@@ -31,7 +32,6 @@ export const ChatItem = memo(function ChatItem({
   fresh: boolean;
   /** Undefined while no chat is selected. */
   selected?: boolean;
-  onOpen: (event: { preventDefault: () => void }, href: string) => void;
   onDelete: (chats: ChatSummary[]) => void;
 }) {
   const { update } = useChats();
@@ -96,7 +96,8 @@ export const ChatItem = memo(function ChatItem({
             href={href}
             data-id={chat.id}
             aria-current={active ? "page" : undefined}
-            onNavigate={(event) => onOpen(event, href)}
+            onNavigate={(event) => openLink(event, href)}
+            onPointerEnter={() => void preload(chatKey(chat.id), fetchChat)}
             className={cn(
               // Selected neighbors join into one block, square where they meet.
               "flex h-8 items-center rounded-lg px-2 text-[13.5px] text-foreground/75 outline-offset-0 outline-ring transition-[color,background-color,border-radius,box-shadow,scale] duration-200 ease-[var(--ease-smooth),var(--ease-smooth),var(--ease-smooth),var(--ease-smooth),var(--ease-spring)] select-none [-webkit-touch-callout:none] group-hover/item:text-foreground group-has-aria-expanded/item:bg-[oklch(from_var(--foreground)_l_c_h/0.055)] focus-visible:outline-2 in-[[data-selected]+[data-selected]]:rounded-t-none in-[[data-selected]:has(+[data-selected])]:rounded-b-none in-[[data-selected]:has(+[data-selected])]:shadow-[0_1px_var(--selected)] motion-reduce:transition-none",

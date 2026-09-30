@@ -1,8 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { mutate } from "swr";
 import { deleteChats } from "@/app/(chat)/actions";
+import { chatKey, navigate } from "@/components/chat/chat-cache";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -31,18 +32,15 @@ export function Chats({
   now,
   timeZone,
   activeId,
-  onOpen,
   children,
 }: {
   now: number;
   timeZone: string;
   activeId?: string;
-  onOpen: (event: { preventDefault: () => void }, href: string) => void;
   children: React.ReactNode;
 }) {
   const chats = useChatList();
   const { remove, refresh } = useChats();
-  const router = useRouter();
   const selection = useSelection(chats, activeId);
   const hold = useHold((id) => selection.toggle(id, true));
   const [dialog] = useState(() => createAlertDialogHandle<ChatSummary[]>());
@@ -141,7 +139,9 @@ export function Chats({
     const restore = remove(ids);
     const previous = selection.selection;
     selection.clear();
-    if (activeId && ids.has(activeId)) router.push("/");
+    for (const id of ids)
+      void mutate(chatKey(id), undefined, { revalidate: false });
+    if (activeId && ids.has(activeId)) navigate("/");
     const one = ids.size === 1;
     try {
       await toast.promise(deleteChats(Array.from(ids)), {
@@ -182,7 +182,6 @@ export function Chats({
                       selected={
                         selecting ? selection.selection.has(chat.id) : undefined
                       }
-                      onOpen={onOpen}
                       onDelete={askToDelete}
                     />
                   ))}

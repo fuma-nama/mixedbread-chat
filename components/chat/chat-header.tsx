@@ -10,6 +10,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { TypedText } from "@/components/ui/typed-text";
+import { openLink } from "./chat-cache";
 
 export function ChatHeader({
   title,
@@ -51,6 +52,7 @@ function NewChatButton({ className }: { className: string }) {
         render={
           <Link
             href="/"
+            onNavigate={(event) => openLink(event, "/")}
             aria-label="New chat"
             className={buttonVariants({
               variant: "ghost",

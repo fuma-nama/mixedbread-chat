@@ -4,9 +4,9 @@ import { Autocomplete } from "@base-ui/react/autocomplete";
 import { Dialog } from "@base-ui/react/dialog";
 import { MessageSquareIcon, SearchIcon, SquarePenIcon } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { createContext, use, useEffect, useState } from "react";
 import { searchChats } from "@/app/(chat)/actions";
+import { navigate, openLink } from "@/components/chat/chat-cache";
 import { backdropClassName } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { useWindowEvent } from "@/hooks/use-window-event";
@@ -26,7 +26,6 @@ export function useOpenSearch() {
  */
 export function SearchChats({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
-  const router = useRouter();
 
   useWindowEvent("keydown", (event) => {
     if (!event.metaKey && !event.ctrlKey) return;
@@ -35,7 +34,7 @@ export function SearchChats({ children }: { children: React.ReactNode }) {
       setOpen(!open);
     } else if (event.key.toLowerCase() === "o" && event.shiftKey) {
       event.preventDefault();
-      router.push("/");
+      navigate("/");
     }
   });
 
@@ -123,7 +122,13 @@ function Palette({ onGo }: { onGo: () => void }) {
             {!trimmed && (
               <Autocomplete.Item
                 value="new"
-                render={<Link href="/" prefetch={false} />}
+                render={
+                  <Link
+                    href="/"
+                    prefetch={false}
+                    onNavigate={(event) => openLink(event, "/")}
+                  />
+                }
                 onClick={onGo}
                 className={item}
               >
@@ -142,7 +147,13 @@ function Palette({ onGo }: { onGo: () => void }) {
                   <Autocomplete.Item
                     key={chat.id}
                     value={chat.id}
-                    render={<Link href={`/c/${chat.id}`} prefetch={false} />}
+                    render={
+                      <Link
+                        href={`/c/${chat.id}`}
+                        prefetch={false}
+                        onNavigate={(event) => openLink(event, `/c/${chat.id}`)}
+                      />
+                    }
                     onClick={onGo}
                     className={item}
                   >

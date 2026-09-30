@@ -19,10 +19,12 @@ import { toast } from "@/components/ui/toast";
 export function ShareDialog({
   chatId,
   initialVisibility,
+  onChange,
   stores,
 }: {
   chatId: string;
   initialVisibility: "private" | "public";
+  onChange: (visibility: "private" | "public") => void;
   /** Its searches found files in the user's stores, which a shared chat quotes. */
   stores: boolean;
 }) {
@@ -47,6 +49,7 @@ export function ShareDialog({
       try {
         await setChatVisibility(chatId, next);
         setVisibility(next);
+        onChange(next);
         if (next === "private") toast.add({ title: "Link turned off" });
       } catch {
         toast.add({ title: "Couldn’t update sharing. Try again." });
