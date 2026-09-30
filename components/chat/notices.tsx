@@ -8,7 +8,6 @@ import { answersPerDay } from "@/lib/limits";
 
 type Failure = "limit" | "session" | "network" | "other";
 
-/** What went wrong with a request, in the terms the reader can act on. */
 export function failureOf(error: Error): Failure {
   if (APICallError.isInstance(error)) {
     if (error.statusCode === 429) return "limit";
@@ -26,7 +25,6 @@ export function wasRejected(error: Error): boolean {
   );
 }
 
-/** What each failure says, and its button, if it has one. */
 const notices: Record<Failure, [text: string, action?: string]> = {
   network: ["Connection lost. Check your network.", "Try again"],
   session: ["Your session ended.", "Reload"],
@@ -36,7 +34,6 @@ const notices: Record<Failure, [text: string, action?: string]> = {
   other: ["Something went wrong.", "Try again"],
 };
 
-/** An answer that did not come, in place of the answer. */
 export function ErrorNotice({
   failure,
   onRetry,
@@ -85,7 +82,6 @@ export function Unanswered({ onAnswer }: { onAnswer: () => void }) {
   );
 }
 
-/** Takes the composer's place under someone else's shared chat. */
 export function SharedNotice() {
   return (
     <Link

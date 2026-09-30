@@ -41,8 +41,7 @@ const FILTER_FROM = 8;
 
 /**
  * Picks what the next question searches: the web, and the stores of each
- * connected organization. Changes apply at once and the panel stays open,
- * so several can be flipped in a row.
+ * connected organization. Changes apply at once and the panel stays open.
  */
 export function SourcesPicker() {
   const { web, docs, lapsed, label } = reachOf(
@@ -71,12 +70,9 @@ export function SourcesPicker() {
       <PopoverTrigger
         ref={glide}
         aria-label={`Sources: ${label}`}
-        // Its label gives way when space runs out; on phones only the glyphs
-        // show, and they keep their room.
         className="relative min-w-0 cursor-pointer rounded-full text-[13px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 hover:bg-soft hover:text-foreground focus-visible:outline-2 aria-expanded:bg-soft aria-expanded:text-foreground max-sm:min-w-fit"
       >
-        {/* The width glides so the pickers beside it don't jump, while what
-            it holds takes its new place at once and is never squeezed. */}
+        {/* The width glides while what it holds takes its new place at once. */}
         <span className="flex h-8 w-(--glide-to) items-center gap-1.5 pr-6.5 pl-2 max-sm:pr-2">
           <span
             aria-hidden="true"
@@ -86,18 +82,15 @@ export function SourcesPicker() {
             )}
           >
             <GlobeIcon data-on={web} className={glyph} />
-            {/* Beside the globe while the web is on, so it fades out in place. */}
             <span data-on={docs} className={cn(glyph, web && "translate-x-4")}>
               <LayersIcon className="size-3.5" />
-              {/* An organization to sign in to again: a small mark, not an alarm. */}
               {lapsed && (
                 <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-crust ring-2 ring-card motion-safe:animate-pop" />
               )}
             </span>
             <SearchSlashIcon data-on={!web && !docs} className={glyph} />
           </span>
-          {/* Waits for the glyphs to move and the width to all but land, so
-              the words never run into a glyph or past the edge. */}
+          {/* Waits for the glyphs to move and the width to all but land. */}
           <span
             key={label}
             className={cn(
@@ -109,8 +102,6 @@ export function SourcesPicker() {
             {label}
           </span>
         </span>
-        {/* On the gliding edge rather than after the words, which may not
-            fit yet. */}
         <ChevronDownIcon className="absolute inset-y-0 right-2 my-auto size-3.5 opacity-60 max-sm:hidden" />
       </PopoverTrigger>
       <PopoverContent
@@ -140,12 +131,9 @@ function reachOf(
   const { web } = selection;
   let docs = false;
   let lapsed = false;
-  // Whether Toast picks for one, organizations searched whole, and whether
-  // one's stores are still loading.
   let auto = false;
   let whole = 0;
   let loading = false;
-  // Stores in reach, and the name of the first one picked.
   let count = 0;
   let first: string | undefined;
 
@@ -196,9 +184,8 @@ const heading = "px-2 pt-1.5 pb-1 text-xs text-muted-foreground";
 
 /**
  * The web, each organization's stores, a filter when there are many, and a
- * way to connect another. The panel is only as tall as what it holds and
- * glides when that changes, with the filter on the edge by the trigger,
- * which stays put. Arrow keys move between rows, and typing on one filters.
+ * way to connect another. The filter sits on the edge by the trigger. Arrow
+ * keys move between rows, and typing on one filters.
  */
 function Panel({
   query,
@@ -239,7 +226,7 @@ function Panel({
     if (event.key === "ArrowDown") to = items[(index + 1) % items.length];
     else if (event.key === "ArrowUp") to = items.at(index - 1);
     else if (event.target === filter) {
-      // Enter ticks the first match, so a store is a few keys away.
+      // Enter ticks the first match.
       if (event.key === "Enter" && words) {
         event.currentTarget.querySelector<HTMLElement>("[data-store]")?.click();
       }
@@ -254,7 +241,7 @@ function Panel({
       !event.ctrlKey &&
       !event.altKey
     ) {
-      // Typing on a row moves to the filter, which takes the key as typed.
+      // The filter takes the key as typed.
       filter.focus();
       return;
     } else return;

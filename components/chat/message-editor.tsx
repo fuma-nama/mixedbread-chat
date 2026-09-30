@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
-/** Edits a sent message in place; sending it starts a new version of the chat. */
 export function MessageEditor({
   defaultValue,
   onCancel,

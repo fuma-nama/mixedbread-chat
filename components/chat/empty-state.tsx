@@ -7,7 +7,6 @@ import type { SearchScope } from "@/lib/sources";
 import { suggestionsFor } from "@/lib/suggestions";
 import { usePickedStores } from "./sources-provider";
 
-/** The greeting above the composer on a new chat. */
 export function EmptyState({ ref }: { ref?: React.Ref<HTMLDivElement> }) {
   return (
     <div ref={ref} className="flex flex-col items-center px-4 text-center">
@@ -21,11 +20,7 @@ export function EmptyState({ ref }: { ref?: React.Ref<HTMLDivElement> }) {
   );
 }
 
-/**
- * Example questions that send on click, true to the sources picked. They
- * rise in after the greeting on arrival; picking other sources swaps the
- * new ones in at once, while those that still fit stay put.
- */
+/** Questions true to the sources picked; after a pick, those that still fit stay put. */
 export function Suggestions({
   scope,
   onPick,

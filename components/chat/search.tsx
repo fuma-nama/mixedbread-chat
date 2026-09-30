@@ -29,7 +29,6 @@ type State = "running" | "done" | "failed" | "stopped";
 
 /** Searches that keep a live line while they run; the rest are a count. */
 const LIVE_TASKS = 4;
-/** Listed until the rest are asked for. */
 const FIRST_TASKS = 6;
 
 /** One search the model asked for. */
@@ -43,9 +42,8 @@ interface Task {
 /**
  * The searches the model ran in a row, as one trace: side by side within a
  * step, one after another across steps. While they run, a slice toasts over
- * a line for the newest step, or a line for each search among several; once
- * done, it pops up and the lines fold away behind the summary. Unfolded, the
- * trace lists the searches, their steps, and what they found by file.
+ * live lines; once done, it pops up and the lines fold away behind the
+ * summary, which unfolds into the searches, their steps and what they found.
  */
 export const Search = memo(
   function Search({
@@ -206,9 +204,8 @@ function Meta({ what, ms }: { what?: string; ms?: number }) {
 }
 
 /**
- * What is happening now, replaced in place as it goes. Among several
- * searches, a line for each one still running and a count past the first
- * few; for one, its newest step, or a line for each run side by side.
+ * Among several searches, a line for each one still running and a count past
+ * the first few; for one, its newest step, or a line for each run side by side.
  */
 function Live({ tasks }: { tasks: Task[] }) {
   const lines: {
@@ -266,7 +263,6 @@ function Live({ tasks }: { tasks: Task[] }) {
   );
 }
 
-/** Each search the model asked for: the first few, and the rest on request. */
 function TaskList({ tasks }: { tasks: Task[] }) {
   const { shown, more, showAll } = useFirst(tasks, FIRST_TASKS);
 

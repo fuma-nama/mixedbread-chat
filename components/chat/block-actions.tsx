@@ -4,10 +4,7 @@ import { cn } from "cn";
 import { DownloadIcon } from "lucide-react";
 import { Action, CopyAction } from "./message-actions";
 
-/**
- * Download and copy for a block inside an answer, a code block or a table.
- * They show on hover like a message's own actions (see `.markdown`).
- */
+/** Copy and download for a code block or table; `.markdown` shows them on hover. */
 export function BlockActions({
   what,
   copy,
@@ -21,7 +18,6 @@ export function BlockActions({
   className?: string;
 }) {
   return (
-    // Copy comes first, as it does under messages.
     <div
       data-slot="block-actions"
       className={cn("flex items-center", className)}
@@ -34,7 +30,6 @@ export function BlockActions({
   );
 }
 
-/** Saves `text` as a file, as though it were downloaded. */
 export function save(text: string, filename: string, type: string) {
   const url = URL.createObjectURL(new Blob([text], { type }));
   const link = document.createElement("a");

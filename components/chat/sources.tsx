@@ -6,7 +6,6 @@ import type { Citations } from "@/lib/messages";
 import { originOf } from "@/lib/mixedbread/citations";
 import { SourcePreview } from "./citation";
 
-/** The sources a message cited, numbered like its inline citations. */
 export function Sources({
   citations,
   animate,

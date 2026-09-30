@@ -1,15 +1,11 @@
 import { cn } from "cn";
 import type { Reasoning } from "@/lib/reasoning";
 
-/*
- * A toaster's browning dial: a 270° arc open at the bottom, turned further
- * and toasted darker the harder the model thinks. Auto points straight up
- * over a dotted track, as the model sets it rather than you.
- */
+// A toaster's browning dial: a 270° arc, turned further and toasted darker the
+// harder the model thinks. Auto points straight up over a dotted track.
 const ARC = "M3.93 12.97A5.75 5.75 0 1 1 12.07 12.97";
 
-// Off to Extra high in even steps round the arc, each a shade more toasted,
-// so a level sits in the same place whichever model offers it.
+// Even steps round the arc, so a level sits in the same place for any model.
 const settings: Record<Reasoning, { turn: number; heat: string }> = {
   auto: { turn: 0.5, heat: "var(--honey)" },
   none: { turn: 0, heat: "var(--honey)" },
@@ -32,11 +28,7 @@ const settings: Record<Reasoning, { turn: number; heat: string }> = {
   },
 };
 
-/**
- * The needle springs to its level, overshooting a little like a knob let go,
- * while the arc fills behind it. On hover it gives a small twitch, a hint
- * that it turns.
- */
+/** The needle springs to its level while the arc fills; on hover it twitches. */
 export function Dial({ level }: { level: Reasoning }) {
   const { turn, heat } = settings[level];
   const auto = level === "auto";

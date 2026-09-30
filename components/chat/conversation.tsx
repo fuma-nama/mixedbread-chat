@@ -10,9 +10,8 @@ import { SourceCards } from "./citation";
 const TOP = 32;
 
 interface Scroll {
-  /** Keep the end in view as the list grows: until the reader scrolls up. */
+  /** Keeps the end in view as the list grows, until the reader scrolls up. */
   follow: boolean;
-  /** The question at the top, if one was asked this visit. */
   question?: string;
   /** Where this view last scrolled itself, to tell its scrolls from the reader's. */
   set?: number;
@@ -24,8 +23,7 @@ interface Scroll {
  * The message list. It opens on the latest message and sticks to the end as
  * answers stream, until you scroll up; reaching the end again sticks once
  * more. A question you ask glides to the top first, with its answer filling
- * the room below it, so the view only starts to move once the answer is
- * longer than the screen.
+ * the room below it.
  */
 export function Conversation({
   children,
@@ -35,7 +33,6 @@ export function Conversation({
   children: React.ReactNode;
   /** The question just asked, and a key that changes with every ask. */
   turn?: { id: string; key: number };
-  /** An answer is on its way. */
   streaming: boolean;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -55,7 +52,6 @@ export function Conversation({
     else jump(scroller, scroll.current, endOf(scroller));
   });
 
-  /** Brings `id` to the top, with room below for its answer. */
   const pin = useEffectEvent((id: string) => {
     const scroller = scrollRef.current;
     const content = contentRef.current;
@@ -82,7 +78,6 @@ export function Conversation({
 
     if (state.follow) jump(scroller, state, endOf(scroller));
 
-    // Answers grow and the view changes size with the window or the composer.
     const observer = new ResizeObserver(() => {
       makeRoom(content, list, state.question);
       if (state.follow) follow(scroller);
@@ -94,8 +89,8 @@ export function Conversation({
     const onScroll = () => {
       const top = scroller.scrollTop;
       if (state.set === undefined || Math.abs(top - state.set) > 1) {
-        // The reader scrolled: back up lets go of the end, down to it takes
-        // hold again, and either way any glide of ours stops.
+        // The reader scrolled: up lets go of the end, down to it takes hold
+        // again, and either way any glide of ours stops.
         stop(state);
         if (top < state.lastTop - 1) state.follow = false;
         else if (isAtEnd(scroller)) state.follow = true;
@@ -149,7 +144,6 @@ export function Conversation({
         }}
         className="absolute bottom-3 left-1/2 flex size-8 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full bg-card text-muted-foreground shadow-float outline-offset-2 outline-ring transition-[opacity,translate,color] duration-300 ease-smooth hover:text-foreground focus-visible:outline-2 data-[hidden=true]:pointer-events-none data-[hidden=true]:translate-y-2 data-[hidden=true]:opacity-0 motion-reduce:transition-none"
       >
-        {/* While more arrives below, the arrow nods toward it. */}
         <ArrowDownIcon
           className={cn("size-4", streaming && "motion-safe:animate-nudge")}
         />
@@ -158,25 +152,17 @@ export function Conversation({
   );
 }
 
-function find(list: HTMLElement, id: string): HTMLElement | null {
-  return list.querySelector<HTMLElement>(
-    `[data-message-id="${CSS.escape(id)}"]`,
-  );
-}
-
-/**
- * Where the view rests with the question at the top. Layout offsets rather
- * than boxes on screen, which move while the question rises in.
- */
+/** Layout offsets rather than boxes on screen, which move while the question rises in. */
 function restingTop(list: HTMLElement, id?: string): number | undefined {
-  const question = id ? find(list, id) : null;
+  const question =
+    id &&
+    list.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(id)}"]`);
   return question ? list.offsetTop + question.offsetTop - TOP : undefined;
 }
 
 /**
  * Makes the list at least a view taller than where the question rests, so it
- * can reach the top while its answer is short. Layout keeps that true as the
- * answer changes, so the view never jumps.
+ * can reach the top while its answer is short.
  */
 function makeRoom(content: HTMLElement, list: HTMLElement, id?: string) {
   const top = restingTop(list, id);
@@ -216,8 +202,8 @@ function glide(
     return;
   }
   const duration = Math.min(640, Math.max(320, distance / 2));
-  // The clock starts on the first frame: a frame's timestamp can come from
-  // before this call, which would start the glide going the wrong way.
+  // A frame's timestamp can come from before this call, which would start the
+  // glide going the wrong way, so the clock starts on the first frame.
   let start: number | undefined;
   const step = (now: number) => {
     start ??= now;

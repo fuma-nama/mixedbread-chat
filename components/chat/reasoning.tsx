@@ -12,10 +12,7 @@ import {
 } from "./activity";
 import { LazyMarkdown } from "./lazy-markdown";
 
-/**
- * The model's reasoning: a live line while it thinks, folded away after.
- * Memoized, so finished thoughts sit still while the answer streams.
- */
+/** Memoized, so finished thoughts sit still while the answer streams. */
 export const Reasoning = memo(function Reasoning({
   text,
   live,

@@ -8,16 +8,12 @@ const Markdown = dynamic(() =>
   import("./markdown").then((mod) => mod.Markdown),
 );
 
-/** Loads the markdown renderer ahead of the text that needs it. */
 export function preloadMarkdown() {
   void import("./markdown");
 }
 
-/**
- * Markdown, loaded on demand. Text on the page from the start is in its
- * first HTML; `deferred` text, which arrives later, may wait for the
- * renderer to load without holding up the update that brought it.
- */
+// Text there from the start is in the first HTML; `deferred` text, arriving
+// later, may wait for the renderer without holding up the update that brought it.
 export function LazyMarkdown({
   deferred,
   ...props

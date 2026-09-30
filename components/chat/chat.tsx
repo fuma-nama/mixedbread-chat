@@ -36,8 +36,7 @@ import {
 import { ShareDialog } from "./share-dialog";
 import { useSearchScope, useSources } from "./sources-provider";
 
-/** A message with its place in the chat's branch tree. */
-export type TreeMessage = ChatMessage & { parentId: string | null };
+type TreeMessage = ChatMessage & { parentId: string | null };
 
 const placeholders: Record<SearchScope, string> = {
   web: "Ask anything",
@@ -46,8 +45,7 @@ const placeholders: Record<SearchScope, string> = {
   none: "Ask anything",
 };
 
-// While waiting on a reply, a stand-in answer holds its place, so the real
-// one takes over the same view instead of popping in.
+// Holds the answer's place while waiting, so the real one takes over the view.
 const PENDING: ChatMessage = { id: "pending", role: "assistant", parts: [] };
 
 export function Chat({
@@ -84,11 +82,11 @@ export function Chat({
       initialMessages,
       initialLeafId ?? initialMessages.at(-1)?.id ?? null,
     );
-    const shown = new Set<string>();
-    for (const message of path) shown.add(message.id);
-    const known = new Set<string>();
-    for (const message of initialMessages) known.add(message.id);
-    return { path, shown, known };
+    return {
+      path,
+      shown: new Set(path.map((message) => message.id)),
+      known: new Set(initialMessages.map((message) => message.id)),
+    };
   });
   const composer = useRef<ComposerHandle>(null);
   const frameRef = useRef<HTMLDivElement>(null);
@@ -98,11 +96,10 @@ export function Chat({
   const lastSend = useRef<{
     text?: string;
     first: boolean;
-    /** Show this message's branch again instead of dropping the last message. */
+    /** The version to show again, rather than dropping the last message. */
     restore?: string;
   }>(null);
   const [leaving, setLeaving] = useState<React.CSSProperties | null>(null);
-  // The question being answered this visit, brought to the top of the view.
   const [turn, setTurn] = useState<{ id: string; key: number }>();
   const reduced = useReducedMotion();
   const current = useModels().find((entry) => entry.id === model);
@@ -172,7 +169,6 @@ export function Chat({
 
   const empty = messages.length === 0;
   const busy = status === "submitted" || status === "streaming";
-  // Edits, retries and version switches wait for the answer, and are the owner's.
   const idle = !readonly && !busy;
   const rendered =
     busy && messages.at(-1)?.role === "user"
@@ -209,7 +205,7 @@ export function Chat({
     document.title = title ? `${title} · Bread Chat` : "Bread Chat";
   }, [title]);
 
-  // The first message glides the composer from the middle of the page to its dock.
+  // The first message glides the composer from the middle to its dock.
   useLayoutEffect(() => {
     const from = glideFrom.current;
     glideFrom.current = null;
@@ -223,14 +219,12 @@ export function Chat({
     });
   }, [empty]);
 
-  /** Brings `questionId` to the top, with room below for its answer. */
   const answer = useCallback((questionId: string) => {
     setTurn((turn) => ({ id: questionId, key: (turn?.key ?? 0) + 1 }));
     setAnnouncement("");
   }, []);
 
-  /** Sends `text` as a new question. Its id is made here, so the view can
-   * pin it in the same frame it appears. */
+  // The id is made here, so the view can pin the question as it appears.
   const sendQuestion = useCallback(
     (text: string) => {
       const question = generateId();
@@ -245,7 +239,6 @@ export function Chat({
     [answer, sendMessage],
   );
 
-  /** Answers the last question again, as after a failure or a closed tab. */
   function answerAgain() {
     // The question is already there, so a refusal has nothing to take back.
     lastSend.current = null;
@@ -332,8 +325,8 @@ export function Chat({
     if (target) switchTo(target.id);
   }
 
-  // Messages on screen at load stay still; others rise in when sent, or fade
-  // in when a version switch brings them back from the saved tree.
+  // Messages there at load stay still; sent ones rise in, and versions
+  // brought back from the saved tree fade in.
   function appearOf(messageId: string): Appear {
     if (initial.shown.has(messageId)) return undefined;
     return initial.known.has(messageId) ? "fade" : "rise";
@@ -453,7 +446,6 @@ export function Chat({
   );
 }
 
-/** The latest search's progress in words: searching, or what it found. */
 function searchStatus(message: ChatMessage | undefined): string | undefined {
   const part = message?.parts.findLast((part) => part.type === "tool-search");
   if (!part) return undefined;

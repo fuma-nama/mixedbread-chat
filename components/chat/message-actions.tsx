@@ -34,7 +34,6 @@ export function MessageActions({
   from: "system" | "user" | "assistant";
   /** What Copy puts on the clipboard; there is no Copy without it. */
   copyText?: () => string;
-  /** Where this message is among its edits or retries, oldest first, and how many there are. */
   version: number;
   versions: number;
   /** Shown without hovering, as the latest answer is. Touch screens show them all. */
@@ -175,7 +174,7 @@ export function Action({
   );
 }
 
-/** Copies with `copy`, then shows a check for a moment. */
+/** Copies, then shows a check for a moment. */
 export function CopyAction({
   label,
   copy,

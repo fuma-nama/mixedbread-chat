@@ -5,7 +5,6 @@ import { GlobeIcon, LayersIcon } from "lucide-react";
 import type { Step } from "@/lib/mixedbread/research";
 import { More, plural, StatusDot, useFirst } from "./activity";
 
-/** Listed until the rest are asked for, in each run. */
 const FIRST_STEPS = 6;
 
 /** Steps by the run they came from, in the order the runs first spoke up. */
@@ -52,7 +51,6 @@ export function StepList({ steps }: { steps: Step[] }) {
   );
 }
 
-/** One run's steps under its name. */
 function Group({ name, steps }: { name: string; steps: Step[] }) {
   const Glyph = name === "Web" ? GlobeIcon : LayersIcon;
 
@@ -71,7 +69,6 @@ function Group({ name, steps }: { name: string; steps: Step[] }) {
   );
 }
 
-/** Steps: the first few, and the rest on request. */
 function Steps({ steps, className }: { steps: Step[]; className?: string }) {
   const { shown, more, showAll } = useFirst(steps, FIRST_STEPS);
 
@@ -121,7 +118,6 @@ function StepRow({ step }: { step: Step }) {
         {/* Mostly Toast retrying on its own, so the reason stays with Toast. */}
         {step.status === "failed" && <span className="shrink-0">· failed</span>}
       </div>
-      {/* Under the text, clear of the dot. */}
       {filters && (
         <p className="truncate pl-3.5 font-mono text-[11.5px] text-muted-foreground/80">
           where {filters}
@@ -133,7 +129,6 @@ function StepRow({ step }: { step: Step }) {
 
 const list = new Intl.ListFormat("en");
 
-/** A step in words, as it happens and once it is done. */
 function describe(step: Step): { live: string; done: string; detail?: string } {
   switch (step.kind) {
     case "search":
@@ -186,7 +181,6 @@ function describe(step: Step): { live: string; done: string; detail?: string } {
   }
 }
 
-/** How each metadata comparison reads in a sentence. */
 const operators: Record<string, string> = {
   eq: "is",
   not_eq: "is not",

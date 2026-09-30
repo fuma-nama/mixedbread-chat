@@ -6,11 +6,6 @@ import { useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 import { CollapsibleTrigger } from "@/components/ui/collapsible";
 
-/*
- * Work the answer did on its way, one row per step like a coding agent's tool
- * calls: a status, what happened, and a detail you can unfold.
- */
-
 /** The row that unfolds a step's details; without any, it is just a line. */
 export function ActivityTrigger({
   indicator,
@@ -42,7 +37,7 @@ export function ActivityTrigger({
   );
 }
 
-/** A small dot that breathes while its step runs and pops once when it settles. */
+/** Breathes while its step runs and pops once when it settles. */
 export function StatusDot({
   state,
 }: {
@@ -76,18 +71,11 @@ export function LiveLine({ text }: { text?: string }) {
 }
 
 /** The panel a step unfolds into, hung from a thread under its indicator. */
-export function ActivityPanel({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+export function ActivityPanel({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      className={cn(
-        "mt-2 ml-[9.5px] flex flex-col gap-3 border-l border-soft pb-1 pl-[17.5px]",
-        className,
-      )}
-      {...props}
-    />
+    <div className="mt-2 ml-[9.5px] flex flex-col gap-3 border-l border-soft pb-1 pl-[17.5px]">
+      {children}
+    </div>
   );
 }
 
@@ -115,7 +103,6 @@ export function useFirst<T>(items: T[], count: number) {
   };
 }
 
-/** Shows the rest of a list that lists its first few. */
 export function More({
   count,
   onClick,
@@ -162,20 +149,14 @@ function subscribeClock(listener: () => void) {
 const still = () => () => {};
 const now = () => clock.now;
 
-/**
- * Seconds since `running` turned on, counting up while it stays on. Timed on
- * this client, so a step loaded from history has none.
- */
+/** Seconds since `running` turned on; a step loaded from history has none. */
 export function useElapsed(running: boolean): number | undefined {
   const [start] = useState(() => (running ? Date.now() : undefined));
   const time = useSyncExternalStore(running ? subscribeClock : still, now, now);
   return start === undefined ? undefined : Math.max(0, time - start) / 1000;
 }
 
-/**
- * How long `running` stayed on, once it turns off. Timed on this client, so
- * a step loaded from history has none.
- */
+/** How long `running` stayed on, once it turns off; from history, none. */
 export function useDuration(running: boolean): number | undefined {
   const [span, setSpan] = useState(() =>
     running ? { start: Date.now(), end: 0 } : undefined,

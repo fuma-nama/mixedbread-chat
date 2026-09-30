@@ -14,7 +14,6 @@ import { BlockActions, save } from "./block-actions";
 // Tells spreadsheet apps that a CSV file is UTF-8.
 const BYTE_ORDER_MARK = String.fromCharCode(0xfeff);
 
-/** A table in an answer: hairlines only, with download and copy in the header's corner. */
 export function Table({
   node: _,
   children,

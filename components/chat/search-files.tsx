@@ -6,17 +6,15 @@ import { originOf, type Source, sourceTitle } from "@/lib/mixedbread/citations";
 import { More, useFirst } from "./activity";
 import { badge, SourcePreview, useHighlight } from "./citation";
 
-/** Listed until the rest are asked for. */
 const FIRST_FILES = 6;
 const FIRST_CHUNKS = 5;
 
-/** A cited chunk, with the label each search that found it gave it. */
+/** A cited chunk, with the labels the searches that found it gave it. */
 interface Chunk {
   source: Source;
   labels: Set<string>;
 }
 
-/** A cited file or page, with its chunks in the order they sit in it. */
 interface SourceFile {
   key: string;
   chunks: Chunk[];
@@ -60,7 +58,6 @@ function byPlace(a: Chunk, b: Chunk): number {
   return place(a.source) - place(b.source);
 }
 
-/** What the searches cited, a row per file: the first few, and the rest on request. */
 export function SourceList({ files }: { files: SourceFile[] }) {
   const { shown, more, showAll } = useFirst(files, FIRST_FILES);
 
