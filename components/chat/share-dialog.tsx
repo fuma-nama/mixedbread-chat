@@ -44,7 +44,9 @@ export function ShareDialog({
     );
   }
 
-  function change(next: "private" | "public") {
+  function toggle() {
+    const next = shared ? "private" : "public";
+    if (next === "public") copy();
     startTransition(async () => {
       try {
         await setChatVisibility(chatId, next);
@@ -108,25 +110,13 @@ export function ShareDialog({
         )}
 
         <DialogFooter>
-          {shared ? (
-            <Button
-              variant="ghost"
-              disabled={pending}
-              onClick={() => change("private")}
-            >
-              Stop sharing
-            </Button>
-          ) : (
-            <Button
-              disabled={pending}
-              onClick={() => {
-                copy();
-                change("public");
-              }}
-            >
-              Create and copy link
-            </Button>
-          )}
+          <Button
+            variant={shared ? "ghost" : undefined}
+            disabled={pending}
+            onClick={toggle}
+          >
+            {shared ? "Stop sharing" : "Create and copy link"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
