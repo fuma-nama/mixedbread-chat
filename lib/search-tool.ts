@@ -14,6 +14,7 @@ import {
   merge,
   planRuns,
   type Run,
+  type RunEvent,
   type RunResult,
   resolveTarget,
 } from "./mixedbread/runs";
@@ -40,10 +41,6 @@ interface SearchContext {
   /** Toast answers the chat itself, from the whole conversation. */
   toast: boolean;
 }
-
-type RunEvent =
-  | { type: "step"; step: Step; chunks: string[] }
-  | { type: "end"; result: RunResult };
 
 /** One Toast run; it reports how it ended instead of throwing, unless aborted. */
 async function* run(
@@ -75,39 +72,33 @@ async function* run(
         : undefined,
     );
     if ("error" in resolved) {
-      yield failed(resolved.error);
+      yield { type: "failed", message: resolved.error };
       return;
     }
     for await (const event of research(client, turns, resolved, signal)) {
       if (event.type === "step") {
         const { step } = event;
         if (step.store) step.store = names.get(step.store) ?? step.store;
-        yield event;
-        continue;
+      } else {
+        await listing;
+        for (const citation of event.citations) {
+          if (citation.type !== "file") continue;
+          const name = names.get(citation.storeId);
+          if (name) citation.storeName = name;
+          citation.organizationId = connection.organizationId;
+        }
       }
-      await listing;
-      yield {
-        type: "end",
-        result: {
-          status: "done",
-          text: event.text,
-          citations: event.citations,
-          storeNames: names,
-        },
-      };
+      yield event;
     }
   } catch (error) {
     if (signal?.aborted) throw error;
-    yield failed(
-      needsReconnect(error)
+    yield {
+      type: "failed",
+      message: needsReconnect(error)
         ? `${label} needs to be connected again from the sources menu.`
         : "Mixedbread could not complete the search.",
-    );
+    };
   }
-}
-
-function failed(message: string): RunEvent {
-  return { type: "end", result: { status: "failed", message } };
 }
 
 export function searchTool(context: SearchContext) {
@@ -144,8 +135,8 @@ export function searchTool(context: SearchContext) {
         runs.map((entry) => run(clientOf, entry, turns, abortSignal)),
       );
       for await (const { index, value } of events) {
-        if (value.type === "end") {
-          results[index] = value.result;
+        if (value.type !== "step") {
+          results[index] = value;
           continue;
         }
         if (several) value.step.group = runs[index].label;
@@ -154,9 +145,9 @@ export function searchTool(context: SearchContext) {
         yield { status: "searching", calls: Array.from(steps.values()) };
       }
 
-      if (runs.length > 0 && !results.some((r) => r.status === "done")) {
+      if (runs.length > 0 && !results.some((r) => r.type === "answer")) {
         const [first] = results;
-        throw new Error(first?.status === "failed" ? first.message : undefined);
+        throw new Error(first?.type === "failed" ? first.message : undefined);
       }
       const { findings, sources } = combine(runs, results, () => `S${label++}`);
       yield {

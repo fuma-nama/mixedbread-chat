@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { SourceSelection } from "../sources.ts";
-import type { Citation } from "./research.ts";
+import type { Citation } from "./citations.ts";
 import {
   combine,
   merge,
@@ -104,7 +104,7 @@ test("a run resolves its stores once they are listed", () => {
   );
 });
 
-test("citations are labelled across runs in order, and files learn their store", () => {
+test("citations are labelled across runs in order", () => {
   const file: Citation = {
     type: "file",
     at: 5,
@@ -121,18 +121,8 @@ test("citations are labelled across runs in order, and files learn their store",
     title: "Example",
   };
   const results: RunResult[] = [
-    {
-      status: "done",
-      text: "Leave is 30 days.",
-      citations: [file],
-      storeNames: new Map([["store-1", "HR"]]),
-    },
-    {
-      status: "done",
-      text: "It is sunny.",
-      citations: [web],
-      storeNames: new Map(),
-    },
+    { type: "answer", text: "Leave is 30 days.", citations: [file] },
+    { type: "answer", text: "It is sunny.", citations: [web] },
   ];
   const runs = planRuns({ web: true, organizations: {} }, [connections[0]]);
   const { findings, sources } = combine(runs, results, labels());
@@ -143,11 +133,11 @@ test("citations are labelled across runs in order, and files learn their store",
   assert.deepEqual(
     sources.map((source) =>
       source.type === "file"
-        ? [source.label, source.storeName, source.organizationId]
+        ? [source.label, source.chunkId]
         : [source.label, source.url],
     ),
     [
-      ["S1", "HR", "org-a"],
+      ["S1", "file-1:0"],
       ["S2", "https://example.com"],
     ],
   );
@@ -156,7 +146,7 @@ test("citations are labelled across runs in order, and files learn their store",
 test("a failed run says so, and a single run gets no heading", () => {
   const failed = combine(
     planRuns({ web: true, organizations: { "org-a": [] } }, [connections[0]]),
-    [{ status: "failed", message: "Mixedbread could not be reached." }],
+    [{ type: "failed", message: "Mixedbread could not be reached." }],
     labels(),
   );
   assert.equal(

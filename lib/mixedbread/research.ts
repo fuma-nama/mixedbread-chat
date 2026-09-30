@@ -2,6 +2,7 @@ import type { Mixedbread } from "@mixedbread/sdk";
 import type { ChatCreateCompletionParams } from "@mixedbread/sdk/resources/chat";
 import { parseJsonEventStream } from "ai";
 import { z } from "zod";
+import type { Citation } from "./citations.ts";
 import { splitChunkId } from "./files.ts";
 
 const WEB_STORE = "mixedbread/web";
@@ -52,25 +53,6 @@ const annotationSchema = z.discriminatedUnion("type", [
     chunk_id: z.string(),
   }),
 ]);
-
-/** A cited page or chunk; `excerpt` is the text Toast read there. */
-export type Cited = { excerpt?: string } & (
-  | { type: "url"; url: string; title: string }
-  | {
-      type: "file";
-      fileId: string;
-      filename: string;
-      chunkId: string;
-      /** Its place in the file, from 0: for a visually parsed PDF, its page. */
-      chunkIndex: number;
-      storeId: string;
-      /** An image, such as a page of a visually parsed PDF. */
-      image?: true;
-    }
-);
-
-/** A marker at a code point offset in Toast's answer. */
-export type Citation = Cited & { at: number };
 
 export type ResearchEvent =
   | { type: "step"; step: Step; chunks: string[] }

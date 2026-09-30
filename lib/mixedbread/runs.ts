@@ -6,7 +6,7 @@ import {
 } from "../sources.ts";
 import { labelCitations, type Source } from "./citations.ts";
 import type { Connection } from "./organizations.ts";
-import type { Citation, ResearchTarget } from "./research.ts";
+import type { ResearchEvent, ResearchTarget } from "./research.ts";
 
 export interface Run {
   label: string;
@@ -60,14 +60,9 @@ export function resolveTarget(
     : { error: `The stores picked in ${label} no longer exist.` };
 }
 
-export type RunResult =
-  | {
-      status: "done";
-      text: string;
-      citations: Citation[];
-      storeNames: ReadonlyMap<string, string>;
-    }
-  | { status: "failed"; message: string };
+export type RunEvent = ResearchEvent | { type: "failed"; message: string };
+
+export type RunResult = Exclude<RunEvent, { type: "step" }>;
 
 /** Labels citations in run order, so labels stay unique, with a heading per run when there are several. */
 export function combine(
@@ -75,30 +70,19 @@ export function combine(
   results: RunResult[],
   nextLabel: () => string,
 ): { findings: string; sources: Source[] } {
-  const several = runs.length > 1;
   const sections: string[] = [];
   const sources: Source[] = [];
-
   runs.forEach((run, index) => {
     const result = results[index];
     let text: string;
-    if (result.status === "failed") {
-      text = `The search failed: ${result.message}`;
-    } else {
+    if (result.type === "failed") text = `The search failed: ${result.message}`;
+    else {
       const labelled = labelCitations(result.text, result.citations, nextLabel);
       text = labelled.text.trim() || "Nothing relevant found.";
-      for (const source of labelled.sources) {
-        if (source.type === "file") {
-          const name = result.storeNames.get(source.storeId);
-          if (name) source.storeName = name;
-          source.organizationId = run.connection.organizationId;
-        }
-        sources.push(source);
-      }
+      sources.push(...labelled.sources);
     }
-    sections.push(several ? `### ${run.label}\n\n${text}` : text);
+    sections.push(runs.length > 1 ? `### ${run.label}\n\n${text}` : text);
   });
-
   return { findings: sections.join("\n\n"), sources };
 }
 

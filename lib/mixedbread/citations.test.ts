@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { labelCitations } from "./citations.ts";
-import type { Citation } from "./research.ts";
+import { type Citation, labelCitations } from "./citations.ts";
 
 function labels() {
   let next = 1;
