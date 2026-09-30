@@ -2,11 +2,14 @@
 
 import { cn } from "cn";
 import {
+  ArrowUpRightIcon,
   ChevronsUpDownIcon,
   LogInIcon,
   LogOutIcon,
   PlusIcon,
+  RotateCwIcon,
   SunMoonIcon,
+  UnplugIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -14,35 +17,47 @@ import { useState } from "react";
 import {
   useConnect,
   useOrganizations,
+  useSources,
+  useStoresOf,
 } from "@/components/chat/sources-provider";
-import { createAlertDialogHandle } from "@/components/ui/alert-dialog";
-import { buttonVariants } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  createAlertDialogHandle,
+} from "@/components/ui/alert-dialog";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuLinkItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Spinner } from "@/components/ui/spinner";
+import { toast } from "@/components/ui/toast";
+import { PLATFORM_URL } from "@/lib/mixedbread/platform";
 import { withNext } from "@/lib/safe-next";
 import type { Organization } from "@/lib/sources";
-import { DisconnectDialog, OrganizationRow } from "./organizations";
 import { ThemeSwitch } from "./theme-switch";
 
 export interface User {
   name: string;
   email: string;
-  /** The Mixedbread profile picture, when there is one. */
   image?: string | null;
 }
 
-/**
- * The person signed in with Mixedbread and the organizations they
- * connected; signed out, as on someone's shared chat, a way to sign in.
- */
+/** Signed out, as on someone's shared chat, a way to sign in instead. */
 export function AccountMenu({ user }: { user?: User }) {
   if (!user) return <SignedOut />;
   return <SignedIn user={user} />;
@@ -61,7 +76,6 @@ function SignedOut() {
         <LogInIcon />
         Sign in
       </Link>
-      {/* Signed out there is no account menu, so the theme gets one of its own. */}
       <DropdownMenu>
         <DropdownMenuTrigger
           aria-label="Theme"
@@ -82,10 +96,21 @@ function SignedOut() {
 }
 
 function SignedIn({ user }: { user: User }) {
+  const sources = useSources();
   const organizations = useOrganizations();
   const { pending, connect } = useConnect();
   // Outside the menu, so the dialog outlives the menu closing.
   const [dialog] = useState(() => createAlertDialogHandle<Organization>());
+
+  async function disconnect(organization: Organization) {
+    dialog.close();
+    try {
+      await sources.disconnect(organization.id);
+      toast.add({ title: `${organization.name} disconnected` });
+    } catch {
+      toast.add({ title: "Couldn’t disconnect. Try again." });
+    }
+  }
 
   return (
     <>
@@ -170,15 +195,95 @@ function SignedIn({ user }: { user: User }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <DisconnectDialog handle={dialog} />
+      <AlertDialog handle={dialog}>
+        {({ payload: organization }) => (
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Disconnect {organization?.name}?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Its stores won’t be searched. You can connect it again anytime.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <Button
+                variant="destructive"
+                onClick={() => organization && void disconnect(organization)}
+              >
+                Disconnect
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        )}
+      </AlertDialog>
     </>
   );
 }
 
-/**
- * The Mixedbread profile picture, or the name's first letter on warm crust
- * until the picture loads, and in its place if it never does.
- */
+/** Manage it on Mixedbread, sign in to it again when its grant lapsed, or disconnect it. */
+function OrganizationRow({
+  organization,
+  onDisconnect,
+}: {
+  organization: Organization;
+  onDisconnect?: () => void;
+}) {
+  const lapsed = useStoresOf(organization.id)?.status === "reconnect";
+  const { pending, connect } = useConnect();
+
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger>
+        <span
+          aria-hidden="true"
+          className="flex size-6 shrink-0 items-center justify-center rounded-md bg-soft text-[11px] font-medium text-foreground/70 uppercase"
+        >
+          {organization.name.charAt(0)}
+        </span>
+        <span className="min-w-0 flex-1 truncate">{organization.name}</span>
+        {lapsed && (
+          <span className="size-1.5 shrink-0 rounded-full bg-crust">
+            <span className="sr-only">Signed out</span>
+          </span>
+        )}
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent className="w-56">
+        <DropdownMenuLinkItem
+          href={PLATFORM_URL}
+          target="_blank"
+          rel="noreferrer"
+          closeOnClick
+        >
+          <ArrowUpRightIcon />
+          Manage on Mixedbread
+        </DropdownMenuLinkItem>
+        {lapsed && (
+          <DropdownMenuItem
+            closeOnClick={false}
+            disabled={pending}
+            onClick={connect}
+          >
+            {pending ? <Spinner aria-hidden="true" /> : <RotateCwIcon />}
+            {pending ? "Opening Mixedbread…" : "Sign in again"}
+          </DropdownMenuItem>
+        )}
+        {onDisconnect && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onClick={onDisconnect}>
+              <UnplugIcon />
+              Disconnect
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
+  );
+}
+
+/** The profile picture, or the name's first letter until it loads, and if it never does. */
 function Avatar({ user, className }: { user: User; className: string }) {
   const [failed, setFailed] = useState(false);
 
@@ -194,8 +299,7 @@ function Avatar({ user, className }: { user: User; className: string }) {
       {user.image && !failed && (
         // oxlint-disable-next-line nextjs/no-img-element -- a remote avatar of unknown host gains nothing from next/image
         <img
-          // A picture that failed before the page hydrated fires no error
-          // React can hear, so its state is read on mount too.
+          // A picture that failed before hydration fires no error React hears.
           ref={(image) => {
             if (image?.complete && image.naturalWidth === 0) setFailed(true);
           }}
