@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import {
   AlertDialog,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  type AlertDialogHandle,
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
@@ -15,51 +15,39 @@ import type { ChatSummary } from "./chats-provider";
 
 /** Asks before chats are deleted for good. */
 export function DeleteDialog({
-  chats,
+  handle,
   landing,
-  onCancel,
   onDelete,
 }: {
-  chats?: ChatSummary[];
+  handle: AlertDialogHandle<ChatSummary[]>;
   /** Where focus goes once they are deleted. */
   landing: React.RefObject<HTMLElement | null>;
-  onCancel: () => void;
   onDelete: (chats: ChatSummary[]) => void;
 }) {
-  // Kept while the dialog fades out, so its words don't vanish first.
-  const [shown, setShown] = useState(chats);
-  if (chats && chats !== shown) setShown(chats);
-  const [first] = shown ?? [];
-  const count = shown?.length ?? 0;
-
   return (
-    <AlertDialog
-      open={chats !== undefined}
-      onOpenChange={(open) => {
-        if (!open) onCancel();
-      }}
-    >
-      <AlertDialogContent finalFocus={landing}>
-        <AlertDialogHeader>
-          <AlertDialogTitle>
-            {count === 1 ? "Delete chat?" : `Delete ${count} chats?`}
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            {count === 1
-              ? `“${first.title}” will be deleted for good.`
-              : "They’ll be deleted for good."}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <Button
-            variant="destructive"
-            onClick={() => shown && onDelete(shown)}
-          >
-            Delete
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
+    <AlertDialog handle={handle}>
+      {({ payload: chats = [] }) => (
+        <AlertDialogContent finalFocus={landing}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {chats.length === 1
+                ? "Delete chat?"
+                : `Delete ${chats.length} chats?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {chats.length === 1
+                ? `“${chats[0].title}” will be deleted for good.`
+                : "They’ll be deleted for good."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button variant="destructive" onClick={() => onDelete(chats)}>
+              Delete
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      )}
     </AlertDialog>
   );
 }

@@ -15,6 +15,7 @@ import {
   useConnect,
   useOrganizations,
 } from "@/components/chat/sources-provider";
+import { createAlertDialogHandle } from "@/components/ui/alert-dialog";
 import { buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -83,8 +84,8 @@ function SignedOut() {
 function SignedIn({ user }: { user: User }) {
   const organizations = useOrganizations();
   const { pending, connect } = useConnect();
-  // Held here, outside the menu, so the dialog outlives the menu closing.
-  const [leaving, setLeaving] = useState<Organization>();
+  // Outside the menu, so the dialog outlives the menu closing.
+  const [dialog] = useState(() => createAlertDialogHandle<Organization>());
 
   return (
     <>
@@ -127,7 +128,7 @@ function SignedIn({ user }: { user: User }) {
                 // The last one stays: it is how this account signs in.
                 onDisconnect={
                   organizations.length > 1
-                    ? () => setLeaving(organization)
+                    ? () => dialog.openWithPayload(organization)
                     : undefined
                 }
               />
@@ -169,10 +170,7 @@ function SignedIn({ user }: { user: User }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <DisconnectDialog
-        organization={leaving}
-        onClose={() => setLeaving(undefined)}
-      />
+      <DisconnectDialog handle={dialog} />
     </>
   );
 }

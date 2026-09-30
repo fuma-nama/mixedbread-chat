@@ -13,6 +13,10 @@ import {
 
 const AlertDialog = AlertDialogPrimitive.Root;
 
+const createAlertDialogHandle = AlertDialogPrimitive.createHandle;
+
+type AlertDialogHandle<Payload> = AlertDialogPrimitive.Handle<Payload>;
+
 function AlertDialogContent({
   className,
   ...props
@@ -62,6 +66,8 @@ export {
   AlertDialogContent,
   DialogDescription as AlertDialogDescription,
   DialogFooter as AlertDialogFooter,
+  type AlertDialogHandle,
   AlertDialogHeader,
   DialogTitle as AlertDialogTitle,
+  createAlertDialogHandle,
 };

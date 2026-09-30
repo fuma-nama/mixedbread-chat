@@ -1,7 +1,6 @@
 "use client";
 
 import { ArrowUpRightIcon, RotateCwIcon, UnplugIcon } from "lucide-react";
-import { useState } from "react";
 import {
   useConnect,
   useSources,
@@ -13,6 +12,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  type AlertDialogHandle,
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
@@ -97,51 +97,45 @@ export function OrganizationRow({
 
 /** Confirms before an organization's stores leave every future search. */
 export function DisconnectDialog({
-  organization,
-  onClose,
+  handle,
 }: {
-  organization?: Organization;
-  onClose: () => void;
+  handle: AlertDialogHandle<Organization>;
 }) {
   const sources = useSources();
-  // Kept while the dialog fades out, so its words don't vanish first.
-  const [shown, setShown] = useState(organization);
-  if (organization && organization !== shown) setShown(organization);
 
-  async function disconnect(target: Organization) {
-    onClose();
+  async function disconnect(organization: Organization) {
+    handle.close();
     try {
-      await sources.disconnect(target.id);
-      toast.add({ title: `${target.name} disconnected` });
+      await sources.disconnect(organization.id);
+      toast.add({ title: `${organization.name} disconnected` });
     } catch {
       toast.add({ title: "Couldn’t disconnect. Try again." });
     }
   }
 
   return (
-    <AlertDialog
-      open={organization !== undefined}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-    >
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Disconnect {shown?.name}?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Its stores won’t be searched. You can connect it again anytime.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <Button
-            variant="destructive"
-            onClick={() => shown && void disconnect(shown)}
-          >
-            Disconnect
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
+    <AlertDialog handle={handle}>
+      {({ payload: organization }) => (
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Disconnect {organization?.name}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Its stores won’t be searched. You can connect it again anytime.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={() => organization && void disconnect(organization)}
+            >
+              Disconnect
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      )}
     </AlertDialog>
   );
 }

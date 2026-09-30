@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import { deleteChats } from "@/app/(chat)/actions";
+import { createAlertDialogHandle } from "@/components/ui/alert-dialog";
 import { toast } from "@/components/ui/toast";
 import { ChatList } from "./chat-list";
 import { type ChatSummary, useChatList, useChats } from "./chats-provider";
@@ -33,15 +34,17 @@ export function Chats({
   const router = useRouter();
   const selection = useSelection(chats, activeId);
   const hold = useHold((id) => selection.toggle(id, true));
-  // The chats the delete dialog asks about.
-  const [deleting, setDeleting] = useState<ChatSummary[]>();
+  const [dialog] = useState(() => createAlertDialogHandle<ChatSummary[]>());
   // Where focus lands once the chats around it are deleted.
   const landing = useRef<HTMLElement>(null);
   const area = useRef<HTMLDivElement>(null);
-  const askToDelete = useCallback((targets: ChatSummary[]) => {
-    landing.current = null;
-    setDeleting(targets);
-  }, []);
+  const askToDelete = useCallback(
+    (targets: ChatSummary[]) => {
+      landing.current = null;
+      dialog.openWithPayload(targets);
+    },
+    [dialog],
+  );
   const { selected } = selection;
   const selecting = selected.length > 0;
 
@@ -114,9 +117,9 @@ export function Chats({
   }
 
   async function deleteForGood(targets: ChatSummary[]) {
-    setDeleting(undefined);
     const ids = new Set(targets.map((chat) => chat.id));
     landing.current = rowOf(successor(chats, ids)) ?? null;
+    dialog.close();
     const restore = remove(ids);
     const previous = selection.selection;
     selection.clear();
@@ -166,9 +169,8 @@ export function Chats({
       </div>
 
       <DeleteDialog
-        chats={deleting}
+        handle={dialog}
         landing={landing}
-        onCancel={() => setDeleting(undefined)}
         onDelete={(targets) => void deleteForGood(targets)}
       />
     </>
