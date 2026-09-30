@@ -1,8 +1,8 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useState } from "react";
 import { Proofing } from "@/components/brand/bakery";
-import { Activity, formatSeconds, LiveLine, useDuration } from "./activity";
+import { Activity, formatSeconds, LiveLine } from "./activity";
 import { LazyMarkdown } from "./lazy-markdown";
 
 /** Memoized, so finished thoughts sit still while the answer streams. */
@@ -16,8 +16,14 @@ export const Reasoning = memo(function Reasoning({
   /** Arrived after the page loaded, see `LazyMarkdown`. */
   deferred: boolean;
 }) {
-  const seconds = useDuration(live);
+  // How long it stayed live; a thought from history has no start.
+  const [span, setSpan] = useState(() =>
+    live ? { start: Date.now(), end: 0 } : undefined,
+  );
+  // oxlint-disable-next-line react/purity -- stamped once, as `live` turns off
+  if (span && !live && !span.end) setSpan({ ...span, end: Date.now() });
   if (!text && !live) return null;
+  const seconds = span?.end ? (span.end - span.start) / 1000 : 0;
 
   return (
     <Activity
@@ -27,7 +33,7 @@ export const Reasoning = memo(function Reasoning({
           <span className="text-shimmer motion-safe:animate-shimmer">
             Thinking
           </span>
-        ) : seconds !== undefined && seconds >= 1 ? (
+        ) : seconds >= 1 ? (
           `Thought for ${formatSeconds(seconds)}`
         ) : (
           "Thought"

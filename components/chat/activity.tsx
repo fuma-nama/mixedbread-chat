@@ -2,7 +2,7 @@
 
 import { cn } from "cn";
 import { ChevronRightIcon } from "lucide-react";
-import { useState, useSyncExternalStore } from "react";
+import { useState } from "react";
 import { flushSync } from "react-dom";
 import {
   Collapsible,
@@ -128,47 +128,6 @@ export function More({
 
 export function plural(count: number, noun: string): string {
   return `${count} ${count === 1 ? noun : `${noun}s`}`;
-}
-
-// One clock for every running step, ticking only while one is.
-const clock = { now: 0, listeners: new Set<() => void>() };
-let ticker: ReturnType<typeof setInterval> | undefined;
-
-function tick() {
-  clock.now = Date.now();
-  for (const listener of clock.listeners) listener();
-}
-
-function subscribeClock(listener: () => void) {
-  if (clock.listeners.size === 0) {
-    clock.now = Date.now();
-    ticker = setInterval(tick, 500);
-  }
-  clock.listeners.add(listener);
-  return () => {
-    clock.listeners.delete(listener);
-    if (clock.listeners.size === 0) clearInterval(ticker);
-  };
-}
-
-const still = () => () => {};
-const now = () => clock.now;
-
-/** Seconds since `running` turned on; a step loaded from history has none. */
-export function useElapsed(running: boolean): number | undefined {
-  const [start] = useState(() => (running ? Date.now() : undefined));
-  const time = useSyncExternalStore(running ? subscribeClock : still, now, now);
-  return start === undefined ? undefined : Math.max(0, time - start) / 1000;
-}
-
-/** How long `running` stayed on, once it turns off; from history, none. */
-export function useDuration(running: boolean): number | undefined {
-  const [span, setSpan] = useState(() =>
-    running ? { start: Date.now(), end: 0 } : undefined,
-  );
-  // oxlint-disable-next-line react/purity -- stamped once, as `running` turns off
-  if (span && !running && !span.end) setSpan({ ...span, end: Date.now() });
-  return span?.end ? (span.end - span.start) / 1000 : undefined;
 }
 
 export function formatSeconds(seconds: number): string {

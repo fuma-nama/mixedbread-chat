@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useState, useSyncExternalStore } from "react";
 import { Toasting } from "@/components/brand/bakery";
 import type { Source } from "@/lib/mixedbread/citations";
 import type { Step } from "@/lib/mixedbread/research";
@@ -13,7 +13,6 @@ import {
   plural,
   type State,
   StatusDot,
-  useElapsed,
   useFirst,
 } from "./activity";
 import { filesOf, SourceList } from "./search-files";
@@ -169,15 +168,42 @@ function same(a: SearchPart[][], b: SearchPart[][]): boolean {
   return true;
 }
 
+// One clock for every running search, ticking only while one is.
+const clock = { now: 0, listeners: new Set<() => void>() };
+let ticker: ReturnType<typeof setInterval> | undefined;
+
+function tick() {
+  clock.now = Date.now();
+  for (const listener of clock.listeners) listener();
+}
+
+function subscribeClock(listener: () => void) {
+  if (clock.listeners.size === 0) {
+    clock.now = Date.now();
+    ticker = setInterval(tick, 500);
+  }
+  clock.listeners.add(listener);
+  return () => {
+    clock.listeners.delete(listener);
+    if (clock.listeners.size === 0) clearInterval(ticker);
+  };
+}
+
+const still = () => () => {};
+const now = () => clock.now;
+
 /** A leaf, so the clock ticks only here; a running time shows from 3s on. */
 function Meta({ what, ms }: { what?: string; ms?: number }) {
-  const elapsed = useElapsed(ms === undefined);
-  const seconds = ms === undefined ? elapsed : ms / 1000;
-  const time =
-    seconds && (ms !== undefined || seconds >= 3)
-      ? formatSeconds(seconds)
-      : undefined;
-  return what && time ? `${what} · ${time}` : (what ?? time);
+  const running = ms === undefined;
+  // A search loaded from history has no start.
+  const [start] = useState(() => (running ? Date.now() : undefined));
+  const time = useSyncExternalStore(running ? subscribeClock : still, now, now);
+  const seconds = running
+    ? start && Math.max(0, time - start) / 1000
+    : ms / 1000;
+  const shown =
+    seconds && (!running || seconds >= 3) ? formatSeconds(seconds) : undefined;
+  return what && shown ? `${what} · ${shown}` : (what ?? shown);
 }
 
 function Live({ tasks }: { tasks: Task[] }) {
