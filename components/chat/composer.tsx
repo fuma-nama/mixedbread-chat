@@ -94,7 +94,6 @@ export const Composer = memo(function Composer({
     if (!coarse()) textareaRef.current?.focus();
   }, []);
 
-  // Keys that work anywhere: type to write, Escape to stop.
   useWindowEvent("keydown", (event) => {
     const loose =
       document.activeElement === document.body &&
@@ -175,7 +174,6 @@ export const Composer = memo(function Composer({
         }}
         className="field-sizing-content max-h-[min(40vh,22rem)] min-h-[3.25rem] w-full resize-none scrollbar-thin bg-transparent px-4.5 pt-4 pb-1 text-base leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/70 disabled:cursor-not-allowed md:text-[15px]"
       />
-      {/* Down to a 375px phone, the pickers and Send share one line. */}
       <div
         data-slot="composer-bar"
         className="flex cursor-text items-center gap-0.5 px-2.5 pb-2.5 whitespace-nowrap"
@@ -213,7 +211,6 @@ export const Composer = memo(function Composer({
             data-state={busy ? "busy" : ready ? "ready" : "idle"}
             className="group/send relative flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-raised outline-offset-2 outline-ring transition-[background-color,color,scale,box-shadow] duration-200 ease-spring focus-visible:outline-2 active:scale-90 disabled:cursor-default data-[state=idle]:bg-soft data-[state=idle]:text-muted-foreground data-[state=idle]:shadow-none motion-reduce:transition-none"
           >
-            {/* Runs around the stop button while an answer is on its way. */}
             <span
               aria-hidden="true"
               className="absolute -inset-[3px] rounded-full border-[1.5px] border-transparent border-t-crust opacity-0 transition-opacity duration-300 group-data-[state=busy]/send:opacity-100 group-data-[state=busy]/send:motion-safe:animate-spin"

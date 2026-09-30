@@ -7,7 +7,6 @@ import { More, plural, StatusDot, useFirst } from "./activity";
 
 const FIRST_STEPS = 6;
 
-/** Steps by the run they came from, in the order the runs first spoke up. */
 export function runsOf(steps: Step[]): Map<string, Step[]> {
   const runs = new Map<string, Step[]>();
   for (const step of steps) {
@@ -38,7 +37,6 @@ function line(step: Step, tense: "live" | "done"): string {
   return text;
 }
 
-/** The steps, under each run when several ran side by side. */
 export function StepList({ steps }: { steps: Step[] }) {
   const runs = runsOf(steps);
   if (runs.size < 2) return <Steps steps={steps} />;

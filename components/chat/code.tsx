@@ -10,7 +10,6 @@ import {
 } from "streamdown";
 import { BlockActions, save } from "./block-actions";
 
-/** Inline code, or a highlighted block with download and copy in its header. */
 export function Code({
   node: _,
   className,

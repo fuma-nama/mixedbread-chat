@@ -33,7 +33,6 @@ export function CitationHighlight({ children }: { children: React.ReactNode }) {
   return <HighlightContext value={highlight}>{children}</HighlightContext>;
 }
 
-/** A source's number, lit berry while it is pointed at here or elsewhere. */
 export const badge =
   "cursor-pointer items-center justify-center rounded-[0.35rem] bg-soft font-mono font-medium text-muted-foreground tabular-nums no-underline outline-offset-1 outline-ring transition-[background-color,color] duration-150 ease-smooth hover:bg-berry/15 hover:text-berry focus-visible:outline-2 data-popup-open:bg-berry/15 data-popup-open:text-berry data-[lit=true]:bg-berry/15 data-[lit=true]:text-berry";
 
@@ -78,10 +77,6 @@ interface Cards {
 
 const CardsContext = createContext<Cards | null>(null);
 
-/**
- * One card for every source in a chat, which glides from source to source,
- * and one dialog for the pages they open.
- */
 export function SourceCards({ children }: { children: React.ReactNode }) {
   const [cards] = useState<Cards>(() => ({
     card: PreviewCard.createHandle(),
@@ -108,12 +103,8 @@ function view(
   cards.page.openWithPayload({ source, organization, trigger, result });
 }
 
-/**
- * Only a preview: pointers pass through it, and a click on the trigger opens
- * the source. Only a finger, which has no hover, uses the links on it. Moving
- * to another source, it glides there, the old content fading out as the new
- * comes in from the side the pointer went.
- */
+// Pointers pass through the card, and a click on the trigger opens the source;
+// only a finger, which has no hover, uses the links on it.
 function Card({ cards }: { cards: Cards }) {
   return (
     <PreviewCard.Root handle={cards.card}>

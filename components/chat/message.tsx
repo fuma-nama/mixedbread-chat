@@ -194,11 +194,7 @@ export const MessageView = memo(function MessageView({
   );
 });
 
-/**
- * Searches in a row read as one trace, where the first began: side by side
- * within a step, one after another across steps. Words or thoughts between
- * them start a new one.
- */
+/** Searches in a row form one trace, where the first began; words or thoughts start a new one. */
 function tracesOf(parts: ChatMessage["parts"]): Map<number, SearchPart[][]> {
   const traces = new Map<number, SearchPart[][]>();
   let trace: SearchPart[][] | undefined;
@@ -224,10 +220,7 @@ function shows(part: ChatMessage["parts"][number]): boolean {
   );
 }
 
-/**
- * What the model is doing while nothing arrives, if nothing does: before the
- * first part, between steps, or once every search in a row is through.
- */
+/** What the model is doing while nothing arrives: before the first part, between steps, or after searching. */
 function pending(message: ChatMessage): string | undefined {
   if (message.role !== "assistant") return undefined;
   let searched = false;

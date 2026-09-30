@@ -20,10 +20,8 @@ interface Scroll {
 }
 
 /**
- * The message list. It opens on the latest message and sticks to the end as
- * answers stream, until you scroll up; reaching the end again sticks once
- * more. A question you ask glides to the top first, with its answer filling
- * the room below it.
+ * Sticks to the end as answers stream until the reader scrolls up, and brings
+ * a question just asked to the top, with room below for its answer.
  */
 export function Conversation({
   children,

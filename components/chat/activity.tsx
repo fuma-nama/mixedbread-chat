@@ -6,7 +6,6 @@ import { useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 import { CollapsibleTrigger } from "@/components/ui/collapsible";
 
-/** The row that unfolds a step's details; without any, it is just a line. */
 export function ActivityTrigger({
   indicator,
   label,
@@ -37,7 +36,6 @@ export function ActivityTrigger({
   );
 }
 
-/** Breathes while its step runs and pops once when it settles. */
 export function StatusDot({
   state,
 }: {
@@ -58,7 +56,6 @@ export function StatusDot({
   );
 }
 
-/** The newest thing a running step did, replaced in place as it goes. */
 export function LiveLine({ text }: { text?: string }) {
   if (!text) return null;
   return (
@@ -70,7 +67,6 @@ export function LiveLine({ text }: { text?: string }) {
   );
 }
 
-/** The panel a step unfolds into, hung from a thread under its indicator. */
 export function ActivityPanel({ children }: { children: React.ReactNode }) {
   return (
     <div className="mt-2 ml-[9.5px] flex flex-col gap-3 border-l border-soft pb-1 pl-[17.5px]">

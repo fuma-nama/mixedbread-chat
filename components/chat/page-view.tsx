@@ -60,7 +60,6 @@ export function loadPage(
 // holds still as it loads.
 const frame = "h-[min(60vh,40rem)] rounded-lg bg-soft";
 
-/** The cited page, with the passage it stands for marked. */
 export function PageView({ handle }: { handle: DialogHandle<ShownPage> }) {
   return (
     <Dialog handle={handle}>
@@ -161,10 +160,6 @@ function Reconnect({ organization }: { organization: Organization }) {
   );
 }
 
-/**
- * The page as an image, its space kept from the start. Once it loads, it
- * fades in already scrolled to the first marked block, and the marks follow.
- */
 function PageImage({
   page,
   marked,

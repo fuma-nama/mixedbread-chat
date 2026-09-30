@@ -25,14 +25,12 @@ import {
 import { remember } from "@/lib/remember";
 import { Dial } from "./dial";
 
-/** Folds away for a model that takes no effort, and unfolds for one that does. */
 export function ReasoningPicker({
   value,
   efforts,
   onChange,
 }: {
   value: Reasoning;
-  /** The model's efforts, listed after Auto. */
   efforts?: Effort[];
   onChange: (reasoning: Reasoning) => void;
 }) {
@@ -101,11 +99,7 @@ export function ReasoningPicker({
   );
 }
 
-/**
- * On a change the old word rolls out as the new one rolls in, the way the
- * dial turned, while the width glides between them. The words share one
- * cell, so neither runs past the edge.
- */
+// The words share one cell, so neither runs past the gliding width.
 function Rolling({ text, rank }: { text: string; rank: number }) {
   const ref = useGlide<HTMLSpanElement>("width", 360);
   const [roll, setRoll] = useState<{

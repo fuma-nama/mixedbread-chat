@@ -31,7 +31,6 @@ type State = "running" | "done" | "failed" | "stopped";
 const LIVE_TASKS = 4;
 const FIRST_TASKS = 6;
 
-/** One search the model asked for. */
 interface Task {
   id: string;
   query?: string;
@@ -39,12 +38,6 @@ interface Task {
   steps: Step[];
 }
 
-/**
- * The searches the model ran in a row, as one trace: side by side within a
- * step, one after another across steps. While they run, a slice toasts over
- * live lines; once done, it pops up and the lines fold away behind the
- * summary, which unfolds into the searches, their steps and what they found.
- */
 export const Search = memo(
   function Search({
     steps,
@@ -189,10 +182,7 @@ function same(a: SearchPart[][], b: SearchPart[][]): boolean {
   return true;
 }
 
-/**
- * How far the searches are, or what they found, and the time: so far, from
- * 3s on, or in all. A leaf, so the clock ticks only here.
- */
+/** A leaf, so the clock ticks only here; a running time shows from 3s on. */
 function Meta({ what, ms }: { what?: string; ms?: number }) {
   const elapsed = useElapsed(ms === undefined);
   const seconds = ms === undefined ? elapsed : ms / 1000;
@@ -203,10 +193,6 @@ function Meta({ what, ms }: { what?: string; ms?: number }) {
   return what && time ? `${what} · ${time}` : (what ?? time);
 }
 
-/**
- * Among several searches, a line for each one still running and a count past
- * the first few; for one, its newest step, or a line for each run side by side.
- */
 function Live({ tasks }: { tasks: Task[] }) {
   const lines: {
     key: string;

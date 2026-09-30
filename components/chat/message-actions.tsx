@@ -18,7 +18,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-/** Copy, edit or retry a message, and flip between its versions. */
 export function MessageActions({
   from,
   copyText,
@@ -151,7 +150,6 @@ function Versions({
   );
 }
 
-/** A small icon button with its name in a tooltip. */
 export function Action({
   label,
   ...props
@@ -174,7 +172,6 @@ export function Action({
   );
 }
 
-/** Copies, then shows a check for a moment. */
 export function CopyAction({
   label,
   copy,

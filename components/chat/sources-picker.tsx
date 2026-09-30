@@ -35,10 +35,6 @@ import {
 /** From this many stores on, a field filters them. */
 const FILTER_FROM = 8;
 
-/**
- * Picks what the next question searches: the web, and the stores of each
- * connected organization. Changes apply at once and the panel stays open.
- */
 export function SourcesPicker() {
   const { web, docs, lapsed, label } = reachOf(
     useSelection(),
@@ -122,10 +118,6 @@ export function SourcesPicker() {
 const glyph =
   "absolute top-0 left-0 size-3.5 transition-[translate,scale,opacity] duration-300 ease-smooth motion-reduce:transition-none data-[on=false]:scale-50 data-[on=false]:opacity-0";
 
-/**
- * What the selection reaches, as far as the stores loaded so far tell, and
- * whether a searched organization lost its grant.
- */
 function reachOf(
   selection: SourceSelection,
   organizations: Organization[],
@@ -185,11 +177,6 @@ function reachOf(
 
 const heading = "px-2 pt-1.5 pb-1 text-xs text-muted-foreground";
 
-/**
- * The web, each organization's stores, a filter when there are many, and a
- * way to connect another. The filter sits on the edge by the trigger. Arrow
- * keys move between rows, and typing on one filters.
- */
 function Panel({
   query,
   onQuery,
@@ -229,7 +216,6 @@ function Panel({
     if (event.key === "ArrowDown") to = items[(index + 1) % items.length];
     else if (event.key === "ArrowUp") to = items.at(index - 1);
     else if (event.target === filter) {
-      // Enter ticks the first match.
       if (event.key === "Enter" && words) {
         event.currentTarget.querySelector<HTMLElement>("[data-store]")?.click();
       }

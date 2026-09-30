@@ -12,7 +12,6 @@ type ProviderGroup = { provider: string; items: Model[] };
 
 const MORE = "More models";
 
-/** Featured models by provider, and the rest of the catalog in one group. */
 function groupsOf(models: Model[]) {
   const featured: ProviderGroup[] = [];
   const more: Model[] = [];
@@ -113,7 +112,6 @@ export function ModelPicker({
             aria-label="Choose a model"
             className="flex max-h-[min(22rem,var(--available-height))] w-72 max-w-(--available-width) origin-(--transform-origin) flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-float transition-[opacity,scale] duration-150 ease-smooth outline-none data-ending-style:scale-[0.97] data-ending-style:opacity-0 data-ending-style:duration-100 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none"
           >
-            {/* On the edge by the trigger, which stays put while results come and go. */}
             <div className="flex h-10 shrink-0 items-center gap-2 border-b border-soft px-3 in-data-[side=top]:order-last in-data-[side=top]:border-t in-data-[side=top]:border-b-0">
               <SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
               <Combobox.Input
@@ -157,7 +155,6 @@ const ModelItem = memo(function ModelItem({ model }: { model: Model }) {
       className="relative flex min-h-8 cursor-default items-center gap-2.5 rounded-lg px-2 py-1.5 pr-8 text-[13.5px] text-foreground/90 transition-colors duration-100 outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-highlighted:bg-soft data-highlighted:text-foreground"
     >
       <span className="min-w-0 flex-1 truncate">{model.name}</span>
-      {/* Outside the featured groups, the provider says whose model it is. */}
       {!model.featured && (
         <span className="shrink-0 font-mono text-[11px] text-muted-foreground/80">
           {model.provider}

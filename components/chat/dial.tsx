@@ -28,7 +28,6 @@ const settings: Record<Reasoning, { turn: number; heat: string }> = {
   },
 };
 
-/** The needle springs to its level while the arc fills; on hover it twitches. */
 export function Dial({ level }: { level: Reasoning }) {
   const { turn, heat } = settings[level];
   const auto = level === "auto";

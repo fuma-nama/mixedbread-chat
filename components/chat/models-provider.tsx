@@ -5,7 +5,7 @@ import type { Model } from "@/lib/models";
 
 const ModelsContext = createContext<Model[]>([]);
 
-/** AI Gateway's catalog, sent once with the layout instead of with each page. */
+// Sent once with the layout instead of with each page.
 export function ModelsProvider({
   models,
   children,

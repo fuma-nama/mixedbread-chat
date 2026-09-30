@@ -27,7 +27,6 @@ const animated = {
   stagger: 14,
 } as const;
 
-/** Streaming markdown that renders `[S1](#S1)` links as citations. */
 export function Markdown({
   citations = NO_CITATIONS,
   className,

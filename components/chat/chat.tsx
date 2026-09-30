@@ -300,7 +300,6 @@ export function Chat({
     composer.current?.focus();
   }
 
-  /** Shows the branch through `messageId`, down its latest replies. */
   function switchTo(messageId: string) {
     const all = withPath(tree, messages);
     const replies = childrenOf(all);

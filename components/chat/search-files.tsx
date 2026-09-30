@@ -21,7 +21,6 @@ interface SourceFile {
   labels: Set<string>;
 }
 
-/** Files one row each, and chunks found again under another label merged. */
 export function filesOf(sources: Source[]): SourceFile[] {
   const files = new Map<string, SourceFile>();
   const chunks = new Map<string, Chunk>();
@@ -79,11 +78,7 @@ const originText =
   "ml-auto max-w-[45%] shrink-0 truncate pl-3 font-mono text-[11px] text-muted-foreground/80";
 const marker = "flex h-4.5 min-w-4.5 shrink-0 px-1 text-[10.5px]";
 
-/**
- * A file and what was cited in it. With one chunk the row previews it; with
- * more, each gets a marker with its page or place, and pointing at the file
- * lights all of them, here and in the answer.
- */
+/** With several chunks, each gets a marker, and pointing at the file lights them all. */
 function FileRow({ file, index }: { file: SourceFile; index: number }) {
   const highlight = useHighlight();
   const { shown, more, showAll } = useFirst(file.chunks, FIRST_CHUNKS);

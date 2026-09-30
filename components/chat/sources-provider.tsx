@@ -33,7 +33,6 @@ interface Sources {
   /** Also remembered for the next visit. */
   select: (selection: SourceSelection) => void;
   load: (organizationId: string, force?: boolean) => void;
-  /** Loads every organization not loaded yet, in one request. */
   prefetch: () => void;
   /** Leaves for Mixedbread to grant an organization, then comes back here. */
   connect: () => Promise<void>;
@@ -168,7 +167,6 @@ export function useStoresOf(organizationId: string): StoresState | undefined {
   return useStore(useSources().stores, (all) => all[organizationId]);
 }
 
-/** What the next question can search, for placeholders and suggestions. */
 export function useSearchScope(): SearchScope {
   return scopeOf(useSelection(), useOrganizations());
 }
