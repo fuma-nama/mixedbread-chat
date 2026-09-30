@@ -155,12 +155,7 @@ function same(a: SearchPart[][], b: SearchPart[][]): boolean {
     for (let j = 0; j < a[i].length; j++) {
       const x = a[i][j];
       const y = b[i][j];
-      if (
-        x.state !== y.state ||
-        x.input !== y.input ||
-        x.output !== y.output ||
-        x.errorText !== y.errorText
-      ) {
+      if (x.state !== y.state || x.input !== y.input || x.output !== y.output) {
         return false;
       }
     }
