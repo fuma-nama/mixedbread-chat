@@ -22,16 +22,11 @@ export function runsOf(steps: Step[]): Map<string, Step[]> {
 export function latest(steps: Step[], lane = false): string {
   const step = steps.at(-1);
   if (!step) return "Planning the search";
-  if (steps.every((step) => step.status !== "running")) {
-    // A run that finished early rests on its last step, done.
-    return lane ? line(step, "done") : "Writing up findings";
-  }
-  return line(step, "live");
-}
-
-function line(step: Step, tense: "live" | "done"): string {
+  const running = steps.some((step) => step.status === "running");
+  if (!running && !lane) return "Writing up findings";
   const words = describe(step);
-  let text = words[tense];
+  // A run that finished early rests on its last step, done.
+  let text = running ? words.live : words.done;
   if (words.detail) text += ` ${words.detail}`;
   if (step.store) text += ` in ${step.store}`;
   return text;
@@ -42,28 +37,25 @@ export function StepList({ steps }: { steps: Step[] }) {
   if (runs.size < 2) return <Steps steps={steps} />;
   return (
     <ol className="flex flex-col gap-3">
-      {Array.from(runs, ([name, steps]) => (
-        <Group key={name} name={name} steps={steps} />
-      ))}
+      {Array.from(runs, ([name, steps]) => {
+        const Glyph = name === "Web" ? GlobeIcon : LayersIcon;
+        return (
+          <li key={name} className="flex min-w-0 flex-col gap-1.5">
+            <p className="flex min-w-0 items-center gap-2 text-[12.5px]">
+              <Glyph
+                aria-hidden="true"
+                className="size-3 shrink-0 text-muted-foreground"
+              />
+              <span className="truncate font-medium text-foreground/80">
+                {name}
+              </span>
+            </p>
+            {/* Dots centered under the glyph, so each run reads as one column. */}
+            <Steps steps={steps} className="pl-[3px]" />
+          </li>
+        );
+      })}
     </ol>
-  );
-}
-
-function Group({ name, steps }: { name: string; steps: Step[] }) {
-  const Glyph = name === "Web" ? GlobeIcon : LayersIcon;
-
-  return (
-    <li className="flex min-w-0 flex-col gap-1.5">
-      <p className="flex min-w-0 items-center gap-2 text-[12.5px]">
-        <Glyph
-          aria-hidden="true"
-          className="size-3 shrink-0 text-muted-foreground"
-        />
-        <span className="truncate font-medium text-foreground/80">{name}</span>
-      </p>
-      {/* Dots centered under the glyph, so each run reads as one column. */}
-      <Steps steps={steps} className="pl-[3px]" />
-    </li>
   );
 }
 
@@ -90,9 +82,15 @@ function StepRow({ step }: { step: Step }) {
   // Reading passages and looking through stores already say how many.
   const results =
     step.kind === "read" || step.kind === "stores" ? undefined : step.results;
+  // Each condition as a reader would say it: `year ≥ 2024`, `lang is “en” or “de”`.
   let filters = "";
-  for (const filter of step.filters ?? []) {
-    filters += `${filters && " · "}${formatFilter(filter)}`;
+  for (const { key, operator, value } of step.filters ?? []) {
+    const verb = operators[operator] ?? operator.replaceAll("_", " ");
+    const shown =
+      operator === "regex" && typeof value === "string"
+        ? `/${value}/`
+        : formatValue(value, operator === "in" ? " or " : ", ");
+    filters += `${filters && " · "}${key} ${verb} ${shown}`;
   }
 
   return (
@@ -156,6 +154,8 @@ function describe(step: Step): { live: string; done: string; detail?: string } {
     }
     case "stores": {
       const stores = step.stores ?? [];
+      const count =
+        stores.length > 0 ? plural(stores.length, "store") : "stores";
       let detail = "";
       for (let i = 0; i < stores.length && i < 3; i++) {
         detail += `${i > 0 ? ", " : ""}${stores[i].name}`;
@@ -163,10 +163,7 @@ function describe(step: Step): { live: string; done: string; detail?: string } {
       if (stores.length > 3) detail += ` +${stores.length - 3}`;
       return {
         live: "Looking through stores",
-        done:
-          stores.length > 0
-            ? `Looked through ${plural(stores.length, "store")}`
-            : "Looked through stores",
+        done: `Looked through ${count}`,
         detail: detail || undefined,
       };
     }
@@ -179,6 +176,7 @@ function describe(step: Step): { live: string; done: string; detail?: string } {
   }
 }
 
+// The rest read as their names, such as `starts with`.
 const operators: Record<string, string> = {
   eq: "is",
   not_eq: "is not",
@@ -187,27 +185,8 @@ const operators: Record<string, string> = {
   lt: "<",
   lte: "≤",
   in: "is",
-  not_in: "not in",
-  like: "like",
-  not_like: "not like",
-  contains: "contains",
-  starts_with: "starts with",
   regex: "matches",
 };
-
-/** A metadata condition as a reader would say it: `year ≥ 2024`, `lang is “en” or “de”`. */
-function formatFilter({
-  key,
-  operator,
-  value,
-}: NonNullable<Step["filters"]>[number]): string {
-  const verb = operators[operator] ?? operator.replaceAll("_", " ");
-  const shown =
-    operator === "regex" && typeof value === "string"
-      ? `/${value}/`
-      : formatValue(value, operator === "in" ? " or " : ", ");
-  return `${key} ${verb} ${shown}`;
-}
 
 function formatValue(value: unknown, separator = ", "): string {
   if (typeof value === "string") return `“${value}”`;
