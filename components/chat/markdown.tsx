@@ -52,10 +52,8 @@ export function Markdown({
 }
 
 function Link({ href, children }: React.ComponentProps<"a"> & ExtraProps) {
-  const citations = use(CitationsContext);
-
   if (href?.startsWith("#S")) {
-    const citation = citations.get(href.slice(1));
+    const citation = use(CitationsContext).get(href.slice(1));
     return citation ? <Citation {...citation} /> : null;
   }
   if (!href || href === "streamdown:incomplete-link") return children;
