@@ -28,15 +28,15 @@ import {
 export const row =
   "group/row flex min-h-8 w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-[13.5px] text-foreground/90 transition-colors duration-100 outline-none select-none scroll-my-1 hover:bg-soft hover:text-foreground focus-visible:bg-soft focus-visible:text-foreground disabled:cursor-default disabled:opacity-60 [&_svg]:shrink-0";
 
-// Between sections; one that ends up first, as while filtering, has none.
+// A separator that ends up first, as while filtering, hides.
 export const separator = "-mx-1 my-1 h-px bg-soft first:hidden";
 
 /**
- * One organization's stores, on Auto, where Toast picks where to look for
- * each question, or Manual, where the stores ticked are searched: all of
- * them, stores made later included, or just some. Manual with none ticked
- * leaves the organization out. Ticking a store found by the filter on Auto
- * turns to Manual with just that one.
+ * One organization's stores, on Auto, where Toast picks where to look, or
+ * Manual, where the stores ticked are searched: all of them, stores made
+ * later included, or just some. Manual with none ticked leaves the
+ * organization out. Ticking a store found by the filter on Auto turns to
+ * Manual with just that one.
  */
 export function OrganizationStores({
   organization,
@@ -55,8 +55,7 @@ export function OrganizationStores({
   const selection = useSelection();
   const choice = choiceFor(selection, organization.id);
   const auto = choice === "auto";
-  // Rows ready as the panel opens are simply there; rows that load or unfold
-  // later slide in, one after another.
+  // Rows that load or unfold after the panel opens slide in.
   const [unfold, setUnfold] = useState(() => state?.status !== "ok" || auto);
   const stores = state?.status === "ok" ? state.stores : undefined;
   let shown = auto ? [] : (stores ?? []);
@@ -92,7 +91,6 @@ export function OrganizationStores({
           <div className="sticky top-0 z-1 -mx-1 flex min-h-9 items-center gap-2.5 bg-popover px-3 py-1 text-[13.5px] text-foreground/90">
             <LayersIcon className="size-4 shrink-0 text-muted-foreground" />
             <span className="min-w-0 flex-1 truncate">{name}</span>
-            {/* Choosable before its list loads. */}
             {searchable && (
               <Mode
                 auto={auto}
@@ -154,10 +152,7 @@ export function OrganizationStores({
   );
 }
 
-/**
- * The stores searched once `id` is ticked or unticked. From Auto it is the
- * only one; from all of them, every other one stays.
- */
+/** The stores searched once `id` is ticked or unticked. From Auto it is the only one. */
 function toggle(
   choice: StoreChoice,
   id: string,
@@ -173,9 +168,6 @@ function toggle(
   for (const store of stores ?? []) if (store.id !== id) rest.push(store.id);
   return rest;
 }
-
-const segment =
-  "relative flex h-6 cursor-pointer items-center justify-center gap-1 rounded-full px-2.5 text-[12.5px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 hover:text-foreground focus-visible:outline-2 aria-checked:text-foreground";
 
 /**
  * Auto or Manual, as a pill that glides to the one picked; the slice pops up
@@ -211,29 +203,21 @@ function Mode({
         style={{ translate: auto ? "0 0" : "100% 0" }}
         className="absolute inset-y-0.5 left-0.5 w-[calc(50%-0.125rem)] rounded-full bg-popover shadow-raised transition-[translate] duration-300 ease-smooth motion-reduce:transition-none"
       />
-      <button
-        type="button"
-        role="radio"
-        aria-checked={auto}
-        tabIndex={auto ? 0 : -1}
-        data-row={auto ? "" : undefined}
-        onClick={() => pick(true)}
-        className={segment}
-      >
-        <Toasting state={auto ? "done" : "stopped"} />
-        Auto
-      </button>
-      <button
-        type="button"
-        role="radio"
-        aria-checked={!auto}
-        tabIndex={auto ? -1 : 0}
-        data-row={auto ? undefined : ""}
-        onClick={() => pick(false)}
-        className={segment}
-      >
-        Manual
-      </button>
+      {[true, false].map((option) => (
+        <button
+          key={String(option)}
+          type="button"
+          role="radio"
+          aria-checked={option === auto}
+          tabIndex={option === auto ? 0 : -1}
+          data-row={option === auto ? "" : undefined}
+          onClick={() => pick(option)}
+          className="relative flex h-6 cursor-pointer items-center justify-center gap-1 rounded-full px-2.5 text-[12.5px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 hover:text-foreground focus-visible:outline-2 aria-checked:text-foreground"
+        >
+          {option && <Toasting state={auto ? "done" : "stopped"} />}
+          {option ? "Auto" : "Manual"}
+        </button>
+      ))}
     </div>
   );
 }
@@ -342,17 +326,13 @@ function StoresNotice({
   );
 }
 
-/**
- * Leaves for Mixedbread, which asks which organization to connect, and
- * comes back here. It stays pending while the browser goes.
- */
+/** Leaves for Mixedbread, which asks which organization to connect. */
 export function ConnectButton({
   icon,
   hint,
   children,
 }: {
   icon: React.ReactNode;
-  /** A line under the label, saying why. */
   hint?: string;
   children: React.ReactNode;
 }) {
