@@ -1,11 +1,12 @@
 "use client";
 
-import { createContext, use, useEffect, useState } from "react";
+import { atom, useAtomValue, useSetAtom } from "jotai";
+import { useHydrateAtoms } from "jotai/utils";
+import { useEffect, useState } from "react";
 import { mutate } from "swr";
 import useSWRImmutable from "swr/immutable";
 import { disconnectOrganization, listAllStores } from "@/app/(chat)/actions";
 import { toast } from "@/components/ui/toast";
-import { createStore, useStore } from "@/hooks/use-store";
 import { useWindowEvent } from "@/hooks/use-window-event";
 import { PROVIDER_ID } from "@/lib/mixedbread/platform";
 import { remember } from "@/lib/remember";
@@ -22,9 +23,8 @@ import {
 
 export type StoresState = { status: "loading" } | StoresResult;
 
-type Sources = ReturnType<typeof createSources>;
-
-const SourcesContext = createContext<Sources | null>(null);
+const organizationsAtom = atom<Organization[]>([]);
+const selectionAtom = atom<SourceSelection>({ web: true, organizations: {} });
 
 const LOADING: StoresState = { status: "loading" };
 const LOAD_FAILED: StoresResult = {
@@ -46,9 +46,10 @@ export function SourcesProvider({
   initialSelection: SourceSelection;
   children: React.ReactNode;
 }) {
-  const [sources] = useState(() =>
-    createSources(organizations, initialSelection),
-  );
+  useHydrateAtoms([
+    [organizationsAtom, organizations],
+    [selectionAtom, initialSelection],
+  ] as const);
 
   useEffect(() => {
     // Back from a connection that didn't finish, with Better Auth's reason.
@@ -68,50 +69,39 @@ export function SourcesProvider({
     );
   }, []);
 
-  return <SourcesContext value={sources}>{children}</SourcesContext>;
+  return children;
 }
 
-function createSources(
-  initialOrganizations: Organization[],
-  initialSelection: SourceSelection,
-) {
-  const organizations = createStore(initialOrganizations);
-  const selection = createStore(initialSelection);
+/** Also remembered for the next visit. */
+const selectAtom = atom(null, (_get, set, next: SourceSelection) => {
+  set(selectionAtom, next);
+  remember(SELECTION_COOKIE, serializeSelection(next));
+});
 
-  /** Also remembered for the next visit. */
-  function select(next: SourceSelection) {
-    selection.set(next);
-    remember(SELECTION_COOKIE, serializeSelection(next));
-  }
+const disconnectAtom = atom(null, async (get, set, organizationId: string) => {
+  await disconnectOrganization(organizationId);
+  set(organizationsAtom, (organizations) =>
+    organizations.filter((entry) => entry.id !== organizationId),
+  );
+  const selection = get(selectionAtom);
+  const { [organizationId]: _, ...rest } = selection.organizations;
+  set(selectAtom, { ...selection, organizations: rest });
+});
 
+/** The actions; using them never re-renders. */
+export function useSources() {
   return {
-    organizations,
-    selection,
-    select,
-    async disconnect(organizationId: string) {
-      await disconnectOrganization(organizationId);
-      organizations.set(
-        organizations.get().filter((entry) => entry.id !== organizationId),
-      );
-      const { [organizationId]: _, ...rest } = selection.get().organizations;
-      select({ ...selection.get(), organizations: rest });
-    },
+    select: useSetAtom(selectAtom),
+    disconnect: useSetAtom(disconnectAtom),
   };
 }
 
-/** The actions and stores; reading them never re-renders. */
-export function useSources() {
-  const sources = use(SourcesContext);
-  if (!sources) throw new Error("useSources needs a <SourcesProvider>");
-  return sources;
-}
-
 export function useOrganizations() {
-  return useStore(useSources().organizations, (list) => list);
+  return useAtomValue(organizationsAtom);
 }
 
 export function useSelection() {
-  return useStore(useSources().selection, (selection) => selection);
+  return useAtomValue(selectionAtom);
 }
 
 export function useSearchScope() {

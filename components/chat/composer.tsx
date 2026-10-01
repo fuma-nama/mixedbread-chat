@@ -24,7 +24,7 @@ const WARN_LENGTH = 18_000;
 
 export interface ComposerHandle {
   focus: () => void;
-  /** Puts text back, as after a send that did not go through. */
+  /** Puts text back before any typed since, as after a send that did not go through. */
   restore: (text: string) => void;
   element: () => HTMLElement | null;
 }
@@ -76,13 +76,15 @@ export const Composer = memo(function Composer({
   const reason = blocked ?? (online ? undefined : "You’re offline");
   const tooLong = text.length > MAX_LENGTH;
   const ready = text.trim() !== "" && !tooLong && !reason;
+  // While an answer runs, a message goes to it; the button stops it otherwise.
+  const stop = busy && !ready;
 
   useImperativeHandle(
     ref,
     () => ({
       focus: () => textareaRef.current?.focus(),
       restore: (value) => {
-        setText(value);
+        setText((text) => (text ? `${value}\n\n${text}` : value));
         textareaRef.current?.focus();
       },
       element: () => formRef.current,
@@ -117,7 +119,7 @@ export const Composer = memo(function Composer({
   });
 
   function submit() {
-    if (!ready || busy) return;
+    if (!ready) return;
     onSubmit(text.trim());
     setText("");
   }
@@ -197,18 +199,18 @@ export const Composer = memo(function Composer({
             </span>
           )}
           <button
-            type={busy ? "button" : "submit"}
-            aria-label={busy ? "Stop" : "Send"}
-            disabled={!busy && !ready}
+            type={stop ? "button" : "submit"}
+            aria-label={stop ? "Stop" : "Send"}
+            disabled={!stop && !ready}
             onClick={
-              busy
+              stop
                 ? () => {
                     onStop();
                     textareaRef.current?.focus();
                   }
                 : undefined
             }
-            data-state={busy ? "busy" : ready ? "ready" : "idle"}
+            data-state={stop ? "busy" : ready ? "ready" : "idle"}
             className="group/send relative flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-raised outline-offset-2 outline-ring transition-[background-color,color,scale,box-shadow] duration-200 ease-spring focus-visible:outline-2 active:scale-90 disabled:cursor-default data-[state=idle]:bg-soft data-[state=idle]:text-muted-foreground data-[state=idle]:shadow-none motion-reduce:transition-none"
           >
             <span
@@ -216,7 +218,7 @@ export const Composer = memo(function Composer({
               className="absolute -inset-[3px] rounded-full border-[1.5px] border-transparent border-t-crust opacity-0 transition-opacity duration-300 group-data-[state=busy]/send:opacity-100 group-data-[state=busy]/send:motion-safe:animate-spin"
             />
             <IconSwap
-              swapped={busy}
+              swapped={stop}
               from={<ArrowUpIcon className="size-4" strokeWidth={2.25} />}
               to={<SquareIcon className="size-3 fill-current" />}
             />

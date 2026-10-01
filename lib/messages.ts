@@ -1,5 +1,5 @@
-import { type Source, sourceTitle } from "./mixedbread/citations";
-import type { ChatMessage } from "./search-tool";
+import { type Source, sourceTitle } from "./mixedbread/citations.ts";
+import type { ChatMessage } from "./search-tool.ts";
 
 /** The sources a message cites, by label, numbered in order of first citation. */
 export type Citations = Map<string, { number: number; source: Source }>;

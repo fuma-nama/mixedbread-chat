@@ -35,9 +35,41 @@ export async function createChat(values: typeof chat.$inferInsert) {
   await db.insert(chat).values(values);
 }
 
-/** Saves a message; resending one that is already saved does nothing. */
-export async function saveMessage(values: typeof message.$inferInsert) {
-  await db.insert(message).values(values).onConflictDoNothing();
+/**
+ * Saves a message after `parentId`, or after the chat's latest, and makes it
+ * the latest. The chat stays locked meanwhile, so messages sent at once keep
+ * their order. Resending a saved message moves to it. Returns its parent.
+ */
+export function appendMessage(
+  chatId: string,
+  values: Pick<typeof message.$inferInsert, "id" | "role" | "parts">,
+  parentId?: string | null,
+) {
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .select({ leafId: chat.leafId })
+      .from(chat)
+      .where(eq(chat.id, chatId))
+      .for("update");
+    const parent = parentId === undefined ? (row?.leafId ?? null) : parentId;
+    await tx
+      .insert(message)
+      .values({ ...values, chatId, parentId: parent })
+      .onConflictDoNothing();
+    await tx
+      .update(chat)
+      .set({ leafId: values.id, updatedAt: new Date() })
+      .where(eq(chat.id, chatId));
+    return parent;
+  });
+}
+
+/** Keeps what an answer wrote. */
+export async function saveParts(
+  id: string,
+  parts: (typeof message.$inferInsert)["parts"],
+) {
+  await db.update(message).set({ parts }).where(eq(message.id, id));
 }
 
 /** Updates a chat only when `userId` owns it. */

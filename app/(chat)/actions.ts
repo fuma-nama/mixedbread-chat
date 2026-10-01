@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { chatRuns } from "@/lib/answers";
 import { getSession } from "@/lib/auth";
 import * as queries from "@/lib/db/queries";
 import { highlight } from "@/lib/highlight";
@@ -111,7 +112,10 @@ export async function deleteChats(ids: string[]) {
 }
 
 export async function setChatLeaf(id: string, leafId: string) {
-  await queries.updateChat(id, await currentUserId(), {
+  const userId = await currentUserId();
+  // Answers go after the leaf, so it holds still while one runs.
+  if (await chatRuns(id)) return;
+  await queries.updateChat(id, userId, {
     leafId: z.string().max(100).parse(leafId),
   });
 }

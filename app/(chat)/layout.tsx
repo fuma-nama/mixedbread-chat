@@ -4,6 +4,7 @@ import { SourcesProvider } from "@/components/chat/sources-provider";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { ChatsProvider } from "@/components/sidebar/chats-provider";
 import { SearchChats } from "@/components/sidebar/search-chats";
+import { StoreProvider } from "@/components/store-provider";
 import {
   Sidebar,
   SidebarInset,
@@ -36,39 +37,41 @@ export default async function ChatLayout({
     <SidebarProvider
       defaultOpen={cookieStore.get("sidebar_state")?.value !== "false"}
     >
-      <ChatsProvider initialChats={viewer ? chats : []}>
-        <SourcesProvider
-          organizations={viewer?.organizations ?? []}
-          initialSelection={parseSelection(
-            cookieStore.get(SELECTION_COOKIE)?.value,
-          )}
-        >
-          <ModelsProvider
-            models={models}
-            model={
-              models.find((entry) => entry.id === model)?.id ?? defaultModel
-            }
-            reasoning={isReasoning(reasoning) ? reasoning : defaultReasoning}
+      <StoreProvider>
+        <ChatsProvider initialChats={viewer ? chats : []}>
+          <SourcesProvider
+            organizations={viewer?.organizations ?? []}
+            initialSelection={parseSelection(
+              cookieStore.get(SELECTION_COOKIE)?.value,
+            )}
           >
-            <SearchChats />
-            <Sidebar>
-              <AppSidebar
-                user={
-                  viewer && {
-                    name: viewer.user.name,
-                    email: viewer.user.email,
-                    image: viewer.user.image,
+            <ModelsProvider
+              models={models}
+              model={
+                models.find((entry) => entry.id === model)?.id ?? defaultModel
+              }
+              reasoning={isReasoning(reasoning) ? reasoning : defaultReasoning}
+            >
+              <SearchChats />
+              <Sidebar>
+                <AppSidebar
+                  user={
+                    viewer && {
+                      name: viewer.user.name,
+                      email: viewer.user.email,
+                      image: viewer.user.image,
+                    }
                   }
-                }
-                // oxlint-disable-next-line react/purity -- rendered once per request
-                now={Date.now()}
-                timeZone={timeZoneOf(cookieStore.get("tz")?.value)}
-              />
-            </Sidebar>
-            <SidebarInset>{children}</SidebarInset>
-          </ModelsProvider>
-        </SourcesProvider>
-      </ChatsProvider>
+                  // oxlint-disable-next-line react/purity -- rendered once per request
+                  now={Date.now()}
+                  timeZone={timeZoneOf(cookieStore.get("tz")?.value)}
+                />
+              </Sidebar>
+              <SidebarInset>{children}</SidebarInset>
+            </ModelsProvider>
+          </SourcesProvider>
+        </ChatsProvider>
+      </StoreProvider>
     </SidebarProvider>
   );
 }

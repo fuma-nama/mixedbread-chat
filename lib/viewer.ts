@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { chatRuns } from "./answers";
 import { getSession } from "./auth";
 import { getChat, getMessages } from "./db/queries";
 import { listConnections } from "./mixedbread/organizations";
@@ -29,5 +30,7 @@ export const readChat = cache(async (id: string) => {
   const owner = chat.userId === session?.user.id;
   if (!owner && chat.visibility !== "public") return undefined;
   const { title, visibility, leafId } = chat;
-  return { title, visibility, leafId, owner, messages };
+  // An answer runs or waits to; only the owner's tabs follow it.
+  const running = owner && (await chatRuns(id));
+  return { title, visibility, leafId, owner, running, messages };
 });

@@ -6,22 +6,21 @@ import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { answersPerDay } from "@/lib/limits";
 
-type Failure = "limit" | "session" | "network" | "other";
+export type Failure = "limit" | "session" | "network" | "other";
 
-export function failureOf(error: Error): Failure {
+/** An answer's failure, or none when following it again recovers, as after going offline. */
+export function failureOf(error: Error): Failure | undefined {
   if (APICallError.isInstance(error)) {
-    if (error.statusCode === 429) return "limit";
-    return error.statusCode === 401 ? "session" : "other";
+    return error.statusCode === 401 ? "session" : undefined;
   }
-  return error.name === "TypeError" || !navigator.onLine ? "network" : "other";
+  return error instanceof TypeError ? undefined : "other";
 }
 
-/** The request never reached the chat: nothing was saved, so it can be undone. */
-export function wasRejected(error: Error): boolean {
-  return (
-    APICallError.isInstance(error) &&
-    [400, 401, 404, 429].includes(error.statusCode ?? 0)
-  );
+/** A request's failure by its status; 0 when it got none. */
+export function failureOfStatus(status: number): Failure {
+  if (status === 429) return "limit";
+  if (status === 401) return "session";
+  return status === 0 ? "network" : "other";
 }
 
 const notices: Record<Failure, [text: string, action?: string]> = {
@@ -64,7 +63,7 @@ export function ErrorNotice({
   );
 }
 
-/** A question saved without its answer, as when the tab closed mid-way. */
+/** A question saved without its answer, as when its server went down mid-way. */
 export function Unanswered({ onAnswer }: { onAnswer: () => void }) {
   return (
     <div className="mt-8 motion-safe:animate-fade">

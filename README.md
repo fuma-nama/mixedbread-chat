@@ -2,7 +2,7 @@
 
 A ChatGPT-style chat template that answers from your documents and the web, with citations. Built with Next.js, the [AI SDK](https://ai-sdk.dev), [Base UI](https://base-ui.com) and [Mixedbread](https://www.mixedbread.com).
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ffuma-nama%2Fmixedbread-chat&env=BETTER_AUTH_SECRET&envDescription=A%20random%20string%20for%20signing%20sessions&envLink=https%3A%2F%2Fgithub.com%2Ffuma-nama%2Fmixedbread-chat%23deploy&products=%5B%7B%22type%22%3A%22integration%22%2C%22protocol%22%3A%22storage%22%2C%22productSlug%22%3A%22neon%22%2C%22integrationSlug%22%3A%22neon%22%7D%5D)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ffuma-nama%2Fmixedbread-chat&env=BETTER_AUTH_SECRET&envDescription=A%20random%20string%20for%20signing%20sessions&envLink=https%3A%2F%2Fgithub.com%2Ffuma-nama%2Fmixedbread-chat%23deploy&products=%5B%7B%22type%22%3A%22integration%22%2C%22protocol%22%3A%22storage%22%2C%22productSlug%22%3A%22neon%22%2C%22integrationSlug%22%3A%22neon%22%7D%2C%7B%22type%22%3A%22integration%22%2C%22protocol%22%3A%22storage%22%2C%22productSlug%22%3A%22upstash-kv%22%2C%22integrationSlug%22%3A%22upstash%22%7D%5D)
 
 ## Features
 
@@ -24,6 +24,7 @@ A Mixedbread token reaches one organization, so a search over several runs one T
 
 - **Sign-in**: Mixedbread OAuth through [Better Auth](https://www.better-auth.com). Each connected organization is its own account, with encrypted tokens.
 - **Chats**: stored in Postgres. Each message keeps its parent, so edits and retries branch one chat.
+- **Answers**: run on the server through Redis, so closing the tab doesn't end them, and the owner's other tabs follow, join and stop them.
 
 ## Run locally
 
@@ -37,7 +38,7 @@ pnpm dev
 
 ## Deploy
 
-The Deploy button creates a Neon Postgres database and asks for `BETTER_AUTH_SECRET`. Every build runs the migrations, then registers the app with Mixedbread for the address it deploys to. The client is kept in the database, so later builds reuse it and connected organizations keep working.
+The Deploy button creates a Neon Postgres database and an Upstash Redis, and asks for `BETTER_AUTH_SECRET`. Every build runs the migrations, then registers the app with Mixedbread for the address it deploys to. The client is kept in the database, so later builds reuse it and connected organizations keep working.
 
 - Preview deployments get a client of their own.
 - On a custom domain, set `BETTER_AUTH_URL`.

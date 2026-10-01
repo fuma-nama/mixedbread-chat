@@ -190,7 +190,9 @@ function turnsOf(messages: ModelMessage[]): Turn[] {
 
 export type ChatMessage = UIMessage<
   unknown,
-  /** Sent once the chat is named; not kept in the message. */
-  { title: string },
+  {
+    /** How an answer ended short of done. */
+    ended: "stopped" | "failed";
+  },
   InferUITools<{ search: ReturnType<typeof searchTool> }>
 >;

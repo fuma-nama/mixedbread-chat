@@ -1,16 +1,16 @@
 "use client";
 
+import { useAtomValue } from "jotai";
 import Link from "next/link";
 import { redirect, usePathname } from "next/navigation";
-import useSWRImmutable from "swr/immutable";
+import useSWR from "swr";
 import { SliceGlyph } from "@/components/brand/slice";
 import { buttonVariants } from "@/components/ui/button";
-import { useStore } from "@/hooks/use-store";
 import { Chat } from "./chat";
 import {
   type CachedChat,
   chatKey,
-  draft,
+  draftAtom,
   fetchChat,
   openLink,
 } from "./chat-cache";
@@ -22,6 +22,7 @@ const NEW_CHAT: CachedChat = {
   visibility: "private",
   leafId: null,
   owner: true,
+  running: false,
   messages: [],
 };
 
@@ -38,8 +39,7 @@ export function ChatScreen({
   id: string;
   chat?: CachedChat | null;
 }) {
-  const draftId =
-    useStore(draft, (id) => id) || (seed === undefined ? seedId : "");
+  const draftId = useAtomValue(draftAtom) || (seed === undefined ? seedId : "");
   const id = usePathname().match(/^\/c\/([^/]+)/)?.[1] ?? draftId;
   const signedIn = useOrganizations().length > 0;
   // As the page of a new chat does, for someone reading a shared one.
@@ -55,14 +55,19 @@ function OpenChat({
   id: string;
   fallback?: CachedChat | null;
 }) {
-  // A chat the page brought, or a new one, is never fetched: only kept.
-  const { data = fallback } = useSWRImmutable(
-    chatKey(id),
-    fallback === undefined ? fetchChat : null,
-  );
+  // Shown as the page brought it or as last left, then kept up with the server.
+  const { data: kept = fallback, error } = useSWR(chatKey(id), fetchChat, {
+    fallbackData: fallback,
+    // The page's chat is current; one kept from before may not be.
+    revalidateOnMount: fallback === undefined,
+    // The owner's tabs catch up as they follow the chat.
+    revalidateOnFocus: fallback?.owner === false,
+  });
+  // A new chat has no row until its first answer starts.
+  const data = kept === null && fallback === NEW_CHAT ? NEW_CHAT : kept;
 
+  if (data === null || (data === undefined && error)) return <ChatMissing />;
   if (data === undefined) return <ChatSkeleton />;
-  if (data === null) return <ChatMissing />;
   return <Chat id={id} saved={data} />;
 }
 

@@ -2,8 +2,9 @@
 
 import { PreviewCard } from "@base-ui/react/preview-card";
 import { cn } from "cn";
+import { atom, type PrimitiveAtom, useAtomValue, useSetAtom } from "jotai";
 import { ArrowUpRightIcon, ScanSearchIcon } from "lucide-react";
-import { createContext, memo, use, useId, useState } from "react";
+import { createContext, memo, use, useId, useMemo, useState } from "react";
 import { SliceGlyph } from "@/components/brand/slice";
 import {
   createDialogHandle,
@@ -11,7 +12,6 @@ import {
   type DialogHandle,
 } from "@/components/ui/dialog";
 import { useCoarsePointer } from "@/hooks/use-media";
-import { createStore, useStore } from "@/hooks/use-store";
 import { originOf, type Source, sourceTitle } from "@/lib/mixedbread/citations";
 import { PageView, type ShownPage } from "./page-view";
 import { useOrganizations } from "./sources-provider";
@@ -19,16 +19,19 @@ import { useOrganizations } from "./sources-provider";
 type Lit = ReadonlySet<string> | undefined;
 
 /** The labels of the sources being pointed at: one, or all of a file's. */
-const HighlightContext = createContext(createStore<Lit>(undefined));
+const HighlightContext = createContext<PrimitiveAtom<Lit>>(
+  atom<Lit>(undefined),
+);
 
+/** Points at sources, lighting up the citations and rows of their labels. */
 export function useHighlight() {
-  return use(HighlightContext);
+  return useSetAtom(use(HighlightContext));
 }
 
 /** Pairs a message's inline citations with its sources: hovering one lights up the other. */
 export function CitationHighlight({ children }: { children: React.ReactNode }) {
-  const [highlight] = useState(() => createStore<Lit>(undefined));
-  return <HighlightContext value={highlight}>{children}</HighlightContext>;
+  const lit = useMemo(() => atom<Lit>(undefined), []);
+  return <HighlightContext value={lit}>{children}</HighlightContext>;
 }
 
 export const badge =
@@ -143,13 +146,22 @@ export function SourcePreview({
   if (!cards) throw new Error("SourcePreview needs <SourceCards>");
   const id = useId();
   const coarse = useCoarsePointer();
-  const highlight = useHighlight();
-  const lit = useStore(highlight, (current) => {
-    if (!current || !labels) return current?.has(source.label) ?? false;
-    for (const label of labels) if (current.has(label)) return true;
-    return false;
-  });
-  const light = () => highlight.set(labels ?? new Set([source.label]));
+  const highlighted = use(HighlightContext);
+  const highlight = useSetAtom(highlighted);
+  // Each re-renders only when its own light changes.
+  const lit = useAtomValue(
+    useMemo(
+      () =>
+        atom((get) => {
+          const current = get(highlighted);
+          if (!current || !labels) return current?.has(source.label) ?? false;
+          for (const label of labels) if (current.has(label)) return true;
+          return false;
+        }),
+      [highlighted, labels, source.label],
+    ),
+  );
+  const light = () => highlight(labels ?? new Set([source.label]));
   // A page shows to those connected to its organization, with their access.
   const organizations = useOrganizations();
   const organization =
@@ -176,9 +188,9 @@ export function SourcePreview({
         ? { href: source.url, target: "_blank", rel: "noreferrer" }
         : { render: <button type="button" /> })}
       onPointerEnter={light}
-      onPointerLeave={() => highlight.set(rest)}
+      onPointerLeave={() => highlight(rest)}
       onFocus={light}
-      onBlur={() => highlight.set(undefined)}
+      onBlur={() => highlight(undefined)}
       onClick={coarse ? () => cards.card.open(id) : open}
       aria-haspopup={!coarse && open ? "dialog" : undefined}
       data-lit={lit}

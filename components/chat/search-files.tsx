@@ -109,8 +109,8 @@ function FileRow({ file, index }: { file: SourceFile; index: number }) {
     first.source.type === "file" && first.source.image ? "page" : "passage";
   return (
     <li
-      onPointerEnter={() => highlight.set(file.labels)}
-      onPointerLeave={() => highlight.set(undefined)}
+      onPointerEnter={() => highlight(file.labels)}
+      onPointerLeave={() => highlight(undefined)}
       className="group/source flex min-w-0 items-start gap-2 text-[12.5px]"
     >
       <span className="flex h-6.5 items-center">{glyph}</span>

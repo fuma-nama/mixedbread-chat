@@ -97,7 +97,9 @@ export const ChatItem = memo(function ChatItem({
             data-id={chat.id}
             aria-current={active ? "page" : undefined}
             onNavigate={(event) => openLink(event, href)}
-            onPointerEnter={() => void preload(chatKey(chat.id), fetchChat)}
+            onPointerEnter={() =>
+              void preload(chatKey(chat.id), fetchChat).catch(() => {})
+            }
             className={cn(
               // Selected neighbors join into one block, square where they meet.
               "flex h-8 items-center rounded-lg px-2 text-[13.5px] text-foreground/75 outline-offset-0 outline-ring transition-[color,background-color,border-radius,box-shadow,scale] duration-200 ease-[var(--ease-smooth),var(--ease-smooth),var(--ease-smooth),var(--ease-smooth),var(--ease-spring)] select-none [-webkit-touch-callout:none] group-hover/item:text-foreground group-has-aria-expanded/item:bg-[oklch(from_var(--foreground)_l_c_h/0.055)] focus-visible:outline-2 in-[[data-selected]+[data-selected]]:rounded-t-none in-[[data-selected]:has(+[data-selected])]:rounded-b-none in-[[data-selected]:has(+[data-selected])]:shadow-[0_1px_var(--selected)] motion-reduce:transition-none",
