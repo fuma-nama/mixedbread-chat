@@ -8,8 +8,7 @@ import { db } from "./db";
 import { organization } from "./db/schema";
 import {
   accountKey,
-  organizationName,
-  organizationOfToken,
+  organizationOf,
   PLATFORM_URL,
   PROVIDER_ID,
   SCOPES,
@@ -44,9 +43,7 @@ export const auth = betterAuth({
           scopes: SCOPES,
           // Sign-in is when Mixedbread names the organization.
           accountSubject: async ({ tokens, profile }) => {
-            const token = tokens.accessToken ?? "";
-            const id = organizationOfToken(token);
-            const name = await organizationName(token);
+            const { id, name } = await organizationOf(tokens.accessToken ?? "");
             if (name) {
               await db
                 .insert(organization)

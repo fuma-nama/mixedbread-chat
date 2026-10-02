@@ -22,31 +22,20 @@ export function accountKey(subject: string, organizationId: string): string {
   return `${subject}:${organizationId}`;
 }
 
-export function organizationOfToken(token: string): string {
-  const payload = token.split(".")[1];
-  const claims = payload
-    ? JSON.parse(Buffer.from(payload, "base64url").toString("utf8"))
-    : undefined;
-  if (typeof claims?.organization_id !== "string") {
-    throw new Error("The access token names no organization.");
-  }
-  return claims.organization_id;
-}
-
 /**
- * The name of the organization a token reaches, which only userinfo carries:
- * Better Auth reads the sign-in profile from the ID token. Sign-in goes on without it.
+ * The organization a token reaches, from userinfo: Better Auth builds the
+ * sign-in profile from the ID token, which names none.
  */
-export async function organizationName(
+export async function organizationOf(
   token: string,
-): Promise<string | undefined> {
-  try {
-    const response = await fetch(`${PLATFORM_URL}/api/auth/oauth2/userinfo`, {
-      headers: { authorization: `Bearer ${token}` },
-    });
-    const { organization_name: name } = await response.json();
-    return typeof name === "string" ? name : undefined;
-  } catch {
-    return undefined;
+): Promise<{ id: string; name?: string }> {
+  const response = await fetch(`${PLATFORM_URL}/api/auth/oauth2/userinfo`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  const { organization_id: id, organization_name: name } =
+    await response.json();
+  if (typeof id !== "string") {
+    throw new Error("Mixedbread named no organization.");
   }
+  return { id, name };
 }
