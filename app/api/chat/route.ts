@@ -26,8 +26,13 @@ import { answersPerDay } from "@/lib/limits";
 import { nextLabel } from "@/lib/messages";
 import { listModels, titleModel } from "@/lib/models";
 import { isReasoning, type Reasoning } from "@/lib/reasoning";
-import { type ChatMessage, searchTool } from "@/lib/search-tool";
 import {
+  type ChatMessage,
+  findStoresTool,
+  searchTool,
+} from "@/lib/search-tool";
+import {
+  choiceFor,
   type SearchScope,
   scopeOf,
   sourceSelectionSchema,
@@ -76,6 +81,7 @@ const guidance: Record<SearchScope, string> = {
   web: recent,
   none: "The user turned search off for this question, so answer from what you know and say when you are unsure.",
 };
+const picking = "Call find_stores first, and search only stores it returned.";
 
 export async function POST(request: Request) {
   const viewer = await getViewer();
@@ -194,16 +200,22 @@ async function answer(
     parts: [],
   });
   const history: ChatMessage[] = pathTo(await getMessages(chatId), parentId);
-  const tools = {
-    search: searchTool({
-      userId: viewer.user.id,
-      connections: viewer.connections,
-      selection: sources,
-      firstLabel: nextLabel(history),
-    }),
-  };
   const scope = scopeOf(sources, viewer.organizations);
   const searching = scope !== "none";
+  const auto = viewer.organizations.some(
+    (organization) => choiceFor(sources, organization.id) === "auto",
+  );
+  const context = {
+    userId: viewer.user.id,
+    connections: viewer.connections,
+    selection: sources,
+    scope,
+    firstLabel: nextLabel(history),
+  };
+  const tools = {
+    find_stores: findStoresTool(context),
+    search: searchTool(context),
+  };
   const first = !history.some((message) => message.role === "assistant");
 
   const finished = Promise.withResolvers<void>();
@@ -222,7 +234,7 @@ async function answer(
               : undefined,
           instructions: `You are a helpful assistant.
 
-${guidance[scope]}
+${guidance[scope]}${auto ? ` ${picking}` : ""}
 
 Search findings mark their evidence with labels like [S1]. When you use a finding, cite its label as a markdown link right after the claim, like [S1](#S1). Only cite labels that search returned. If search finds nothing relevant, say so instead of guessing.
 
@@ -237,9 +249,12 @@ Today is ${new Date().toISOString().slice(0, 10)}.`,
             ignoreIncompleteToolCalls: true,
           }),
           tools,
-          // Earlier searches in the history need the tool even when search is off.
-          // History with searches needs the tool even when search is off.
-          activeTools: searching ? ["search"] : [],
+          // History with searches needs the tools even when search is off.
+          activeTools: auto
+            ? ["find_stores", "search"]
+            : searching
+              ? ["search"]
+              : [],
           // A message sent meanwhile ends it at the next step, and the next
           // answer takes it up.
           stopWhen: [

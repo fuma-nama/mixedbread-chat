@@ -27,7 +27,7 @@ export interface Step {
 
 export type ResearchTarget =
   | { kind: "web" }
-  | { kind: "stores"; stores: "auto" | string[] };
+  | { kind: "stores"; stores: string[] };
 
 const annotationSchema = z.discriminatedUnion("type", [
   z.object({
@@ -125,18 +125,14 @@ function toolsFor(target: ResearchTarget): ChatCreateCompletionParams.Tool[] {
       },
     ];
   }
-  // Without store IDs, Toast picks a store per step from list_stores.
-  const store_identifiers =
-    target.stores === "auto" ? undefined : target.stores;
-  const tools: ChatCreateCompletionParams.Tool[] = [
+  const store_identifiers = target.stores;
+  return [
     { type: "search_corpus", store_identifiers, citations: true },
     { type: "grep", store_identifiers, citations: true },
     { type: "filter_chunks", store_identifiers, citations: true },
     { type: "inspect_metadata", store_identifiers },
     { type: "get_chunks", store_identifiers },
   ];
-  if (!store_identifiers) tools.push({ type: "list_stores" });
-  return tools;
 }
 
 /** Streams each step of Toast's search, then its cited answer. */

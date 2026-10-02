@@ -24,7 +24,7 @@ function streaming(chunks: unknown[], requests: unknown[] = []): Mixedbread {
 
 async function collect(
   client: Mixedbread,
-  target: ResearchTarget = { kind: "stores", stores: "auto" },
+  target: ResearchTarget = { kind: "stores", stores: ["store-1"] },
 ): Promise<ResearchEvent[]> {
   const events: ResearchEvent[] = [];
   for await (const event of research(client, "q", target)) {
@@ -133,21 +133,29 @@ test("normalizes steps, skips unknown shapes, and cites what Toast read", async 
   ]);
 });
 
-test("on auto Toast lists the stores and picks per step; picks go as they are", async () => {
+test("every Toast tool is pinned to the stores given, and the query is one turn", async () => {
   const requests: {
+    messages: unknown[];
     tools: { type: string; store_identifiers?: string[] }[];
   }[] = [];
   const client = streaming(
     [{ choices: [{ delta: {}, finish_reason: "stop" }] }],
     requests,
   );
-  await collect(client, { kind: "stores", stores: "auto" });
-  await collect(client, { kind: "stores", stores: ["store-1"] });
-  const [auto, picked] = requests;
-  assert.deepEqual(auto.tools.at(-1), { type: "list_stores" });
-  assert.equal(auto.tools[0].store_identifiers, undefined);
-  assert.deepEqual(picked.tools[0].store_identifiers, ["store-1"]);
-  assert.ok(!picked.tools.some((tool) => tool.type === "list_stores"));
+  await collect(client, { kind: "stores", stores: ["store-1", "store-2"] });
+  await collect(client, { kind: "web" });
+  const [stores, web] = requests;
+  for (const tool of stores.tools) {
+    assert.deepEqual(tool.store_identifiers, ["store-1", "store-2"]);
+  }
+  assert.deepEqual(web.tools, [
+    {
+      type: "search_corpus",
+      store_identifiers: ["mixedbread/web"],
+      citations: true,
+    },
+  ]);
+  assert.deepEqual(stores.messages.slice(1), [{ role: "user", content: "q" }]);
 });
 
 test("a stream that ends before the answer finishes fails", async () => {

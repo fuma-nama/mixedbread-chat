@@ -11,6 +11,8 @@ import {
 import { research, type Step } from "./mixedbread/research";
 import {
   combine,
+  type FoundStores,
+  findStores,
   merge,
   planRuns,
   type Run,
@@ -18,7 +20,7 @@ import {
   type RunResult,
   resolveTarget,
 } from "./mixedbread/runs";
-import type { SourceSelection } from "./sources";
+import type { SearchScope, SourceSelection } from "./sources";
 
 /** `started` is when it began, by the server's clock. */
 type SearchOutput =
@@ -38,6 +40,7 @@ interface SearchContext {
   userId: string;
   connections: Connection[];
   selection: SourceSelection;
+  scope: SearchScope;
   firstLabel: number;
 }
 
@@ -94,20 +97,55 @@ async function* run(
   }
 }
 
+export function findStoresTool({
+  userId,
+  connections,
+  selection,
+}: SearchContext) {
+  return tool({
+    description:
+      "Find the user's stores to pass to search: up to 20 per organization whose name or description contains the query, or else the newest.",
+    inputSchema: z.object({
+      query: z
+        .string()
+        .describe(
+          'A word from the name or description of a store, like "legal"',
+        ),
+    }),
+    // An inferred type would loop back through ChatMessage.
+    execute: ({ query }): Promise<FoundStores[]> =>
+      findStores(
+        selection,
+        connections,
+        (connection) => clientFor(userId, connection),
+        query,
+      ),
+  });
+}
+
 export function searchTool(context: SearchContext) {
-  const runs = planRuns(context.selection, context.connections);
-  const web = runs.some(({ target }) => target.kind === "web");
-  const reach = runs.some(({ target }) => target.kind === "stores")
-    ? `the user's Mixedbread stores${web ? " and the web" : ""}`
-    : "the web";
+  const reach =
+    context.scope === "web"
+      ? "the web"
+      : `the user's Mixedbread stores${context.scope === "both" ? " and the web" : ""}`;
   let label = context.firstLabel;
 
   return tool({
     description: `Search ${reach} with Toast, Mixedbread's search agent. It does not see this conversation, so write a complete, self-contained request.`,
     inputSchema: z.object({
       query: z.string().describe("What to find out, with all needed context"),
+      stores: z
+        .array(z.object({ organization: z.string(), ids: z.array(z.string()) }))
+        .optional()
+        .describe(
+          "The stores to search, from find_stores: an organization ID with the IDs of its stores",
+        ),
     }),
-    async *execute({ query }, { abortSignal }): AsyncGenerator<SearchOutput> {
+    async *execute(
+      { query, stores },
+      { abortSignal },
+    ): AsyncGenerator<SearchOutput> {
+      const runs = planRuns(context.selection, context.connections, stores);
       const started = Date.now();
       const steps = new Map<string, Step>();
       const read = new Set<string>();
@@ -148,7 +186,9 @@ export function searchTool(context: SearchContext) {
         status: "done",
         calls: Array.from(steps.values()),
         started,
-        findings: findings || "No sources are picked, so nothing was searched.",
+        findings:
+          findings ||
+          "Nothing was searched. Search again with stores from find_stores.",
         sources,
         read: read.size,
         ms: Date.now() - started,
@@ -178,5 +218,8 @@ export type ChatMessage = UIMessage<
     /** How an answer ended short of done. */
     ended: "stopped" | "failed";
   },
-  InferUITools<{ search: ReturnType<typeof searchTool> }>
+  InferUITools<{
+    find_stores: ReturnType<typeof findStoresTool>;
+    search: ReturnType<typeof searchTool>;
+  }>
 >;

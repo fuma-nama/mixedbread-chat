@@ -155,7 +155,7 @@ function useReach() {
   }
 
   const first = picked[0]?.name;
-  // Where Toast picks, how many it looks through is up to it.
+  // Where the model picks, how many it looks through is up to it.
   let phrase = `${count} ${count === 1 ? "store" : "stores"}`;
   if (whole === organizations.length)
     phrase = web ? "all stores" : "All stores";
@@ -297,7 +297,7 @@ function Panel({
   );
 }
 
-/** On Auto, Toast picks where to look; on Manual, ticking none leaves the organization out. */
+/** On Auto, the model picks where to look; on Manual, ticking none leaves the organization out. */
 function OrganizationStores({
   organization,
   words,
@@ -378,7 +378,7 @@ function OrganizationStores({
             </span>
           </Check>
         ))}
-        {/* Toast finds the stores itself on Auto, so only Manual waits for the list. */}
+        {/* The model finds the stores itself on Auto, so only Manual waits for the list. */}
         {!auto && state.status === "loading" && (
           <p
             role="status"

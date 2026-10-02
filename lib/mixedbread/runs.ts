@@ -1,7 +1,8 @@
+import type { Mixedbread } from "@mixedbread/sdk";
 import {
   choiceFor,
+  type Organization,
   type SourceSelection,
-  type StoreChoice,
   searchesStores,
 } from "../sources.ts";
 import { labelCitations, type Source } from "./citations.ts";
@@ -12,16 +13,70 @@ export interface Run {
   label: string;
   /** Whose token the run uses; the web run borrows one, which it bills. */
   connection: Connection;
-  target: { kind: "web" } | { kind: "stores"; stores: StoreChoice };
+  target: { kind: "web" } | { kind: "stores"; stores: "all" | string[] };
 }
 
+export interface FoundStores {
+  organization: Organization;
+  stores?: { id: string; name: string; description?: string | null }[];
+  error?: string;
+}
+
+/**
+ * Up to 20 stores of each organization on auto whose name or description
+ * holds `query`, or else its newest.
+ */
+export function findStores(
+  selection: SourceSelection,
+  connections: Connection[],
+  clientOf: (connection: Connection) => Promise<Mixedbread>,
+  query: string,
+): Promise<FoundStores[]> {
+  async function storesOf(connection: Connection): Promise<FoundStores> {
+    const organization = {
+      id: connection.organizationId,
+      name: connection.name,
+    };
+    try {
+      const client = await clientOf(connection);
+      const list = async (q?: string) =>
+        (await client.stores.list({ q, limit: 20 })).data;
+      // Questions rarely name a store, and the API turns down an empty query.
+      let data = query ? await list(query) : [];
+      if (data.length === 0) data = await list();
+      const stores = data.map(({ id, name, description }) => ({
+        id,
+        name,
+        description,
+      }));
+      return { organization, stores };
+    } catch {
+      return { organization, error: "Mixedbread could not list its stores." };
+    }
+  }
+  const found: Promise<FoundStores>[] = [];
+  for (const connection of connections) {
+    if (choiceFor(selection, connection.organizationId) === "auto") {
+      found.push(storesOf(connection));
+    }
+  }
+  return Promise.all(found);
+}
+
+/** On auto, an organization searches the stores the chat model picked from `findStores`. */
 export function planRuns(
   selection: SourceSelection,
   connections: Connection[],
+  picks: { organization: string; ids: string[] }[] = [],
 ): Run[] {
   const runs: Run[] = [];
   for (const connection of connections) {
-    const choice = choiceFor(selection, connection.organizationId);
+    const { organizationId } = connection;
+    let choice = choiceFor(selection, organizationId);
+    if (choice === "auto") {
+      choice =
+        picks.find((pick) => pick.organization === organizationId)?.ids ?? [];
+    }
     if (!searchesStores(choice)) continue;
     runs.push({
       label: connection.name,
@@ -37,8 +92,8 @@ export function planRuns(
 }
 
 /**
- * Stores go by name, so Toast knows the one a question names; picks drop ones
- * deleted since, as one fails the whole run. A failed listing resolves undefined.
+ * Picks drop stores deleted since, as one fails the whole run. A failed
+ * listing resolves undefined.
  */
 export async function resolveTarget(
   { label, target }: Run,
@@ -46,19 +101,14 @@ export async function resolveTarget(
 ): Promise<ResearchTarget | { error: string }> {
   if (target.kind === "web") return target;
   const { stores } = target;
-  if (stores === "auto") return { kind: "stores", stores };
   const listed = await listing;
   if (stores === "all") {
     return listed?.size
-      ? { kind: "stores", stores: Array.from(listed.values()) }
+      ? { kind: "stores", stores: Array.from(listed.keys()) }
       : { error: `No stores to search in ${label}.` };
   }
   if (!listed) return { kind: "stores", stores };
-  const kept: string[] = [];
-  for (const id of stores) {
-    const name = listed.get(id);
-    if (name) kept.push(name);
-  }
+  const kept = stores.filter((id) => listed.has(id));
   return kept.length > 0
     ? { kind: "stores", stores: kept }
     : { error: `The stores picked in ${label} no longer exist.` };

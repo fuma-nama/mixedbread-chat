@@ -27,8 +27,8 @@ export const MAX_STORES = 100;
 
 export const sourceSelectionSchema = z.object({
   web: z.boolean(),
-  // By organization ID; missing is "auto", where Toast picks. "all" is every
-  // store at search time, and an empty list leaves the organization out.
+  // By organization ID; missing is "auto", where the model picks. "all" is
+  // every store at search time, and an empty list leaves the organization out.
   organizations: z.record(
     z.string().max(100),
     z.enum(["auto", "all"]).or(z.array(z.string().max(100)).max(MAX_STORES)),

@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import type { Mixedbread } from "@mixedbread/sdk";
 import type { SourceSelection } from "../sources.ts";
 import type { Citation } from "./citations.ts";
 import {
   combine,
+  findStores,
   merge,
   planRuns,
   resolveTarget,
@@ -31,17 +33,36 @@ function labels() {
 }
 
 test("plans a run per organization with stores picked, and the web on one's token", () => {
-  const plan = (selection: SourceSelection) =>
-    planRuns(selection, connections).map((run) => [
+  const plan = (
+    selection: SourceSelection,
+    picks?: { organization: string; ids: string[] }[],
+  ) =>
+    planRuns(selection, connections, picks).map((run) => [
       run.label,
       run.connection.accountId,
       run.target,
     ]);
+  // On auto, an organization searches only the stores the model picked.
   assert.deepEqual(plan({ web: true, organizations: {} }), [
-    ["Organization 1", "acc-a", { kind: "stores", stores: "auto" }],
-    ["Organization 2", "acc-b", { kind: "stores", stores: "auto" }],
     ["Web", "acc-a", { kind: "web" }],
   ]);
+  assert.deepEqual(
+    plan({ web: true, organizations: { "org-a": "all" } }, [
+      { organization: "org-a", ids: ["store-1"] },
+      { organization: "org-b", ids: ["store-2"] },
+    ]),
+    [
+      ["Organization 1", "acc-a", { kind: "stores", stores: "all" }],
+      ["Organization 2", "acc-b", { kind: "stores", stores: ["store-2"] }],
+      ["Web", "acc-a", { kind: "web" }],
+    ],
+  );
+  assert.deepEqual(
+    plan({ web: false, organizations: {} }, [
+      { organization: "org-b", ids: [] },
+    ]),
+    [],
+  );
   assert.deepEqual(
     plan({ web: true, organizations: { "org-a": [], "org-b": ["store-1"] } }),
     [
@@ -59,8 +80,11 @@ test("plans a run per organization with stores picked, and the web on one's toke
   );
 });
 
-test("a run resolves its stores once they are listed", async () => {
-  const [run] = planRuns({ web: false, organizations: {} }, connections);
+test("a run resolves its stores by ID once they are listed", async () => {
+  const [run] = planRuns(
+    { web: false, organizations: { "org-a": "all" } },
+    connections,
+  );
   const listed = Promise.resolve(
     new Map([
       ["store-1", "HR"],
@@ -68,20 +92,14 @@ test("a run resolves its stores once they are listed", async () => {
     ]),
   );
   const failed = Promise.resolve(undefined);
-  const on = (stores: SourceSelection["organizations"][string]) => ({
+  const on = (stores: "all" | string[]) => ({
     ...run,
     target: { kind: "stores" as const, stores },
   });
 
-  // Never settles: auto doesn't wait for the listing.
-  const listing = new Promise<undefined>(() => {});
-  assert.deepEqual(await resolveTarget(on("auto"), listing), {
-    kind: "stores",
-    stores: "auto",
-  });
   assert.deepEqual(await resolveTarget(on("all"), listed), {
     kind: "stores",
-    stores: ["HR", "Legal"],
+    stores: ["store-1", "store-2"],
   });
   const none = { error: "No stores to search in Organization 1." };
   assert.deepEqual(await resolveTarget(on("all"), failed), none);
@@ -91,7 +109,7 @@ test("a run resolves its stores once they are listed", async () => {
   );
   assert.deepEqual(await resolveTarget(on(["store-2", "gone"]), listed), {
     kind: "stores",
-    stores: ["Legal"],
+    stores: ["store-2"],
   });
   assert.deepEqual(await resolveTarget(on(["gone"]), listed), {
     error: "The stores picked in Organization 1 no longer exist.",
@@ -104,6 +122,68 @@ test("a run resolves its stores once they are listed", async () => {
     await resolveTarget({ ...run, target: { kind: "web" } }, undefined),
     { kind: "web" },
   );
+});
+
+test("finds matching stores in each organization on auto", async () => {
+  const asked: unknown[] = [];
+  const clientOf = async ({ organizationId }: { organizationId: string }) => {
+    if (organizationId === "org-c") throw new Error("Token expired");
+    const stores = {
+      list: async (params: { q?: string }) => {
+        asked.push(params);
+        if (params.q === "tax") return { data: [] };
+        return {
+          data: [
+            { id: "store-1", name: "hr", description: "Policies", extra: 1 },
+            { id: "store-2", name: "legal-hr", description: null },
+          ],
+        };
+      },
+    };
+    return { stores } as unknown as Mixedbread;
+  };
+  const third = { ...connections[0], organizationId: "org-c", name: "Org 3" };
+  const found = await findStores(
+    { web: true, organizations: { "org-b": "all" } },
+    [...connections, third],
+    clientOf,
+    "hr",
+  );
+  assert.deepEqual(asked, [{ q: "hr", limit: 20 }]);
+  assert.deepEqual(found, [
+    {
+      organization: { id: "org-a", name: "Organization 1" },
+      stores: [
+        { id: "store-1", name: "hr", description: "Policies" },
+        { id: "store-2", name: "legal-hr", description: null },
+      ],
+    },
+    {
+      organization: { id: "org-c", name: "Org 3" },
+      error: "Mixedbread could not list its stores.",
+    },
+  ]);
+
+  // Without a match, or a query, it lists the newest.
+  asked.length = 0;
+  const newest = await findStores(
+    { web: true, organizations: { "org-b": [] } },
+    connections,
+    clientOf,
+    "tax",
+  );
+  assert.equal(newest[0].stores?.length, 2);
+  await findStores(
+    { web: true, organizations: { "org-b": [] } },
+    connections,
+    clientOf,
+    "",
+  );
+  assert.deepEqual(asked, [
+    { q: "tax", limit: 20 },
+    { q: undefined, limit: 20 },
+    { q: undefined, limit: 20 },
+  ]);
 });
 
 test("citations are labelled across runs in order", () => {
@@ -126,7 +206,9 @@ test("citations are labelled across runs in order", () => {
     { type: "answer", text: "Leave is 30 days.", citations: [file] },
     { type: "answer", text: "It is sunny.", citations: [web] },
   ];
-  const runs = planRuns({ web: true, organizations: {} }, [connections[0]]);
+  const runs = planRuns({ web: true, organizations: { "org-a": "all" } }, [
+    connections[0],
+  ]);
   const { findings, sources } = combine(runs, results, labels());
   assert.equal(
     findings,

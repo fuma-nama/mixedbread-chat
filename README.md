@@ -7,7 +7,7 @@ A ChatGPT-style chat template that answers from your documents and the web, with
 ## Features
 
 - Sign in with Mixedbread, then search the web and the stores of every organization you connect
-- Pick what each question searches: the web, and each organization's stores on Auto (Toast picks where to look) or Manual (all of them, or just some)
+- Pick what each question searches: the web, and each organization's stores on Auto (the chat model picks where to look) or Manual (all of them, or just some)
 - Numbered citations that preview the passage they quote; a cited PDF page opens with it marked
 - Any tool-calling model on [AI Gateway](https://vercel.com/ai-gateway), with the thinking efforts it takes
 - Chat history with titles, search, rename, delete and share links, which say when a chat quotes your stores
@@ -20,7 +20,7 @@ A ChatGPT-style chat template that answers from your documents and the web, with
 2. When it needs facts, it calls a `search` tool that hands the request to [Toast 1](https://www.mixedbread.com/docs/agent/models), Mixedbread's search agent, with the signed-in person's own access. Toast searches the picked stores and the web, reads what it finds, and answers with citations.
 3. The tool labels each cited source `[S1]`, `[S2]`, so the chat model can cite the same evidence, and the UI renders the labels as numbered citations.
 
-A Mixedbread token reaches one organization, so a search over several runs one Toast search per organization, side by side.
+On Auto, the chat model first calls `find_stores` to find stores by name and description, and passes the ones it picks to `search`. A Mixedbread token reaches one organization, so a search over several runs one Toast search per organization, side by side.
 
 - **Sign-in**: Mixedbread OAuth through [Better Auth](https://www.better-auth.com). Each connected organization is its own account, with encrypted tokens.
 - **Chats**: stored in Postgres. Each message keeps its parent, so edits and retries branch one chat.
@@ -71,7 +71,7 @@ Everything that depends on Mixedbread's API lives in `lib/mixedbread/`, so upstr
 | `research.ts`      | The Toast request, and its stream parsed into app types      |
 | `citations.ts`     | Citation labels                                              |
 | `files.ts`         | Pages of parsed files, for showing what a citation points at |
-| `runs.ts`          | Splitting a search into runs per organization, and merging   |
+| `runs.ts`          | Finding stores, splitting a search into runs, and merging    |
 
 After changing `lib/db/schema.ts`, run `pnpm db:generate` to add a migration.
 
