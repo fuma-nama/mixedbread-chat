@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { listModels } from "./models.ts";
 
-test("lists tool-calling language models, Toast first, then by provider and newest, with the efforts they take", async () => {
+test("lists tool-calling language models but Toast, by provider and newest, with the efforts they take", async () => {
   const language = { type: "language", tags: ["tool-use"] };
   globalThis.fetch = async () =>
     Response.json({
@@ -70,13 +70,6 @@ test("lists tool-calling language models, Toast first, then by provider and newe
     });
 
   assert.deepEqual(await listModels(), [
-    {
-      id: "mixedbread/toast-1",
-      name: "Toast 1",
-      provider: "mixedbread",
-      efforts: [],
-      toast: true,
-    },
     {
       id: "anthropic/claude-fable-5.1",
       name: "Claude Fable 5.1",

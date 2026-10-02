@@ -25,11 +25,6 @@ export interface Step {
   results?: number;
 }
 
-export interface Turn {
-  role: "user" | "assistant";
-  content: string;
-}
-
 export type ResearchTarget =
   | { kind: "web" }
   | { kind: "stores"; stores: "auto" | string[] };
@@ -147,7 +142,7 @@ function toolsFor(target: ResearchTarget): ChatCreateCompletionParams.Tool[] {
 /** Streams each step of Toast's search, then its cited answer. */
 export async function* research(
   client: Mixedbread,
-  turns: Turn[],
+  query: string,
   target: ResearchTarget,
   signal?: AbortSignal,
 ): AsyncGenerator<ResearchEvent> {
@@ -155,7 +150,10 @@ export async function* research(
     .createCompletion(
       {
         model: "toast-1",
-        messages: [{ role: "system", content: instructions() }, ...turns],
+        messages: [
+          { role: "system", content: instructions() },
+          { role: "user", content: query },
+        ],
         tools: toolsFor(target),
         include,
         context_management: { edits: [{ type: "prune_context" }] },

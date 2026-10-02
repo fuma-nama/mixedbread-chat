@@ -27,8 +27,7 @@ async function collect(
   target: ResearchTarget = { kind: "stores", stores: "auto" },
 ): Promise<ResearchEvent[]> {
   const events: ResearchEvent[] = [];
-  const turns = [{ role: "user" as const, content: "q" }];
-  for await (const event of research(client, turns, target)) {
+  for await (const event of research(client, "q", target)) {
     events.push(event);
   }
   return events;

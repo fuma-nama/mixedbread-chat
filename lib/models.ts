@@ -9,11 +9,7 @@ export interface Model {
   provider: string;
   /** Least to most. */
   efforts: Effort[];
-  /** Toast itself, answering straight from the user's sources. */
-  toast?: true;
 }
-
-const TOAST_MODEL = "mixedbread/toast-1";
 
 const allowed = process.env.ALLOWED_MODELS?.match(/[^\s,]+/g) ?? undefined;
 
@@ -79,6 +75,8 @@ async function fetchCatalog(): Promise<Model[]> {
     if (!entry.success) continue;
     const { id, name, type, owned_by, released, tags } = entry.data;
     if (type !== "language" || !tags?.includes("tool-use")) continue;
+    // Toast runs inside search only.
+    if (owned_by === "mixedbread") continue;
     if (allowed && !allowed.includes(id)) continue;
     const model: Model = {
       id,
@@ -86,13 +84,11 @@ async function fetchCatalog(): Promise<Model[]> {
       provider: owned_by,
       efforts: effortsOf(entry.data.reasoning_options),
     };
-    if (id === TOAST_MODEL) model.toast = true;
     entries.push({ model, released: released ?? 0 });
   }
 
   entries.sort(
     (a, b) =>
-      (b.model.toast ? 1 : 0) - (a.model.toast ? 1 : 0) ||
       a.model.provider.localeCompare(b.model.provider) ||
       b.released - a.released,
   );

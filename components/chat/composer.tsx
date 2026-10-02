@@ -13,7 +13,7 @@ import { IconSwap } from "@/components/ui/icon-swap";
 import { useWindowEvent } from "@/hooks/use-window-event";
 import type { SearchScope } from "@/lib/sources";
 import { ModelPicker } from "./model-picker";
-import { useModel, useSearchScope } from "./picks";
+import { useSearchScope } from "./picks";
 import { ReasoningPicker } from "./reasoning-picker";
 import { SourcesPicker } from "./sources-picker";
 
@@ -56,7 +56,6 @@ export const Composer = memo(function Composer({
   fresh: boolean;
 }) {
   const scope = useSearchScope();
-  const toast = useModel().current?.toast;
   const [text, setText] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -65,9 +64,7 @@ export const Composer = memo(function Composer({
     () => navigator.onLine,
     () => true,
   );
-  let reason = online ? undefined : "You’re offline";
-  if (toast && scope === "none")
-    reason = "Pick a source for Toast to answer from";
+  const reason = online ? undefined : "You’re offline";
   const tooLong = text.length > MAX_LENGTH;
   const ready = text.trim() !== "" && !tooLong && !reason;
   const stop = busy && !ready;

@@ -32,7 +32,6 @@ import {
   scopeOf,
   sourceSelectionSchema,
 } from "@/lib/sources";
-import { toastModel } from "@/lib/toast-model";
 import { getViewer } from "@/lib/viewer";
 
 // Answers run on after the request that starts them; this ends them.
@@ -187,7 +186,6 @@ async function answer(
   naming?: Promise<void>,
 ) {
   const chosen = (await listModels()).find((entry) => entry.id === model);
-  const toast = chosen?.toast === true;
   const messageId = crypto.randomUUID();
   // Kept at once, so messages sent while it runs go after it.
   const parentId = await appendMessage(chatId, {
@@ -202,7 +200,6 @@ async function answer(
       connections: viewer.connections,
       selection: sources,
       firstLabel: nextLabel(history),
-      toast,
     }),
   };
   const scope = scopeOf(sources, viewer.organizations);
@@ -214,7 +211,7 @@ async function answer(
     async execute({ writer }) {
       try {
         const result = streamText({
-          model: toast ? toastModel : model,
+          model,
           reasoning:
             reasoning !== "auto" && chosen?.efforts.includes(reasoning)
               ? reasoning
@@ -244,13 +241,11 @@ Today is ${new Date().toISOString().slice(0, 10)}.`,
           // History with searches needs the tool even when search is off.
           activeTools: searching ? ["search"] : [],
           // A message sent meanwhile ends it at the next step, and the next
-          // answer takes it up. Toast searches and writes up in one go.
-          stopWhen: toast
-            ? isStepCount(8)
-            : [
-                isStepCount(8),
-                async () => (await getChat(chatId))?.leafId !== messageId,
-              ],
+          // answer takes it up.
+          stopWhen: [
+            isStepCount(8),
+            async () => (await getChat(chatId))?.leafId !== messageId,
+          ],
           abortSignal: signal,
         });
         let parts: ChatMessage["parts"] = [];
