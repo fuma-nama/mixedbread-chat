@@ -3,7 +3,15 @@ export const PROVIDER_ID = "mixedbread";
 export const PLATFORM_URL =
   process.env.MXBAI_PLATFORM_URL ?? "https://www.platform.mixedbread.com";
 
-export const SCOPES = ["openid", "profile", "email", "offline_access"];
+// The API scopes cover reading and searching stores, and running Toast.
+export const SCOPES = [
+  "openid",
+  "profile",
+  "email",
+  "offline_access",
+  "stores:read",
+  "completions:create",
+];
 
 export function callbackURL(origin: string): string {
   return new URL(`/api/auth/callback/${PROVIDER_ID}`, origin).href;
@@ -14,17 +22,14 @@ export function accountKey(subject: string, organizationId: string): string {
   return `${subject}:${organizationId}`;
 }
 
-export function organizationOfKey(key: string): string {
-  return key.slice(key.lastIndexOf(":") + 1);
-}
-
-export function organizationOfToken(token: string): string {
-  const payload = token.split(".")[1];
-  const claims = payload
-    ? JSON.parse(Buffer.from(payload, "base64url").toString("utf8"))
-    : undefined;
-  if (typeof claims?.organization_id !== "string") {
-    throw new Error("The access token names no organization.");
+/** The organization a sign-in granted, as Mixedbread's userinfo names it. */
+export function organizationOf(profile: Record<string, unknown>): {
+  id: string;
+  name?: string;
+} {
+  const { organization_id: id, organization_name: name } = profile;
+  if (typeof id !== "string") {
+    throw new Error("Mixedbread named no organization.");
   }
-  return claims.organization_id;
+  return { id, name: typeof name === "string" ? name : undefined };
 }

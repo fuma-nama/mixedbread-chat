@@ -5,9 +5,10 @@ import { genericOAuth } from "better-auth/plugins/generic-oauth";
 import { headers } from "next/headers";
 import { cache } from "react";
 import { db } from "./db";
+import { organization } from "./db/schema";
 import {
   accountKey,
-  organizationOfToken,
+  organizationOf,
   PLATFORM_URL,
   PROVIDER_ID,
   SCOPES,
@@ -40,11 +41,17 @@ export const auth = betterAuth({
           clientId: clientId ?? "",
           pkce: true,
           scopes: SCOPES,
-          accountSubject: ({ tokens, profile }) =>
-            accountKey(
-              String(profile.sub),
-              organizationOfToken(tokens.accessToken ?? ""),
-            ),
+          // Sign-in is when Mixedbread names the organization.
+          accountSubject: async ({ profile }) => {
+            const { id, name } = organizationOf(profile);
+            if (name) {
+              await db
+                .insert(organization)
+                .values({ id, name })
+                .onConflictDoUpdate({ target: organization.id, set: { name } });
+            }
+            return accountKey(String(profile.sub), id);
+          },
           overrideUserInfo: true,
         },
       ],

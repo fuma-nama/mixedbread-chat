@@ -3,9 +3,9 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { auth } from "../auth";
 import { db } from "../db";
-import { account } from "../db/schema";
+import { account, organization } from "../db/schema";
 import { MAX_STORES, type StoreOption } from "../sources";
-import { organizationOfKey, PROVIDER_ID } from "./platform";
+import { PROVIDER_ID } from "./platform";
 
 class ReconnectError extends Error {}
 
@@ -18,21 +18,23 @@ export function needsReconnect(error: unknown): boolean {
 }
 
 export async function listConnections(userId: string) {
+  // An account key ends with its organization's ID: see `accountKey`.
+  const organizationId = sql<string>`split_part(${account.accountId}, ':', -1)`;
   const rows = await db
     .select({
-      id: account.id,
-      key: account.accountId,
+      accountId: account.id,
+      organizationId,
+      name: organization.name,
       expiresAt: account.accessTokenExpiresAt,
     })
     .from(account)
+    .leftJoin(organization, eq(organization.id, organizationId))
     .where(and(eq(account.userId, userId), eq(account.providerId, PROVIDER_ID)))
     .orderBy(asc(account.createdAt));
   return rows.map((row, index) => ({
-    accountId: row.id,
-    organizationId: organizationOfKey(row.key),
-    // The platform shares no organization names yet.
-    name: `Organization ${index + 1}`,
-    expiresAt: row.expiresAt,
+    ...row,
+    // Unnamed until its next sign-in.
+    name: row.name ?? `Organization ${index + 1}`,
   }));
 }
 

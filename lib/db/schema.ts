@@ -42,6 +42,12 @@ export const message = pgTable(
   ],
 );
 
+/** Connected organizations, named as Mixedbread last said. */
+export const organization = pgTable("organization", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+});
+
 /** OAuth clients the build registered with Mixedbread. */
 export const oauthClient = pgTable("oauth_client", {
   /** Space separated. */

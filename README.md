@@ -22,7 +22,7 @@ A ChatGPT-style chat template that answers from your documents and the web, with
 
 On Auto, the chat model first calls `find_stores` to find stores by name and description, and passes the ones it picks to `search`. A Mixedbread token reaches one organization, so a search over several runs one Toast search per organization, side by side.
 
-- **Sign-in**: Mixedbread OAuth through [Better Auth](https://www.better-auth.com). Each connected organization is its own account, with encrypted tokens.
+- **Sign-in**: Mixedbread OAuth through [Better Auth](https://www.better-auth.com). Each connected organization is its own account, with encrypted tokens that can only read its stores and run Toast (`stores:read`, `completions:create`).
 - **Chats**: stored in Postgres. Each message keeps its parent, so edits and retries branch one chat.
 - **Answers**: run on the server through Redis, so closing the tab doesn't end them, and the owner's other tabs follow, join and stop them.
 
@@ -66,8 +66,8 @@ Everything that depends on Mixedbread's API lives in `lib/mixedbread/`, so upstr
 
 | File               | Owns                                                         |
 | ------------------ | ------------------------------------------------------------ |
-| `platform.ts`      | OAuth provider, scopes and what a token says                 |
-| `organizations.ts` | Connected organizations, their tokens and stores             |
+| `platform.ts`      | OAuth provider, scopes and the organization a sign-in grants |
+| `organizations.ts` | Connected organizations, their names, tokens and stores      |
 | `research.ts`      | The Toast request, and its stream parsed into app types      |
 | `citations.ts`     | Citation labels                                              |
 | `files.ts`         | Pages of parsed files, for showing what a citation points at |
