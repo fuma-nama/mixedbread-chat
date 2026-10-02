@@ -22,14 +22,31 @@ export function accountKey(subject: string, organizationId: string): string {
   return `${subject}:${organizationId}`;
 }
 
-/** The organization a sign-in granted, as Mixedbread's userinfo names it. */
-export function organizationOf(profile: Record<string, unknown>): {
-  id: string;
-  name?: string;
-} {
-  const { organization_id: id, organization_name: name } = profile;
-  if (typeof id !== "string") {
-    throw new Error("Mixedbread named no organization.");
+export function organizationOfToken(token: string): string {
+  const payload = token.split(".")[1];
+  const claims = payload
+    ? JSON.parse(Buffer.from(payload, "base64url").toString("utf8"))
+    : undefined;
+  if (typeof claims?.organization_id !== "string") {
+    throw new Error("The access token names no organization.");
   }
-  return { id, name: typeof name === "string" ? name : undefined };
+  return claims.organization_id;
+}
+
+/**
+ * The name of the organization a token reaches, which only userinfo carries:
+ * Better Auth reads the sign-in profile from the ID token. Sign-in goes on without it.
+ */
+export async function organizationName(
+  token: string,
+): Promise<string | undefined> {
+  try {
+    const response = await fetch(`${PLATFORM_URL}/api/auth/oauth2/userinfo`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    const { organization_name: name } = await response.json();
+    return typeof name === "string" ? name : undefined;
+  } catch {
+    return undefined;
+  }
 }
