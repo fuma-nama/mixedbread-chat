@@ -1,14 +1,10 @@
 "use client";
 
+import { Collapsible } from "@base-ui/react/collapsible";
 import { cn } from "cn";
 import { ChevronRightIcon } from "lucide-react";
 import { useState } from "react";
 import { flushSync } from "react-dom";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 
 export type State = "running" | "done" | "failed" | "stopped";
 
@@ -25,14 +21,13 @@ export function Activity({
   label: React.ReactNode;
   detail?: string;
   meta?: React.ReactNode;
-  /** What it is doing now, under the label. */
   status: React.ReactNode;
   disabled?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <Collapsible data-slot="activity" disabled={disabled}>
-      <CollapsibleTrigger className="group/trigger -ml-1 flex max-w-full cursor-pointer items-center gap-2 rounded-md py-0.5 pr-1.5 pl-1 text-left text-[13.5px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 not-data-disabled:hover:text-foreground focus-visible:outline-2 data-disabled:cursor-default">
+    <Collapsible.Root data-slot="activity" disabled={disabled}>
+      <Collapsible.Trigger className="group/trigger -ml-1 flex max-w-full cursor-pointer items-center gap-2 rounded-md py-0.5 pr-1.5 pl-1 text-left text-[13.5px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 not-data-disabled:hover:text-foreground focus-visible:outline-2 data-disabled:cursor-default">
         <span className="flex w-5 shrink-0 justify-center">{indicator}</span>
         <span className="flex min-w-0 items-baseline gap-1.5">
           <span className="shrink-0">{label}</span>
@@ -46,14 +41,17 @@ export function Activity({
           )}
         </span>
         <ChevronRightIcon className="size-3.5 shrink-0 opacity-50 transition-transform duration-300 ease-smooth group-data-disabled/trigger:hidden group-data-panel-open/trigger:rotate-90 motion-reduce:transition-none" />
-      </CollapsibleTrigger>
+      </Collapsible.Trigger>
       {status}
-      <CollapsibleContent hiddenUntilFound>
+      <Collapsible.Panel
+        hiddenUntilFound
+        className="flow-root h-(--collapsible-panel-height) overflow-y-clip transition-[height,opacity] duration-300 ease-smooth data-ending-style:h-0 data-ending-style:opacity-0 data-starting-style:h-0 data-starting-style:opacity-0 motion-reduce:transition-none [&[hidden]:not([hidden=until-found])]:hidden"
+      >
         <div className="mt-2 ml-[9.5px] flex flex-col gap-3 border-l border-soft pb-1 pl-[17.5px]">
           {children}
         </div>
-      </CollapsibleContent>
-    </Collapsible>
+      </Collapsible.Panel>
+    </Collapsible.Root>
   );
 }
 
@@ -84,11 +82,7 @@ export function LiveLine({ text }: { text?: string }) {
   );
 }
 
-/**
- * The first `count` items, and how many more wait until they are asked for.
- * `showAll` is for a button right after the list: as the button goes, focus
- * moves to the first new item that takes it, or else to the list.
- */
+/** `showAll` is for a button right after the list, and moves focus into the list. */
 export function useFirst<T>(items: T[], count: number) {
   const [all, setAll] = useState(false);
   const more = all ? 0 : items.length - count;

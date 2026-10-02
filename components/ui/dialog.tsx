@@ -5,7 +5,6 @@ import { cn } from "cn";
 import { XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-/** Shared by dialogs and alert dialogs, so both open the same way. */
 export const backdropClassName =
   "fixed inset-0 z-50 bg-[oklch(0.2_0.02_48/0.22)] backdrop-blur-[2px] transition-opacity duration-200 ease-smooth data-ending-style:opacity-0 data-starting-style:opacity-0 dark:bg-black/50";
 
@@ -16,10 +15,7 @@ export const Dialog = DialogPrimitive.Root;
 
 export const DialogTrigger = DialogPrimitive.Trigger;
 
-/** Opens one dialog from anywhere with what it shows: `openWithPayload`. */
 export const createDialogHandle = DialogPrimitive.createHandle;
-
-export type DialogHandle<Payload> = DialogPrimitive.Handle<Payload>;
 
 export function DialogContent({
   className,

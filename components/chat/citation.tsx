@@ -2,40 +2,52 @@
 
 import { PreviewCard } from "@base-ui/react/preview-card";
 import { cn } from "cn";
-import { atom, type PrimitiveAtom, useAtomValue, useSetAtom } from "jotai";
 import { ArrowUpRightIcon, ScanSearchIcon } from "lucide-react";
-import { createContext, memo, use, useId, useMemo, useState } from "react";
+import { memo, useId, useRef, useState } from "react";
+import useSWR from "swr";
+import { openPage, type PageResult } from "@/app/(chat)/actions";
 import { SliceGlyph } from "@/components/brand/slice";
+import { Button } from "@/components/ui/button";
 import {
   createDialogHandle,
   Dialog,
-  type DialogHandle,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
+import { Spinner } from "@/components/ui/spinner";
 import { useCoarsePointer } from "@/hooks/use-media";
 import { originOf, type Source, sourceTitle } from "@/lib/mixedbread/citations";
-import { PageView, type ShownPage } from "./page-view";
-import { useOrganizations } from "./sources-provider";
+import type { Organization } from "@/lib/sources";
+import { useConnect, useOrganizations } from "./picks";
 
-type Lit = ReadonlySet<string> | undefined;
-
-/** The labels of the sources being pointed at: one, or all of a file's. */
-const HighlightContext = createContext<PrimitiveAtom<Lit>>(
-  atom<Lit>(undefined),
-);
-
-/** Points at sources, lighting up the citations and rows of their labels. */
-export function useHighlight() {
-  return useSetAtom(use(HighlightContext));
+interface Preview {
+  source: Source;
+  number?: number;
+  open?: () => void;
+  side: "top" | "bottom";
+  align: "start" | "center";
 }
 
-/** Pairs a message's inline citations with its sources: hovering one lights up the other. */
-export function CitationHighlight({ children }: { children: React.ReactNode }) {
-  const lit = useMemo(() => atom<Lit>(undefined), []);
-  return <HighlightContext value={lit}>{children}</HighlightContext>;
+const card = PreviewCard.createHandle<Preview>();
+const page = createDialogHandle<ShownPage>();
+
+export function light(from: Element, labels?: ReadonlySet<string>) {
+  const message = from.closest("[data-message-id]");
+  for (const element of message?.querySelectorAll<HTMLElement>(
+    "[data-labels]",
+  ) ?? []) {
+    const own = (element.dataset.labels ?? "").split(" ");
+    element.toggleAttribute(
+      "data-lit",
+      labels !== undefined && own.some((label) => labels.has(label)),
+    );
+  }
 }
 
 export const badge =
-  "cursor-pointer items-center justify-center rounded-[0.35rem] bg-soft font-mono font-medium text-muted-foreground tabular-nums no-underline outline-offset-1 outline-ring transition-[background-color,color] duration-150 ease-smooth hover:bg-berry/15 hover:text-berry focus-visible:outline-2 data-popup-open:bg-berry/15 data-popup-open:text-berry data-[lit=true]:bg-berry/15 data-[lit=true]:text-berry";
+  "cursor-pointer items-center justify-center rounded-[0.35rem] bg-soft font-mono font-medium text-muted-foreground tabular-nums no-underline outline-offset-1 outline-ring transition-[background-color,color] duration-150 ease-smooth hover:bg-berry/15 hover:text-berry focus-visible:outline-2 data-popup-open:bg-berry/15 data-popup-open:text-berry data-lit:bg-berry/15 data-lit:text-berry";
 
 /** Memoized: streamdown makes these, and settled ones sit still while the answer streams. */
 export const Citation = memo(function Citation({
@@ -61,34 +73,11 @@ export const Citation = memo(function Citation({
   );
 });
 
-interface Preview {
-  source: Source;
-  number?: number;
-  /** Opens its page, for a page its reader can open. */
-  open?: () => void;
-  side: "top" | "bottom";
-  align: "start" | "center";
-}
-
-interface Cards {
-  card: PreviewCard.Handle<Preview>;
-  page: DialogHandle<ShownPage>;
-}
-
-const CardsContext = createContext<Cards | null>(null);
-
-// Pointers pass through the card, and a click on the trigger opens the source;
-// only a finger, which has no hover, uses the links on it.
-export function SourceCards({ children }: { children: React.ReactNode }) {
-  const [cards] = useState<Cards>(() => ({
-    card: PreviewCard.createHandle(),
-    page: createDialogHandle(),
-  }));
-
+// Pointers pass through the card, as clicking the trigger opens the source; touch uses its links.
+export function SourceCards() {
   return (
-    <CardsContext value={cards}>
-      {children}
-      <PreviewCard.Root handle={cards.card}>
+    <>
+      <PreviewCard.Root handle={card}>
         {({ payload }) => (
           <PreviewCard.Portal>
             <PreviewCard.Positioner
@@ -106,18 +95,13 @@ export function SourceCards({ children }: { children: React.ReactNode }) {
           </PreviewCard.Portal>
         )}
       </PreviewCard.Root>
-      <Dialog handle={cards.page}>
+      <Dialog handle={page}>
         {({ payload }) => payload && <PageView {...payload} />}
       </Dialog>
-    </CardsContext>
+    </>
   );
 }
 
-/**
- * Anything that previews a source in the chat's card. With a mouse it
- * previews on hover and opens the source on click: its site, or the page of
- * a file shown as one. On touch screens a tap shows the card instead.
- */
 export function SourcePreview({
   source,
   number,
@@ -128,7 +112,7 @@ export function SourcePreview({
   ...props
 }: {
   source: Source;
-  /** As the answer numbers it; the search trace lists sources it may not cite. */
+  /** As the answer numbers it; the search trace lists uncited ones too. */
   number?: number;
   /** Every label it stands for, when several searches found it. */
   labels?: ReadonlySet<string>;
@@ -142,26 +126,9 @@ export function SourcePreview({
   /** Marks an inline citation, so copies of the text can leave it out. */
   "data-citation"?: number;
 }) {
-  const cards = use(CardsContext);
-  if (!cards) throw new Error("SourcePreview needs <SourceCards>");
   const id = useId();
   const coarse = useCoarsePointer();
-  const highlighted = use(HighlightContext);
-  const highlight = useSetAtom(highlighted);
-  // Each re-renders only when its own light changes.
-  const lit = useAtomValue(
-    useMemo(
-      () =>
-        atom((get) => {
-          const current = get(highlighted);
-          if (!current || !labels) return current?.has(source.label) ?? false;
-          for (const label of labels) if (current.has(label)) return true;
-          return false;
-        }),
-      [highlighted, labels, source.label],
-    ),
-  );
-  const light = () => highlight(labels ?? new Set([source.label]));
+  const own = labels ?? new Set([source.label]);
   // A page shows to those connected to its organization, with their access.
   const organizations = useOrganizations();
   const organization =
@@ -171,15 +138,15 @@ export function SourcePreview({
   const open =
     organization && source.type === "file"
       ? () => {
-          cards.card.close();
+          card.close();
           const trigger = document.getElementById(id);
-          cards.page.openWithPayload({ source, organization, trigger });
+          page.openWithPayload({ source, organization, trigger });
         }
       : undefined;
 
   return (
     <PreviewCard.Trigger
-      handle={cards.card}
+      handle={card}
       delay={250}
       closeDelay={150}
       payload={{ source, number, open, side, align }}
@@ -187,13 +154,13 @@ export function SourcePreview({
       {...(source.type === "url" && !coarse
         ? { href: source.url, target: "_blank", rel: "noreferrer" }
         : { render: <button type="button" /> })}
-      onPointerEnter={light}
-      onPointerLeave={() => highlight(rest)}
-      onFocus={light}
-      onBlur={() => highlight(undefined)}
-      onClick={coarse ? () => cards.card.open(id) : open}
+      onPointerEnter={(event) => light(event.currentTarget, own)}
+      onPointerLeave={(event) => light(event.currentTarget, rest)}
+      onFocus={(event) => light(event.currentTarget, own)}
+      onBlur={(event) => light(event.currentTarget)}
+      onClick={coarse ? () => card.open(id) : open}
       aria-haspopup={!coarse && open ? "dialog" : undefined}
-      data-lit={lit}
+      data-labels={Array.from(own).join(" ")}
       {...props}
     />
   );
@@ -248,7 +215,6 @@ function SourceCard({ source, number, open }: Preview) {
 const MARKS =
   /!\[[^\]]*\]\([^)]*\)|\[([^\]]*)\]\([^)]*\)|\*\*(?=\S)([^*]*\S)\*\*|^#{1,6}\s+|^```.*|`/g;
 
-/** A passage as plain text, one line per block. */
 function plain(text: string): string {
   let lines = "";
   for (const line of text.split("\n")) {
@@ -258,4 +224,168 @@ function plain(text: string): string {
     if (words) lines += lines ? `\n${words}` : words;
   }
   return lines;
+}
+
+interface ShownPage {
+  source: Extract<Source, { type: "file" }>;
+  organization: Organization;
+  trigger: HTMLElement | null;
+}
+
+// The loading stand-in takes a tall page's height, so the dialog holds still.
+const frame = "h-[min(60vh,40rem)] rounded-lg bg-soft";
+
+const notice =
+  "flex flex-col items-center justify-center gap-3 rounded-lg bg-soft px-4 py-12 text-center text-[13px] text-pretty text-muted-foreground";
+
+function PageView({ source, organization, trigger }: ShownPage) {
+  // Its links expire within the hour, so a page opened again soon reuses them.
+  const { data: result, mutate } = useSWR(
+    {
+      organizationId: organization.id,
+      storeId: source.storeId,
+      chunkId: source.chunkId,
+      claim: source.claim,
+    },
+    (cited) => openPage(cited).catch((): PageResult => ({ status: "error" })),
+    { dedupingInterval: 10 * 60 * 1000 },
+  );
+
+  return (
+    <DialogContent finalFocus={() => trigger} className="max-w-xl gap-4">
+      <DialogHeader>
+        <p className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+          <SliceGlyph className="size-3 text-berry" />
+          <span className="truncate font-mono">{originOf(source)}</span>
+        </p>
+        <DialogTitle className="truncate">{source.filename}</DialogTitle>
+        {source.claim && (
+          <DialogDescription className="line-clamp-2">
+            Cited for “{source.claim}”
+          </DialogDescription>
+        )}
+      </DialogHeader>
+      {!result ? (
+        <p
+          role="status"
+          className={cn(
+            frame,
+            "flex items-center justify-center gap-2 text-[13px] text-muted-foreground",
+          )}
+        >
+          <Spinner aria-hidden="true" className="size-3.5" />
+          Loading the page…
+        </p>
+      ) : result.status === "ok" ? (
+        <PageImage {...result} title={source.filename} />
+      ) : result.status === "reconnect" ? (
+        <Reconnect organization={organization} />
+      ) : (
+        <div className={notice}>
+          {result.status === "missing"
+            ? "This page isn’t available anymore."
+            : "Couldn’t load the page."}
+          {result.status === "error" && (
+            <Button
+              variant="outline"
+              size="sm"
+              // Emptied first, so it shows as loading again.
+              onClick={() => void mutate(undefined)}
+            >
+              Try again
+            </Button>
+          )}
+        </div>
+      )}
+    </DialogContent>
+  );
+}
+
+function Reconnect({ organization }: { organization: Organization }) {
+  const { pending, connect } = useConnect();
+
+  return (
+    <div className={notice}>
+      Access to {organization.name} ended.
+      <Button variant="outline" size="sm" disabled={pending} onClick={connect}>
+        {pending ? "Opening Mixedbread…" : "Sign in again"}
+      </Button>
+    </div>
+  );
+}
+
+function PageImage({
+  page,
+  marked,
+  title,
+}: Extract<PageResult, { status: "ok" }> & { title: string }) {
+  const scroller = useRef<HTMLDivElement>(null);
+  const [loaded, setLoaded] = useState(false);
+  const first = page.blocks[marked[0]];
+
+  return (
+    <>
+      <div
+        ref={scroller}
+        className={cn(
+          frame,
+          // A hairline, so a white page keeps its edge on a light dialog.
+          "h-auto max-h-[min(60vh,40rem)] scrollbar-thin overflow-y-auto overscroll-contain ring-1 ring-soft outline-offset-2 outline-ring focus-visible:outline-2",
+        )}
+      >
+        <div
+          className="relative"
+          style={page.aspect ? { aspectRatio: page.aspect } : undefined}
+        >
+          {/* oxlint-disable-next-line nextjs/no-img-element -- a presigned, expiring image gains nothing from next/image */}
+          <img
+            src={page.image}
+            alt={`A page of ${title}`}
+            decoding="async"
+            onLoad={(event) => {
+              setLoaded(true);
+              // A third of the way down, so the lines before it show too.
+              const view = scroller.current;
+              if (first && view) {
+                view.scrollTop =
+                  first.y * event.currentTarget.offsetHeight -
+                  view.clientHeight / 3;
+              }
+            }}
+            className={cn(
+              "block w-full transition-opacity duration-200 ease-smooth motion-reduce:transition-none",
+              !loaded && "opacity-0",
+            )}
+          />
+          {loaded &&
+            marked.map((index) => {
+              const block = page.blocks[index];
+              return (
+                <mark
+                  key={index}
+                  style={{
+                    left: `${block.x * 100}%`,
+                    top: `${block.y * 100}%`,
+                    width: `${block.width * 100}%`,
+                    height: `${block.height * 100}%`,
+                  }}
+                  className="absolute rounded-[3px] bg-berry/12 outline-2 outline-offset-2 outline-berry/75 motion-safe:animate-fade"
+                >
+                  <span className="sr-only">{block.text}</span>
+                </mark>
+              );
+            })}
+        </div>
+      </div>
+      <a
+        href={page.original}
+        target="_blank"
+        rel="noreferrer"
+        className="flex items-center gap-1 self-start text-xs text-muted-foreground outline-offset-2 outline-ring transition-colors hover:text-foreground focus-visible:outline-2"
+      >
+        <ArrowUpRightIcon className="size-3 shrink-0" />
+        Open original
+      </a>
+    </>
+  );
 }

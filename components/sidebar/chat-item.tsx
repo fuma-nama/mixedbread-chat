@@ -6,7 +6,13 @@ import Link from "next/link";
 import { memo, useRef, useState } from "react";
 import { preload } from "swr";
 import { renameChat } from "@/app/(chat)/actions";
-import { chatKey, fetchChat, openLink } from "@/components/chat/chat-cache";
+import {
+  type ChatSummary,
+  changeChats,
+  chatKey,
+  fetchChat,
+  openLink,
+} from "@/components/chat/chat-cache";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,7 +22,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "@/components/ui/toast";
 import { TypedText } from "@/components/ui/typed-text";
-import { type ChatSummary, useChats } from "./chats-provider";
 
 /** Memoized, so a click re-renders only the rows it changes. */
 export const ChatItem = memo(function ChatItem({
@@ -34,27 +39,32 @@ export const ChatItem = memo(function ChatItem({
   selected?: boolean;
   onDelete: (chats: ChatSummary[]) => void;
 }) {
-  const { update } = useChats();
   const [renaming, setRenaming] = useState(false);
-  // Renaming ended from the keyboard, so the row takes focus back.
   const refocus = useRef(false);
-  // The title the reader gave it, which shows at once instead of typing out.
+  // A title the reader gave shows at once instead of typing out.
   const [named, setNamed] = useState<string>();
   const selecting = selected !== undefined;
   const href = `/c/${chat.id}`;
+
+  function retitle(title: string) {
+    setNamed(title);
+    changeChats((chats) =>
+      chats.map((entry) =>
+        entry.id === chat.id ? { ...entry, title } : entry,
+      ),
+    );
+  }
 
   async function rename(title: string) {
     setRenaming(false);
     const next = title.trim();
     if (!next || next === chat.title) return;
     const previous = chat.title;
-    setNamed(next);
-    update(chat.id, { title: next });
+    retitle(next);
     try {
       await renameChat(chat.id, next);
     } catch {
-      setNamed(previous);
-      update(chat.id, { title: previous });
+      retitle(previous);
       toast.add({ title: "Couldn’t rename the chat." });
     }
   }
@@ -103,7 +113,7 @@ export const ChatItem = memo(function ChatItem({
             className={cn(
               // Selected neighbors join into one block, square where they meet.
               "flex h-8 items-center rounded-lg px-2 text-[13.5px] text-foreground/75 outline-offset-0 outline-ring transition-[color,background-color,border-radius,box-shadow,scale] duration-200 ease-[var(--ease-smooth),var(--ease-smooth),var(--ease-smooth),var(--ease-smooth),var(--ease-spring)] select-none [-webkit-touch-callout:none] group-hover/item:text-foreground group-has-aria-expanded/item:bg-[oklch(from_var(--foreground)_l_c_h/0.055)] focus-visible:outline-2 in-[[data-selected]+[data-selected]]:rounded-t-none in-[[data-selected]:has(+[data-selected])]:rounded-b-none in-[[data-selected]:has(+[data-selected])]:shadow-[0_1px_var(--selected)] motion-reduce:transition-none",
-              // A finger resting on it presses it in as the fill builds, past a tap's length.
+              // Delayed past a tap, so only a held finger presses it in.
               "data-holding:delay-100 data-holding:duration-350 data-holding:ease-linear motion-safe:data-holding:scale-[0.98] motion-safe:data-holding:bg-(--selected)",
               selected
                 ? "bg-(--selected) text-foreground"
@@ -129,8 +139,8 @@ export const ChatItem = memo(function ChatItem({
               aria-label="Chat options"
               className={cn(
                 "absolute top-1 right-1 flex size-6 cursor-pointer items-center justify-center rounded-md text-muted-foreground opacity-0 outline-offset-2 outline-ring transition-[opacity,background-color,color] duration-150 group-hover/item:opacity-100 hover:bg-soft hover:text-foreground focus-visible:opacity-100 focus-visible:outline-2 aria-expanded:bg-soft aria-expanded:text-foreground aria-expanded:opacity-100 pointer-coarse:opacity-100",
-                // Hidden rather than gone, so the menu Rename closes keeps its
-                // place and leaves focus in the title field.
+                // Hidden, not gone, so the closing menu keeps its place and
+                // focus stays in the field.
                 renaming && "invisible",
               )}
             >

@@ -22,26 +22,22 @@ const connect = () =>
 const lifetime = 60;
 // Nearly as long as a request may take; the tab then asks again.
 const waitFor = 280;
-// Notes a message sent, with how to answer it, and claims the chat for a
-// runner unless one has it.
 const claim = `redis.call("SET", KEYS[2], ARGV[1], "EX", ARGV[2])
 if redis.call("SET", KEYS[1], "", "NX", "EX", ARGV[2]) then return 1 end
 return 0`;
-// Lets the chat go, unless a message came since the runner last looked.
 const release = `if redis.call("EXISTS", KEYS[2]) == 1 then return 0 end
 redis.call("DEL", KEYS[1])
 redis.call("PUBLISH", KEYS[1], "")
 return 1`;
 
-// The runner's hold, holding the answer it showed last, and the latest
-// message's settings.
+// The runner's hold, set to the answer it shows, and the latest message's settings.
 const keysOf = (chatId: string) => [
   `chat:${chatId}:run`,
   `chat:${chatId}:sent`,
 ];
 const stopChannel = (chatId: string) => `chat:${chatId}:stop`;
 
-/** Notes a message sent with `settings`; true when no runner has the chat, so the caller starts one. */
+/** Notes `settings`; true when no runner has the chat, so the caller starts one. */
 export async function claimChat(chatId: string, settings: string) {
   await connect();
   const claimed = await redis.eval(claim, {
@@ -56,7 +52,7 @@ export async function chatRuns(chatId: string) {
   return (await redis.exists(keysOf(chatId)[0])) === 1;
 }
 
-/** A claimed chat, for its runner. Stop from any of the owner's tabs calls `stop`. */
+/** For the runner that claimed the chat; Stop from any tab calls `stop`. */
 export async function holdChat(chatId: string, stop: () => void) {
   await connect();
   const keys = keysOf(chatId);
@@ -69,16 +65,14 @@ export async function holdChat(chatId: string, stop: () => void) {
   await subscriber.subscribe(stopChannel(chatId), stop);
   let held = true;
   return {
-    /** The settings of the latest message since the last look, if one came. */
+    /** The settings sent since the last look, if any. */
     next: async () => (await redis.getDel(keys[1])) ?? undefined,
-    /** Lets tabs follow the answer `stream` carries. */
+    /** Lets tabs follow `stream`, and returns this server's own copy. */
     async show(id: string, stream: ReadableStream<string>) {
-      // Read through Redis, not this copy.
-      await (
-        await streams.createNewResumableStream(id, () => stream)
-      )?.cancel();
+      const copy = await streams.createNewResumableStream(id, () => stream);
       await redis.set(keys[0], id, { condition: "XX", expiration: "KEEPTTL" });
       await redis.publish(keys[0], id);
+      return copy;
     },
     /** Lets the chat go, unless a message came since the last look. */
     async release() {
@@ -97,9 +91,8 @@ export async function holdChat(chatId: string, stop: () => void) {
 }
 
 /**
- * The chat's running answer, or without one, the one that starts while this
- * waits, for the tab to follow with a request's full time. A tab that shows
- * the chat `busy` learns at once when nothing runs it anymore.
+ * The running answer, or else one that starts while this waits. A `busy` tab
+ * hears at once when no runner holds the chat.
  */
 export async function runningAnswer(
   chatId: string,
@@ -114,10 +107,9 @@ export async function runningAnswer(
   // Subscribed first, so one starting meanwhile isn't missed.
   await subscriber.subscribe(key, done);
   const shown = await redis.get(key);
-  // A runner that died lets go within its lifetime, so a chat one holds is
-  // asked about again by then.
+  // A held chat is asked about again within its lifetime, in case its runner died.
   const timer = setTimeout(done, (shown === null ? waitFor : lifetime) * 1000);
-  // One that ended is no longer running.
+  // An ended stream is "DONE".
   const running =
     shown && (await streams.hasExistingStream(shown)) === true
       ? shown
@@ -133,12 +125,12 @@ export async function runningAnswer(
 /** What the answer streamed so far, then the rest. */
 export const followAnswer = (id: string) => streams.resumeExistingStream(id);
 
-/** Stops the answer that runs, drops what was sent before, and wakes waiting tabs. */
+/** Stops the running answer and drops the messages waiting for one. */
 export async function stopAnswer(chatId: string) {
   await connect();
   const [run, sent] = keysOf(chatId);
   await redis.del(sent);
   await redis.publish(stopChannel(chatId), "");
-  // Even when no runner is left to stop.
+  // Wakes waiting tabs even when no runner is left to stop.
   await redis.publish(run, "");
 }

@@ -1,9 +1,6 @@
 import { cn } from "cn";
 
-/**
- * A soft block glides to the `[data-row]` the mouse is over, or keyboard focus
- * is on. Rows need a position so they paint above it.
- */
+/** Follows the hovered or focused `[data-row]`; rows need a position to paint above it. */
 export function HoverArea({
   className,
   children,

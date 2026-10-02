@@ -19,8 +19,7 @@ const usage = {
   outputTokens: { total: undefined, text: undefined, reasoning: undefined },
 };
 
-// Hands the question to the search tool, then answers with its findings, so
-// the chat stays plain tool calls any model can pick up afterwards.
+// Calls search, then answers with its findings, so any model can pick up the chat after.
 export const toastModel = wrapLanguageModel({
   model: {
     specificationVersion: "v4",

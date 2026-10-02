@@ -2,7 +2,6 @@
 
 import { Toast } from "@base-ui/react/toast";
 
-/** Call from anywhere: `toast.add({ title: "Link copied" })`. */
 export const toast = Toast.createToastManager();
 
 export function Toaster({ children }: { children: React.ReactNode }) {

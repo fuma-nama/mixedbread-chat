@@ -1,7 +1,4 @@
-/**
- * Keeps `value` in a cookie for a year, for the server to read on the next
- * visit, including one that starts from a link on another site.
- */
+/** For the server to read on later visits, including ones from another site's link. */
 export function remember(name: string, value: string) {
   void cookieStore.set({
     name,

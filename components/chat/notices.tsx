@@ -8,7 +8,7 @@ import { answersPerDay } from "@/lib/limits";
 
 export type Failure = "limit" | "session" | "network" | "other";
 
-/** An answer's failure, or none when following it again recovers, as after going offline. */
+/** None when following again recovers, as after going offline. */
 export function failureOf(error: Error): Failure | undefined {
   if (APICallError.isInstance(error)) {
     return error.statusCode === 401 ? "session" : undefined;
@@ -16,7 +16,7 @@ export function failureOf(error: Error): Failure | undefined {
   return error instanceof TypeError ? undefined : "other";
 }
 
-/** A request's failure by its status; 0 when it got none. */
+/** `status` is 0 when the request got no response. */
 export function failureOfStatus(status: number): Failure {
   if (status === 429) return "limit";
   if (status === 401) return "session";

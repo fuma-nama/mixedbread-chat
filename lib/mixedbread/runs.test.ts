@@ -37,7 +37,6 @@ test("plans a run per organization with stores picked, and the web on one's toke
       run.connection.accountId,
       run.target,
     ]);
-  // A missing organization is on auto.
   assert.deepEqual(plan({ web: true, organizations: {} }), [
     ["Organization 1", "acc-a", { kind: "stores", stores: "auto" }],
     ["Organization 2", "acc-b", { kind: "stores", stores: "auto" }],
@@ -74,26 +73,22 @@ test("a run resolves its stores once they are listed", async () => {
     target: { kind: "stores" as const, stores },
   });
 
-  // Auto leaves the pick to Toast, without waiting for the listing.
+  // Never settles: auto doesn't wait for the listing.
   const listing = new Promise<undefined>(() => {});
   assert.deepEqual(await resolveTarget(on("auto"), listing), {
     kind: "stores",
     stores: "auto",
   });
-  // "all" is every store there is now, stores made since the pick included,
-  // by name as a question would say it.
   assert.deepEqual(await resolveTarget(on("all"), listed), {
     kind: "stores",
     stores: ["HR", "Legal"],
   });
-  // Without a listing, or with nothing in it, "all" can't search.
   const none = { error: "No stores to search in Organization 1." };
   assert.deepEqual(await resolveTarget(on("all"), failed), none);
   assert.deepEqual(
     await resolveTarget(on("all"), Promise.resolve(new Map())),
     none,
   );
-  // Picks drop stores deleted since; with all of them gone, the run fails.
   assert.deepEqual(await resolveTarget(on(["store-2", "gone"]), listed), {
     kind: "stores",
     stores: ["Legal"],
@@ -101,7 +96,6 @@ test("a run resolves its stores once they are listed", async () => {
   assert.deepEqual(await resolveTarget(on(["gone"]), listed), {
     error: "The stores picked in Organization 1 no longer exist.",
   });
-  // A failed listing keeps the picks as they are.
   assert.deepEqual(await resolveTarget(on(["gone"]), failed), {
     kind: "stores",
     stores: ["gone"],

@@ -19,7 +19,6 @@ export function useTheme(): Theme {
   return useSyncExternalStore(subscribeTheme, current, () => "system");
 }
 
-/** Crossfades the page where the browser can; elsewhere colors change at once. */
 export function setTheme(theme: Theme) {
   remember("theme", theme);
 
@@ -30,8 +29,7 @@ export function setTheme(theme: Theme) {
     document.startViewTransition(() => apply(theme));
     return;
   }
-  // Without the crossfade, colors with a transition would each ease on
-  // their own while the rest switch at once.
+  // Otherwise colors with a transition would ease while the rest switch at once.
   const still = document.createElement("style");
   still.textContent = "*,*::before,*::after{transition:none!important}";
   document.head.append(still);
@@ -45,7 +43,6 @@ function apply(theme: Theme) {
   const root = document.documentElement;
   if (theme === "system") delete root.dataset.theme;
   else root.dataset.theme = theme;
-  // The browser's bars have one color per device scheme; a picked theme sets both.
   for (const meta of document.querySelectorAll<HTMLMetaElement>(
     'meta[name="theme-color"]',
   )) {

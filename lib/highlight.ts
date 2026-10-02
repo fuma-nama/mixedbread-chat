@@ -1,7 +1,4 @@
-/**
- * The blocks of a page holding at least half of a claim's words, or else the
- * one holding the most if it holds a fair share; always two words or more.
- */
+/** Indexes of the blocks that share enough words with the claim. */
 export function highlight(claim: string, blocks: { text: string }[]): number[] {
   const words = wordsOf(claim);
   const marked: number[] = [];

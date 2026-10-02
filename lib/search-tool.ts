@@ -20,11 +20,13 @@ import {
 } from "./mixedbread/runs";
 import type { SourceSelection } from "./sources";
 
+/** `started` is when it began, by the server's clock. */
 type SearchOutput =
-  | { status: "searching"; calls: Step[] }
+  | { status: "searching"; calls: Step[]; started: number }
   | {
       status: "done";
       calls: Step[];
+      started: number;
       findings: string;
       sources: Source[];
       /** Distinct chunks the steps returned. */
@@ -36,7 +38,6 @@ interface SearchContext {
   userId: string;
   connections: Connection[];
   selection: SourceSelection;
-  /** Continues the conversation's source labels. */
   firstLabel: number;
   /** Toast answers the chat itself, from the whole conversation. */
   toast: boolean;
@@ -131,6 +132,7 @@ export function searchTool(context: SearchContext) {
       const events = merge(
         runs.map((entry) => run(clientOf, entry, turns, abortSignal)),
       );
+      yield { status: "searching", calls: [], started };
       for await (const { index, value } of events) {
         if (value.type !== "step") {
           results[index] = value;
@@ -139,7 +141,11 @@ export function searchTool(context: SearchContext) {
         if (runs.length > 1) value.step.group = runs[index].label;
         steps.set(value.step.id, value.step);
         for (const chunk of value.chunks) read.add(chunk);
-        yield { status: "searching", calls: Array.from(steps.values()) };
+        yield {
+          status: "searching",
+          calls: Array.from(steps.values()),
+          started,
+        };
       }
 
       if (runs.length > 0 && results.every((r) => r.type === "failed")) {
@@ -149,6 +155,7 @@ export function searchTool(context: SearchContext) {
       yield {
         status: "done",
         calls: Array.from(steps.values()),
+        started,
         findings: findings || "No sources are picked, so nothing was searched.",
         sources,
         read: read.size,

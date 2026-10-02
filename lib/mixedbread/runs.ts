@@ -37,10 +37,8 @@ export function planRuns(
 }
 
 /**
- * What a run searches. Auto starts while the stores list; the rest wait for the
- * listing (missing when it failed): "all" becomes every store there is now,
- * and picks drop stores deleted since, as a deleted one fails the whole run.
- * Listed stores go by name, so Toast knows the one a question names.
+ * Stores go by name, so Toast knows the one a question names; picks drop ones
+ * deleted since, as one fails the whole run. A failed listing resolves undefined.
  */
 export async function resolveTarget(
   { label, target }: Run,
@@ -70,7 +68,6 @@ export type RunEvent = ResearchEvent | { type: "failed"; message: string };
 
 export type RunResult = Exclude<RunEvent, { type: "step" }>;
 
-/** Labels citations in run order, so labels stay unique, with a heading per run when there are several. */
 export function combine(
   runs: Run[],
   results: RunResult[],
@@ -110,7 +107,7 @@ export async function* merge<T>(
       yield { index, value: result.value };
     }
   } finally {
-    // Stopped early, as on an abort: let the others clean up too.
+    // Stopped early, as on an abort: let the others clean up.
     for (const index of pending.keys())
       void generators[index].return(undefined);
   }

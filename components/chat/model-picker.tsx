@@ -1,11 +1,20 @@
 "use client";
 
 import { Combobox } from "@base-ui/react/combobox";
+import { cn } from "cn";
+import { useAtom } from "jotai";
 import { CheckIcon, ChevronDownIcon, SearchIcon } from "lucide-react";
 import { memo, useState } from "react";
+import {
+  field,
+  fieldInput,
+  indicator,
+  pill,
+  popup,
+} from "@/components/ui/popup";
 import type { Model } from "@/lib/models";
 import { remember } from "@/lib/remember";
-import { useModels } from "./models-provider";
+import { modelAtom, useModels } from "./picks";
 
 // A type, not an interface, so it fits Base UI's indexed `Group`.
 type ProviderGroup = { provider: string; items: Model[] };
@@ -20,14 +29,9 @@ function groupsOf(models: Model[]) {
   return groups;
 }
 
-export function ModelPicker({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (model: string) => void;
-}) {
-  const { models } = useModels();
+export function ModelPicker() {
+  const models = useModels();
+  const [model, setModel] = useAtom(modelAtom);
   const { contains } = Combobox.useFilter();
   const [query, setQuery] = useState("");
   const groups = groupsOf(models);
@@ -38,46 +42,33 @@ export function ModelPicker({
   });
   const text = query.trim();
 
-  // Each word matches the name or the provider, so "claude 5.5" and
-  // "openai sol" both find what they mean.
-  let shown = groups;
-  if (text) {
-    const words = text.split(/\s+/);
-    shown = [];
-    for (const group of groups) {
-      const found = group.items.filter((model) => {
-        const label = `${model.name} ${model.provider}`;
-        return words.every((word) => contains(label, word));
-      });
-      if (found.length > 0)
-        shown.push({ provider: group.provider, items: found });
-    }
-  }
-
   return (
     <Combobox.Root
       items={items}
-      filteredItems={shown}
+      // Each word may match the name or the provider, as in "openai sol".
+      filter={(model: Model, words) => {
+        const label = `${model.name} ${model.provider}`;
+        return words.split(/\s+/).every((word) => contains(label, word));
+      }}
       inputValue={query}
-      // A pick clears the field at once; the results it found stay while the
-      // popup fades, and the next open starts blank.
+      // After a pick, the results stay while the popup fades; the next open starts blank.
       onInputValueChange={(next, { reason }) => {
         if (reason !== "input-clear") setQuery(next);
       }}
       onOpenChangeComplete={(open) => {
         if (!open) setQuery("");
       }}
-      value={value}
+      value={model}
       onValueChange={(id) => {
         if (!id) return;
         remember("model", id);
-        onChange(id);
+        setModel(id);
       }}
       autoHighlight
     >
       <Combobox.Trigger
         aria-label="Model"
-        className="flex h-8 min-w-0 cursor-pointer items-center gap-1 rounded-full px-2 text-[13px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 hover:bg-soft hover:text-foreground focus-visible:outline-2 aria-expanded:bg-soft aria-expanded:text-foreground"
+        className={cn(pill, "flex h-8 min-w-0 items-center gap-1 px-2")}
       >
         <span className="truncate">
           <Combobox.Value />
@@ -93,14 +84,17 @@ export function ModelPicker({
         >
           <Combobox.Popup
             aria-label="Choose a model"
-            className="flex max-h-[min(22rem,var(--available-height))] w-72 max-w-(--available-width) origin-(--transform-origin) flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-float transition-[opacity,scale] duration-150 ease-smooth outline-none data-ending-style:scale-[0.97] data-ending-style:opacity-0 data-ending-style:duration-100 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none"
+            className={cn(
+              popup,
+              "flex max-h-[min(22rem,var(--available-height))] w-72 max-w-(--available-width) flex-col overflow-hidden",
+            )}
           >
-            <div className="flex h-10 shrink-0 items-center gap-2 border-b border-soft px-3 in-data-[side=top]:order-last in-data-[side=top]:border-t in-data-[side=top]:border-b-0">
+            <div className={field}>
               <SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
               <Combobox.Input
                 placeholder="Search models"
                 aria-label="Search models"
-                className="h-full w-full min-w-0 bg-transparent text-base outline-none placeholder:text-muted-foreground/75 md:text-[13.5px]"
+                className={fieldInput}
               />
             </div>
             <Combobox.Empty className="px-3 py-6 text-center text-[13px] text-muted-foreground empty:p-0">
@@ -138,7 +132,7 @@ const ModelItem = memo(function ModelItem({ model }: { model: Model }) {
       className="relative flex min-h-8 cursor-default items-center gap-2.5 rounded-lg px-2 py-1.5 pr-8 text-[13.5px] text-foreground/90 transition-colors duration-100 outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-highlighted:bg-soft data-highlighted:text-foreground"
     >
       <span className="min-w-0 flex-1 truncate">{model.name}</span>
-      <Combobox.ItemIndicator className="absolute right-2 flex transition-[opacity,scale] duration-150 ease-spring data-ending-style:scale-50 data-ending-style:opacity-0 data-starting-style:scale-50 data-starting-style:opacity-0 motion-reduce:transition-none">
+      <Combobox.ItemIndicator className={indicator}>
         <CheckIcon className="size-3.5 text-foreground" />
       </Combobox.ItemIndicator>
     </Combobox.Item>

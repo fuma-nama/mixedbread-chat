@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 
 export interface Organization {
   id: string;
@@ -18,18 +18,17 @@ export interface StoreOption {
 
 export type StoresResult =
   | { status: "ok"; stores: StoreOption[] }
-  /** The grant lapsed or lacks access: signing in to it again fixes this. */
+  /** Signing in to the organization again fixes it. */
   | { status: "reconnect" }
-  | { status: "error"; message: string };
+  | { status: "error" };
 
-/** The stores of an organization the picker lists: the first page. */
+/** The picker lists only an organization's first page of stores. */
 export const MAX_STORES = 100;
 
 export const sourceSelectionSchema = z.object({
   web: z.boolean(),
-  // By organization ID, a missing one on auto: Toast picks among the stores
-  // ("auto"), every store there is at search time ("all"), or exactly these;
-  // none leaves the organization out.
+  // By organization ID; missing is "auto", where Toast picks. "all" is every
+  // store at search time, and an empty list leaves the organization out.
   organizations: z.record(
     z.string().max(100),
     z.enum(["auto", "all"]).or(z.array(z.string().max(100)).max(MAX_STORES)),
@@ -66,7 +65,6 @@ export function scopeOf(
 
 export const SELECTION_COOKIE = "sources";
 
-/** The selection the picker's cookie holds; by default, the web and Toast picking stores. */
 export function parseSelection(value = ""): SourceSelection {
   try {
     return sourceSelectionSchema.parse(JSON.parse(decodeURIComponent(value)));

@@ -9,7 +9,6 @@ export function TypedText({
   instant = false,
 }: {
   text: string;
-  /** Show a change at once, as after the reader renamed something. */
   instant?: boolean;
 }) {
   const reduced = useReducedMotion();

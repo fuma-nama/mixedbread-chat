@@ -3,6 +3,7 @@
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import { cn } from "cn";
 import { CheckIcon, ChevronRightIcon } from "lucide-react";
+import { indicator, popup } from "./popup";
 
 export const DropdownMenu = MenuPrimitive.Root;
 
@@ -37,7 +38,8 @@ export function DropdownMenuContent({
       >
         <MenuPrimitive.Popup
           className={cn(
-            "max-h-(--available-height) min-w-44 origin-(--transform-origin) scrollbar-thin overflow-y-auto rounded-xl bg-popover p-1 text-popover-foreground shadow-float transition-[opacity,scale] duration-150 ease-smooth outline-none data-ending-style:scale-[0.97] data-ending-style:opacity-0 data-ending-style:duration-100 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none",
+            popup,
+            "max-h-(--available-height) min-w-44 scrollbar-thin overflow-y-auto p-1",
             className,
           )}
           {...props}
@@ -102,7 +104,7 @@ export function DropdownMenuRadioItem({
   return (
     <MenuPrimitive.RadioItem className={cn(item, "pr-8")} {...props}>
       {children}
-      <MenuPrimitive.RadioItemIndicator className="absolute right-2 flex transition-[opacity,scale] duration-150 ease-spring data-ending-style:scale-50 data-ending-style:opacity-0 data-starting-style:scale-50 data-starting-style:opacity-0 motion-reduce:transition-none">
+      <MenuPrimitive.RadioItemIndicator className={indicator}>
         <CheckIcon className="size-3.5 text-foreground!" />
       </MenuPrimitive.RadioItemIndicator>
     </MenuPrimitive.RadioItem>

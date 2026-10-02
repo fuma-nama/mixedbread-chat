@@ -10,5 +10,5 @@ export function isTheme(value: unknown): value is Theme {
   return themes.some((theme) => theme.id === value);
 }
 
-/** The browser's own bars around the page, in each scheme. */
+/** For the browser's own bars around the page. */
 export const themeColors = { light: "#fefcf9", dark: "#18120f" };

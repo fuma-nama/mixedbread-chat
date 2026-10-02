@@ -1,4 +1,3 @@
-/** Crossfades between two icons in one spot, like copy turning into a check. */
 export function IconSwap({
   swapped,
   from,

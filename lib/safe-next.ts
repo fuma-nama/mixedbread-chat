@@ -1,7 +1,6 @@
 /**
- * Where to go after signing in: a path on this site, never another origin.
- * It is resolved the way a browser would, which drops tabs and newlines and
- * reads backslashes as slashes, so no spelling of another origin gets past.
+ * Where to go after signing in, on this site. Parsed as a browser would, so no
+ * spelling of another origin gets past.
  */
 export function safeNext(value: unknown): string {
   const url =
@@ -13,7 +12,6 @@ export function safeNext(value: unknown): string {
     : "/";
 }
 
-/** `path`, carrying `next` along when it goes somewhere other than home. */
 export function withNext(path: string, next: string): string {
   return next === "/" ? path : `${path}?next=${encodeURIComponent(next)}`;
 }

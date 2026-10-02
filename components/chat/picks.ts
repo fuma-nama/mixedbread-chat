@@ -1,14 +1,15 @@
 "use client";
 
-import { atom, useAtomValue, useSetAtom } from "jotai";
-import { useHydrateAtoms } from "jotai/utils";
-import { useEffect, useState } from "react";
+import { atom, getDefaultStore, useAtomValue } from "jotai";
+import { useState } from "react";
 import { mutate } from "swr";
 import useSWRImmutable from "swr/immutable";
 import { disconnectOrganization, listAllStores } from "@/app/(chat)/actions";
 import { toast } from "@/components/ui/toast";
 import { useWindowEvent } from "@/hooks/use-window-event";
 import { PROVIDER_ID } from "@/lib/mixedbread/platform";
+import type { Model } from "@/lib/models";
+import type { Reasoning } from "@/lib/reasoning";
 import { remember } from "@/lib/remember";
 import {
   choiceFor,
@@ -23,77 +24,56 @@ import {
 
 export type StoresState = { status: "loading" } | StoresResult;
 
-const organizationsAtom = atom<Organization[]>([]);
-const selectionAtom = atom<SourceSelection>({ web: true, organizations: {} });
+export const modelsAtom = atom<Model[]>([]);
+export const organizationsAtom = atom<Organization[]>([]);
+
+export const modelAtom = atom("");
+export const reasoningAtom = atom<Reasoning>("auto");
+
+export const selectionAtom = atom<SourceSelection>({
+  web: true,
+  organizations: {},
+});
 
 const LOADING: StoresState = { status: "loading" };
-const LOAD_FAILED: StoresResult = {
-  status: "error",
-  message: "Couldn’t load the stores.",
-};
+const FAILED: StoresState = { status: "error" };
 
-// Every organization's stores, in one action: a client runs them one at a time.
 const STORES = "stores";
 const loadStores = (): Promise<Record<string, StoresState>> =>
   listAllStores().catch(() => ({}));
 
-export function SourcesProvider({
-  organizations,
-  initialSelection,
-  children,
-}: {
-  organizations: Organization[];
-  initialSelection: SourceSelection;
-  children: React.ReactNode;
-}) {
-  useHydrateAtoms([
-    [organizationsAtom, organizations],
-    [selectionAtom, initialSelection],
-  ] as const);
-
-  useEffect(() => {
-    // Back from a connection that didn't finish, with Better Auth's reason.
-    const url = new URL(window.location.href);
-    const error = url.searchParams.get("error");
-    if (!error) return;
-    url.searchParams.delete("error");
-    window.history.replaceState(null, "", url);
-    // The toaster above subscribes in its own effect, which runs after this one.
-    queueMicrotask(() =>
-      toast.add({
-        title:
-          error === "access_denied"
-            ? "Connecting was cancelled."
-            : "Connecting didn’t finish. Try again.",
-      }),
-    );
-  }, []);
-
-  return children;
+export function select(next: SourceSelection) {
+  getDefaultStore().set(selectionAtom, next);
+  remember(SELECTION_COOKIE, serializeSelection(next));
 }
 
-/** Also remembered for the next visit. */
-const selectAtom = atom(null, (_get, set, next: SourceSelection) => {
-  set(selectionAtom, next);
-  remember(SELECTION_COOKIE, serializeSelection(next));
-});
-
-const disconnectAtom = atom(null, async (get, set, organizationId: string) => {
+export async function disconnect(organizationId: string) {
   await disconnectOrganization(organizationId);
-  set(organizationsAtom, (organizations) =>
+  const store = getDefaultStore();
+  const organizations = store.get(organizationsAtom);
+  store.set(
+    organizationsAtom,
     organizations.filter((entry) => entry.id !== organizationId),
   );
-  const selection = get(selectionAtom);
+  const selection = store.get(selectionAtom);
   const { [organizationId]: _, ...rest } = selection.organizations;
-  set(selectAtom, { ...selection, organizations: rest });
-});
+  select({ ...selection, organizations: rest });
+}
 
-/** The actions; using them never re-renders. */
-export function useSources() {
-  return {
-    select: useSetAtom(selectAtom),
-    disconnect: useSetAtom(disconnectAtom),
-  };
+export function useModels() {
+  return useAtomValue(modelsAtom);
+}
+
+export function useModel() {
+  const model = useAtomValue(modelAtom);
+  const reasoning = useAtomValue(reasoningAtom);
+  const current = useModels().find((entry) => entry.id === model);
+  // A model that doesn't take the effort picked for another thinks on Auto.
+  const effort: Reasoning =
+    reasoning !== "auto" && current?.efforts.includes(reasoning)
+      ? reasoning
+      : "auto";
+  return { model, current, effort };
 }
 
 export function useOrganizations() {
@@ -108,7 +88,6 @@ export function useSearchScope() {
   return scopeOf(useSelection(), useOrganizations());
 }
 
-/** Every organization's stores, loaded on first use; see `storesOf`. */
 export function useAllStores() {
   return useSWRImmutable(STORES, loadStores).data;
 }
@@ -117,10 +96,9 @@ export function storesOf(
   all: Record<string, StoresState> | undefined,
   organizationId: string,
 ): StoresState {
-  return all ? (all[organizationId] ?? LOAD_FAILED) : LOADING;
+  return all ? (all[organizationId] ?? FAILED) : LOADING;
 }
 
-/** Loads the stores again, with this organization's showing as loading. */
 export function reloadStores(organizationId: string) {
   void mutate(STORES, loadStores(), {
     optimisticData: (all?: Record<string, StoresState>) => ({
@@ -131,9 +109,8 @@ export function reloadStores(organizationId: string) {
   });
 }
 
-/** Leaves for Mixedbread to grant an organization, then comes back here. */
 async function linkOrganization() {
-  // Loaded on demand: nothing else on chat pages needs the auth client.
+  // Nothing else on chat pages needs the auth client.
   const { authClient } = await import("@/lib/auth-client");
   const result = await authClient.linkSocial({
     provider: PROVIDER_ID,
@@ -143,7 +120,7 @@ async function linkOrganization() {
   if (result.error) throw new Error(result.error.message);
 }
 
-/** Connecting, with a pending state that a return through the back button resets. */
+/** Its pending state resets on a return through the back button. */
 export function useConnect() {
   const [pending, setPending] = useState(false);
 
@@ -163,7 +140,7 @@ export function useConnect() {
   };
 }
 
-/** The stores picked one by one; an organization on Auto or searched whole adds none. */
+/** Stores ticked one by one; Auto and whole organizations add none. */
 export function usePickedStores() {
   const organizations = useOrganizations();
   const selection = useSelection();
@@ -174,9 +151,7 @@ export function usePickedStores() {
     const state = storesOf(all, organization.id);
     if (typeof choice === "string" || state.status !== "ok") continue;
     const ids = new Set(choice);
-    for (const store of state.stores) {
-      if (ids.has(store.id)) picked.push(store);
-    }
+    for (const store of state.stores) if (ids.has(store.id)) picked.push(store);
   }
   return picked;
 }

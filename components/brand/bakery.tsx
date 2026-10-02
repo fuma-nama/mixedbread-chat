@@ -4,8 +4,7 @@ import { cn } from "cn";
 import { useState } from "react";
 import { SLICE_PATH } from "./slice";
 
-// The toaster's metal: muted ink mixed into the page, so the slice behind it
-// stays hidden in both themes.
+// Opaque, so the slice behind the toaster stays hidden in both themes.
 const metal =
   "fill-[color-mix(in_oklch,var(--muted-foreground)_55%,var(--panel))]";
 const slot =
@@ -50,7 +49,6 @@ export function Toasting({
         rx="0.6"
         className="fill-crust opacity-0 transition-opacity duration-300 group-data-[state=running]/toaster:motion-safe:animate-toast-heat"
       />
-      {/* The browning dial, so the box reads as a toaster. */}
       <circle cx="13.2" cy="12.9" r="1.15" className={slot} />
       <rect x="3" y="16" width="2.2" height="1.4" rx="0.7" className={metal} />
       <rect
@@ -78,7 +76,6 @@ export function Toasting({
 
 type Phase = "live" | "baking" | "baked";
 
-// A comet of crumbs: the lead in front, a fading tail behind it on the ring.
 const CRUMBS = [1.6, 1.4, 1.2, 1, 0.85, 0.72, 0.6].map((r, index) => {
   const angle = (-index * 30 * Math.PI) / 180;
   return {
@@ -97,7 +94,7 @@ function round(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-/** Motion plays on a change of state, so a thought loaded from history is just the slice. */
+/** Moves only on a change, so a thought from history is just the slice. */
 export function Proofing({ live }: { live: boolean }) {
   const [phase, setPhase] = useState<Phase>(live ? "live" : "baked");
   if (live && phase !== "live") setPhase("live");
@@ -139,7 +136,6 @@ export function Proofing({ live }: { live: boolean }) {
         </g>
       )}
       {phase === "baking" && (
-        // A puff of flour as the slice lands.
         <circle
           cx="8"
           cy="8.4"

@@ -18,7 +18,6 @@ export default async function LoginPage({
 }) {
   const params = await searchParams;
   const next = safeNext(params.next);
-  // Already signed in: nothing to do here.
   if (await getViewer()) redirect(next);
 
   return (

@@ -1,13 +1,13 @@
 import { z } from "zod";
 import { type Effort, reasoningLevels } from "./reasoning.ts";
 
-/** A chat model on AI Gateway. Each can call tools, which search needs. */
+/** An AI Gateway model; each can call tools, which search needs. */
 export interface Model {
   id: string;
   name: string;
-  /** The Gateway's ID for its provider, which groups it in the picker. */
+  /** The Gateway's provider ID. */
   provider: string;
-  /** The efforts it takes besides Auto, least to most. */
+  /** Least to most. */
   efforts: Effort[];
   /** Toast itself, answering straight from the user's sources. */
   toast?: true;
@@ -15,12 +15,11 @@ export interface Model {
 
 const TOAST_MODEL = "mixedbread/toast-1";
 
-/** A deployment's own list, such as a demo's, the first picked by default. */
 const allowed = process.env.ALLOWED_MODELS?.match(/[^\s,]+/g) ?? undefined;
 
 export const defaultModel = allowed?.[0] ?? "anthropic/claude-sonnet-5";
 
-/** Names chats: small, quick, and on AI Gateway's free tier, so any deployment has it. */
+/** On AI Gateway's free tier, so any deployment has it. */
 export const titleModel = "openai/gpt-4.1-nano";
 
 const CATALOG = "https://ai-gateway.vercel.sh/v1/models";
@@ -31,7 +30,7 @@ let catalog: Model[] | undefined;
 let expires = 0;
 let refreshing: Promise<Model[]> | undefined;
 
-/** Refreshed hourly per server; the last catalog serves while a new one loads or fails. */
+/** Refreshed hourly; the last catalog serves while a new one loads or fails. */
 export async function listModels(): Promise<Model[]> {
   if (Date.now() > expires) {
     refreshing ??= refresh();
@@ -76,7 +75,6 @@ async function fetchCatalog(): Promise<Model[]> {
 
   const entries: { model: Model; released: number }[] = [];
   for (const raw of data) {
-    // Entries are parsed one by one, so a shape the app doesn't know is skipped.
     const entry = entrySchema.safeParse(raw);
     if (!entry.success) continue;
     const { id, name, type, owned_by, released, tags } = entry.data;
@@ -92,7 +90,6 @@ async function fetchCatalog(): Promise<Model[]> {
     entries.push({ model, released: released ?? 0 });
   }
 
-  // Toast first, then by provider, newest first.
   entries.sort(
     (a, b) =>
       (b.model.toast ? 1 : 0) - (a.model.toast ? 1 : 0) ||

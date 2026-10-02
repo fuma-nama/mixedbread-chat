@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "cn";
+import { useSetAtom } from "jotai";
 import { useState } from "react";
 import {
   DropdownMenu,
@@ -10,30 +11,26 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { pill } from "@/components/ui/popup";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useGlide } from "@/hooks/use-glide";
-import { type Effort, type Reasoning, reasoningLevels } from "@/lib/reasoning";
+import { type Reasoning, reasoningLevels } from "@/lib/reasoning";
 import { remember } from "@/lib/remember";
-import { Dial } from "./dial";
+import { reasoningAtom, useModel } from "./picks";
 
-export function ReasoningPicker({
-  value,
-  efforts,
-  onChange,
-}: {
-  value: Reasoning;
-  efforts?: Effort[];
-  onChange: (reasoning: Reasoning) => void;
-}) {
+export function ReasoningPicker() {
+  const { current, effort } = useModel();
+  const setReasoning = useSetAtom(reasoningAtom);
+  const efforts = current?.efforts;
   const [open, setOpen] = useState(false);
   const hidden = !efforts?.length;
   // Folding away, it keeps the level it had rather than turning to Auto.
-  const [shown, setShown] = useState(value);
-  if (!hidden && shown !== value) setShown(value);
+  const [shown, setShown] = useState(effort);
+  if (!hidden && shown !== effort) setShown(effort);
   const rank = reasoningLevels.findIndex((level) => level.id === shown);
   const level = reasoningLevels[rank];
 
@@ -48,13 +45,16 @@ export function ReasoningPicker({
       {/* Clipped only while folded, so the focus ring shows in full. */}
       <div className={cn("min-w-0", hidden && "overflow-hidden")}>
         <DropdownMenu open={open} onOpenChange={setOpen}>
-          {/* It would cover the open menu, so it waits for the menu to close. */}
+          {/* It would cover the open menu. */}
           <Tooltip disabled={open}>
             <TooltipTrigger
               render={
                 <DropdownMenuTrigger
                   aria-label={`Thinking effort: ${level.name}`}
-                  className="group/reasoning flex h-8 cursor-pointer items-center gap-1.5 rounded-full px-2 text-[13px] text-muted-foreground outline-offset-0 outline-ring transition-colors duration-150 hover:bg-soft hover:text-foreground focus-visible:outline-2 aria-expanded:bg-soft aria-expanded:text-foreground"
+                  className={cn(
+                    pill,
+                    "group/reasoning flex h-8 items-center gap-1.5 px-2",
+                  )}
                 />
               }
             >
@@ -65,10 +65,10 @@ export function ReasoningPicker({
           </Tooltip>
           <DropdownMenuContent side="top" sideOffset={8}>
             <DropdownMenuRadioGroup
-              value={value}
+              value={effort}
               onValueChange={(id: Reasoning) => {
                 remember("reasoning", id);
-                onChange(id);
+                setReasoning(id);
               }}
             >
               <DropdownMenuLabel>Thinking effort</DropdownMenuLabel>
@@ -139,5 +139,80 @@ function Rolling({ text, rank }: { text: string; rank: number }) {
         {roll.text}
       </span>
     </span>
+  );
+}
+
+// A 270° arc, as on a toaster's browning dial.
+const ARC = "M3.93 12.97A5.75 5.75 0 1 1 12.07 12.97";
+
+// Even steps round the arc, so a level sits in the same place for any model.
+const settings: Record<Reasoning, [turn: number, heat: string]> = {
+  auto: [0.5, "var(--honey)"],
+  none: [0, "var(--honey)"],
+  minimal: [0.2, "color-mix(in oklch, var(--crust) 20%, var(--honey))"],
+  low: [0.4, "color-mix(in oklch, var(--crust) 45%, var(--honey))"],
+  medium: [0.6, "color-mix(in oklch, var(--crust) 75%, var(--honey))"],
+  high: [0.8, "var(--crust)"],
+  xhigh: [
+    1,
+    "oklch(from var(--crust) calc(l - 0.08) calc(c + 0.04) calc(h - 10))",
+  ],
+};
+
+function Dial({ level }: { level: Reasoning }) {
+  const [turn, heat] = settings[level];
+  const auto = level === "auto";
+  // A round cap would paint a dot even with nothing to fill.
+  const filled = !auto && turn > 0;
+
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      fill="none"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      className="size-4 overflow-visible"
+    >
+      <path
+        d={ARC}
+        pathLength={10}
+        strokeDasharray="0 1"
+        className={cn(
+          "stroke-current transition-opacity duration-300 motion-reduce:transition-none",
+          auto ? "opacity-55" : "opacity-0",
+        )}
+      />
+      <path
+        d={ARC}
+        className={cn(
+          "stroke-current transition-opacity duration-300 motion-reduce:transition-none",
+          auto ? "opacity-0" : "opacity-22",
+        )}
+      />
+      <path
+        d={ARC}
+        pathLength={1}
+        strokeDasharray="1 1"
+        style={{ strokeDashoffset: filled ? 1 - turn : 1, stroke: heat }}
+        className={cn(
+          "transition-[stroke-dashoffset,stroke,opacity] duration-500 ease-smooth motion-reduce:transition-none",
+          !filled && "opacity-0",
+        )}
+      />
+      <g
+        style={
+          {
+            "--turn": `${-135 + 270 * turn}deg`,
+            // Away from the end stop, so Extra high twitches back.
+            "--twitch": turn === 1 ? "-9deg" : "9deg",
+          } as React.CSSProperties
+        }
+        className="origin-[8px_8.9px] [rotate:var(--turn)] transition-[rotate] duration-600 ease-spring group-hover/reasoning:[rotate:calc(var(--turn)_+_var(--twitch))] motion-reduce:transition-none"
+      >
+        <line x1="8" y1="8.9" x2="8" y2="5.2" className="stroke-current" />
+        <circle cx="8" cy="8.9" r="1.4" className="fill-current" />
+      </g>
+    </svg>
   );
 }

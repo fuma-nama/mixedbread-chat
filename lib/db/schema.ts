@@ -32,7 +32,6 @@ export const message = pgTable(
     chatId: text("chat_id")
       .notNull()
       .references(() => chat.id, { onDelete: "cascade" }),
-    /** The message before this one on its branch; edits and retries share it. */
     parentId: text("parent_id"),
     role: text("role", { enum: ["user", "assistant"] }).notNull(),
     parts: jsonb("parts").$type<ChatMessage["parts"]>().notNull(),
@@ -45,7 +44,7 @@ export const message = pgTable(
 
 /** OAuth clients the build registered with Mixedbread. */
 export const oauthClient = pgTable("oauth_client", {
-  /** The callback URLs the client allows, space separated. */
+  /** Space separated. */
   redirectUris: text("redirect_uris").primaryKey(),
   clientId: text("client_id").notNull(),
 });

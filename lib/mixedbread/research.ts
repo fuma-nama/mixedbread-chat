@@ -15,12 +15,11 @@ export interface Step {
   tool?: string;
   /** "Web" or an organization's name, when a search spans several runs. */
   group?: string;
-  /** The store Toast picked for the step, by name when known. */
+  /** By name when known, else by ID. */
   store?: string;
   queries?: string[];
   pattern?: string;
   filters?: { key: string; operator: string; value: unknown }[];
-  /** The stores a `stores` step looked through. */
   stores?: { name: string }[];
   /** Chunks it returned or read. */
   results?: number;
@@ -31,7 +30,6 @@ export interface Turn {
   content: string;
 }
 
-/** The web, or the organization's stores: Toast picks among them ("auto"), or these. */
 export type ResearchTarget =
   | { kind: "web" }
   | { kind: "stores"; stores: "auto" | string[] };
@@ -132,7 +130,7 @@ function toolsFor(target: ResearchTarget): ChatCreateCompletionParams.Tool[] {
       },
     ];
   }
-  // Without store IDs, Toast picks a store per step from what list_stores shows it.
+  // Without store IDs, Toast picks a store per step from list_stores.
   const store_identifiers =
     target.stores === "auto" ? undefined : target.stores;
   const tools: ChatCreateCompletionParams.Tool[] = [
@@ -261,8 +259,7 @@ function stepOf(call: z.infer<typeof callSchema>): Step {
   return step;
 }
 
-// Any instructions replace Toast's default prompt, and without today's date
-// Toast assumes the year from memory when it searches the web.
+// Replaces Toast's default prompt; without the date, Toast guesses the year from memory.
 function instructions(): string {
   const now = Date.now();
   const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);

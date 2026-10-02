@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gt, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray } from "drizzle-orm";
 import { db } from ".";
 import { chat, message } from "./schema";
 
@@ -18,6 +18,15 @@ export async function getChat(id: string): Promise<Chat | undefined> {
   return row;
 }
 
+export async function getLeafRole(chatId: string) {
+  const [row] = await db
+    .select({ role: message.role })
+    .from(chat)
+    .innerJoin(message, eq(message.id, chat.leafId))
+    .where(eq(chat.id, chatId));
+  return row?.role;
+}
+
 export function getMessages(chatId: string) {
   return db
     .select({
@@ -35,11 +44,7 @@ export async function createChat(values: typeof chat.$inferInsert) {
   await db.insert(chat).values(values);
 }
 
-/**
- * Saves a message after `parentId`, or after the chat's latest, and makes it
- * the latest. The chat stays locked meanwhile, so messages sent at once keep
- * their order. Resending a saved message moves to it. Returns its parent.
- */
+/** Keeps messages sent at once in order; resending one moves to it. Returns its parent. */
 export function appendMessage(
   chatId: string,
   values: Pick<typeof message.$inferInsert, "id" | "role" | "parts">,
@@ -64,7 +69,6 @@ export function appendMessage(
   });
 }
 
-/** Keeps what an answer wrote. */
 export async function saveParts(
   id: string,
   parts: (typeof message.$inferInsert)["parts"],
@@ -72,7 +76,6 @@ export async function saveParts(
   await db.update(message).set({ parts }).where(eq(message.id, id));
 }
 
-/** Updates a chat only when `userId` owns it. */
 export async function updateChat(
   id: string,
   userId: string,
@@ -90,7 +93,6 @@ export async function deleteChats(ids: string[], userId: string) {
     .where(and(inArray(chat.id, ids), eq(chat.userId, userId)));
 }
 
-/** How many answers the user got since `since`, retries included. */
 export async function countAnswers(userId: string, since: Date) {
   const [row] = await db
     .select({ count: count() })
@@ -104,33 +106,4 @@ export async function countAnswers(userId: string, since: Date) {
       ),
     );
   return row.count;
-}
-
-export function searchChats(userId: string, query: string) {
-  const pattern = `%${query.replace(/[\\%_]/g, "\\$&")}%`;
-  const text = sql`jsonb_path_query_array(${message.parts}, '$[*] ? (@.type == "text").text')::text`;
-  const mine = eq(chat.userId, userId);
-
-  return db
-    .select({ id: chat.id, title: chat.title, updatedAt: chat.updatedAt })
-    .from(chat)
-    .where(
-      and(
-        mine,
-        or(
-          ilike(chat.title, pattern),
-          // Joined to the user's chats, so no plan reads others' messages.
-          inArray(
-            chat.id,
-            db
-              .select({ id: message.chatId })
-              .from(message)
-              .innerJoin(chat, eq(message.chatId, chat.id))
-              .where(and(mine, ilike(text, pattern))),
-          ),
-        ),
-      ),
-    )
-    .orderBy(desc(chat.updatedAt))
-    .limit(20);
 }

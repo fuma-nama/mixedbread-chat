@@ -3,13 +3,11 @@ import { followAnswer, runningAnswer, stopAnswer } from "@/lib/answers";
 import { getSession } from "@/lib/auth";
 import { getChat } from "@/lib/db/queries";
 
-// A request follows an answer to its end, or waits for one to start and
-// sends the tab to a new request for it.
+// Follows an answer to its end; one that starts during a wait gets a new request.
 export const maxDuration = 300;
 
 type Context = { params: Promise<{ id: string }> };
 
-/** The chat's answer as it runs, once one does. Only its owner gets it. */
 export async function GET(request: Request, { params }: Context) {
   const [{ id }, session] = await Promise.all([params, getSession()]);
   if (!session) return new Response(null, { status: 401 });
@@ -20,7 +18,7 @@ export async function GET(request: Request, { params }: Context) {
     return new Response(null, { status: 404 });
   }
   const url = new URL(request.url);
-  // The answer the wait below saw start, which may have ended since.
+  // Set by the redirect below.
   let answer = url.searchParams.get("answer");
   if (!answer?.startsWith(`${id}:`)) {
     const { running, started } = await runningAnswer(
@@ -39,7 +37,7 @@ export async function GET(request: Request, { params }: Context) {
     return new Response(null, { status: 404 });
   }
   const stream = await followAnswer(answer);
-  // It ended as the tab came to it, so the tab catches up instead.
+  // It just ended; the tab catches up instead.
   if (!stream) return new Response(null, { status: 204 });
   return new Response(stream.pipeThrough(new TextEncoderStream()), {
     headers: UI_MESSAGE_STREAM_HEADERS,

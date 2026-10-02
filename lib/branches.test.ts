@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { childrenOf, latestLeaf, pathTo, withPath } from "./branches.ts";
+import { childrenOf, latestLeaf, pathTo } from "./branches.ts";
 
 // 1 ─ 2 ─ 3
 //   └ 4 ─ 5   (message 2 edited as 4, then answered with 5)
@@ -33,13 +33,4 @@ test("follows the latest reply down to a leaf", () => {
   const children = childrenOf(messages);
   assert.equal(latestLeaf(children, "1"), "5");
   assert.equal(latestLeaf(children, "2"), "3");
-});
-
-test("adds the messages of a path the tree has not seen", () => {
-  const merged = withPath(messages, [{ id: "1" }, { id: "6" }, { id: "7" }]);
-  assert.deepEqual(merged.slice(5), [
-    { id: "6", parentId: "1" },
-    { id: "7", parentId: "6" },
-  ]);
-  assert.equal(withPath(messages, [{ id: "1" }, { id: "2" }]), messages);
 });

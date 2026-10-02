@@ -1,32 +1,33 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { generateId } from "ai";
+import { DefaultChatTransport, generateId } from "ai";
 import { cn } from "cn";
 import {
   useEffect,
   useEffectEvent,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
 import { mutate } from "swr";
 import { setChatLeaf } from "@/app/(chat)/actions";
-import { useChats, useChatTitle } from "@/components/sidebar/chats-provider";
 import { useReducedMotion } from "@/hooks/use-media";
 import { childrenOf, latestLeaf, pathTo } from "@/lib/branches";
 import { citationsAlong, searchedStores } from "@/lib/messages";
 import type { ChatMessage } from "@/lib/search-tool";
-import type { SearchScope } from "@/lib/sources";
-import { type CachedChat, chatKey } from "./chat-cache";
+import {
+  type CachedChat,
+  changeChats,
+  chatKey,
+  refreshChats,
+  useChatList,
+} from "./chat-cache";
 import { ChatHeader } from "./chat-header";
 import { Composer, type ComposerHandle } from "./composer";
 import { Conversation } from "./conversation";
 import { EmptyState, Suggestions } from "./empty-state";
-import { preloadMarkdown } from "./lazy-markdown";
-import { type Appear, MessageView } from "./message";
-import { useModels } from "./models-provider";
+import { type Appear, endOf, MessageView, preloadMarkdown } from "./message";
 import {
   ErrorNotice,
   type Failure,
@@ -35,63 +36,67 @@ import {
   SharedNotice,
   Unanswered,
 } from "./notices";
+import { useModel, useSearchScope, useSelection } from "./picks";
 import { ShareDialog } from "./share-dialog";
-import { useSearchScope, useSelection } from "./sources-provider";
-
-const placeholders: Record<SearchScope, string> = {
-  web: "Ask anything",
-  docs: "Ask about your stores",
-  both: "Ask your stores or the web",
-  none: "Ask anything",
-};
 
 // Holds the answer's place until it shows, so the real one takes over the view.
 const PENDING: ChatMessage = { id: "pending", role: "assistant", parts: [] };
 
-/** The server turned a message away. */
+/** Reads the answer a send started from its response, and any other from the stream route. */
+class Transport extends DefaultChatTransport<ChatMessage> {
+  async reconnectToStream(
+    options: Parameters<
+      DefaultChatTransport<ChatMessage>["reconnectToStream"]
+    >[0],
+  ) {
+    const sent = await (
+      options.metadata as Promise<Response> | undefined
+    )?.catch(() => undefined);
+    if (sent?.status === 201 && sent.body) {
+      return this.processResponseStream(sent.body);
+    }
+    const stream = await super.reconnectToStream(options);
+    // Another tab's answer: the chat as saved has its question by now.
+    if (stream) void mutate(chatKey(options.chatId));
+    return stream;
+  }
+}
+
+const transport = new Transport();
+
 class Refusal extends Error {
   constructor(readonly status: number) {
     super(`The server refused the message (${status}).`);
   }
 }
 
-/** A chat as saved, and the answer it runs as it streams. */
 export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
-  const chats = useChats();
   const selection = useSelection();
   const scope = useSearchScope();
-  // Someone else's shared chat.
   const readonly = !saved.owner;
-  const title = useChatTitle(id) ?? (saved.title || undefined);
-  const { models, model, setModel, reasoning, setReasoning } = useModels();
-  // The server turned a message away, or never got it.
+  const title =
+    useChatList().find((chat) => chat.id === id)?.title ??
+    (saved.title || undefined);
+  const { model, effort } = useModel();
   const [refusal, setRefusal] = useState<Failure>();
-  // Messages there when the chat opened hold still; later ones rise in.
   const [opened] = useState(
     () => new Set(saved.messages.map((message) => message.id)),
   );
-  // Versions brought back by a switch fade in.
   const [faded, setFaded] = useState<ReadonlySet<string>>(() => new Set());
   const [announcement, setAnnouncement] = useState("");
   const [leaving, setLeaving] = useState<React.CSSProperties | null>(null);
-  const [turn, setTurn] = useState<{ id: string; key: number }>();
+  const [turn, setTurn] = useState<{ id: string }>();
   const composer = useRef<ComposerHandle>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const glideFrom = useRef<DOMRect | null>(null);
-  // Following failed, so the next try waits a moment.
   const failed = useRef(false);
   // Sends go one at a time, so the server keeps their order.
   const sending = useRef<Promise<unknown>>(Promise.resolve());
+  // A send whose response may carry the answer it starts, unread yet.
+  const started = useRef<Promise<Response>>(undefined);
   const reduced = useReducedMotion();
-  const current = models.find((entry) => entry.id === model);
-  // A model that doesn't take the effort picked for another thinks on Auto.
-  const effort =
-    reasoning !== "auto" && current?.efforts.includes(reasoning)
-      ? reasoning
-      : "auto";
 
-  /** Changes the chat as kept, ahead of the server. */
   const change = (update: (chat: CachedChat) => Partial<CachedChat>) =>
     void mutate(
       chatKey(id),
@@ -112,12 +117,13 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
   } = useChat<ChatMessage>({
     id,
     throttle: 40,
+    transport,
     onFinish({ message, isAbort, isDisconnect, isError }) {
       if (isAbort || isDisconnect || isError) return;
       setAnnouncement(
         endOf(message) === "stopped" ? "Stopped." : "Answer ready.",
       );
-      chats.refresh();
+      refreshChats();
     },
     onError(error) {
       failed.current = true;
@@ -126,20 +132,15 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
   });
 
   const running = live.at(-1);
-  const shown = useMemo(() => {
-    const path: ChatMessage[] = pathTo(
-      saved.messages,
-      saved.leafId ?? saved.messages.at(-1)?.id ?? null,
-    );
-    if (!running) return path;
-    // The answer that streams shows in place of its saved, empty copy.
-    const at = path.findIndex((message) => message.id === running.id);
-    return at === -1 ? [...path, running] : path.with(at, running);
-  }, [saved, running]);
+  const shown: ChatMessage[] = pathTo(saved.messages, saved.leafId);
+  // The streaming answer replaces its saved, empty copy.
+  if (running) {
+    const at = shown.findIndex((message) => message.id === running.id);
+    shown[at === -1 ? shown.length : at] = running;
+  }
   const last = shown.at(-1);
   const answering = running !== undefined;
   const busy = answering || saved.running;
-  // The server has the chat to answer, and shows no answer yet.
   const waiting = !answering && saved.running && last?.role === "user";
   const empty = shown.length === 0;
   const idle = !readonly && !busy;
@@ -147,18 +148,16 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
   const writing = answering ? running : PENDING;
   const citations = citationsAlong(rendered);
   const children = childrenOf(saved.messages);
-  // The last answer failed, or what ran it went before it wrote anything.
+  // An empty answer means what ran it went down before writing.
   const broken =
     idle &&
     last?.role === "assistant" &&
     (endOf(last) === "failed" || last.parts.length === 0);
   const failure = refusal ?? (broken ? "other" : undefined);
-  const retryLabel = current && `Try again with ${current.name}`;
   // Screen readers hear where a search is, not every token of it.
   const spoken = (answering && searchStatus(running)) || announcement;
   const stores = searchedStores(shown);
 
-  // The first message glides the composer from the middle to its dock.
   useLayoutEffect(() => {
     const from = glideFrom.current;
     glideFrom.current = null;
@@ -172,17 +171,16 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
     });
   }, [empty]);
 
-  // As an answer starts, the chat as saved has its question and empty copy.
-  useEffect(() => {
-    if (status === "streaming") void mutate(chatKey(id));
-  }, [id, status]);
-
-  // Showing the chat busy, the tab hears at once if nothing runs it anymore.
-  const asking = useEffectEvent(() =>
-    saved.running ? { headers: { "x-busy": "1" } } : undefined,
-  );
-  // The tab follows each answer the chat runs, whichever of the owner's
-  // devices asked, and catches up on the chat after each.
+  // With `x-busy`, the server answers at once if nothing runs the chat anymore.
+  const asking = useEffectEvent(() => {
+    const sent = started.current;
+    started.current = undefined;
+    return {
+      metadata: sent,
+      headers: saved.running ? { "x-busy": "1" } : undefined,
+    };
+  });
+  // Follows each answer the chat runs, whichever device asked, catching up after each.
   const follow = useEffectEvent(async (following: AbortSignal) => {
     let behind = false;
     while (!following.aborted) {
@@ -223,11 +221,14 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
     document.addEventListener("visibilitychange", hide, {
       signal: following.signal,
     });
-    return () => following.abort();
+    return () => {
+      following.abort();
+      void started.current?.then((response) => response.body?.cancel());
+    };
   }, [id, readonly]);
 
   function answer(questionId: string) {
-    setTurn((turn) => ({ id: questionId, key: (turn?.key ?? 0) + 1 }));
+    setTurn({ id: questionId });
     setAnnouncement("");
   }
 
@@ -235,10 +236,6 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
     setRefusal(undefined);
   }
 
-  /**
-   * Saves `message` after `parentId`, or after what the chat shows last, for
-   * the chat's runner to answer. It shows at once, and goes if refused.
-   */
   function post(
     message: ChatMessage,
     parentId?: string | null,
@@ -248,8 +245,8 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
     // The view pins a question as its answer comes in.
     if (!busy) answer(message.id);
     preloadMarkdown();
-    const sent = sending.current.then(async () => {
-      const response = await fetch("/api/chat", {
+    const sent = sending.current.then(() =>
+      fetch("/api/chat", {
         method: "POST",
         body: JSON.stringify({
           id,
@@ -259,12 +256,17 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
           reasoning: effort,
           sources: selection,
         }),
-      });
+      }),
+    );
+    sending.current = sent.catch(() => {});
+    if (!started.current) started.current = sent;
+    // A follow that only waits ends, so the tab reads the answer at once.
+    if (status !== "streaming" && status !== "submitted") void stop();
+    const saving = sent.then((response) => {
       if (!response.ok) throw new Refusal(response.status);
     });
-    sending.current = sent.catch(() => {});
-    void mutate<CachedChat | null, void>(chatKey(id), sent, {
-      // On what shows, which has the sends still on their way.
+    void mutate<CachedChat | null, void>(chatKey(id), saving, {
+      // `displayed` has the sends still on their way.
       optimisticData: (current, displayed) => {
         const chat = displayed ?? current ?? saved;
         const known = chat.messages.some((entry) => entry.id === message.id);
@@ -282,8 +284,9 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
       },
       // Lost on the way, it may have arrived: the chat as saved tells.
       rollbackOnError: (error) => error instanceof Refusal,
+      // The tab catches up as the answer ends.
       populateCache: false,
-      revalidate: true,
+      revalidate: false,
     }).catch((error: Error) => {
       const refused = error instanceof Refusal;
       setRefusal(failureOfStatus(refused ? error.status : 0));
@@ -296,43 +299,34 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
     composer.current?.focus();
   }
 
-  function switchTo(messageId: string) {
-    const leaf = latestLeaf(children, messageId);
-    const showing = new Set(shown.map((message) => message.id));
-    const brought: string[] = [];
-    for (const message of pathTo(saved.messages, leaf)) {
-      if (!showing.has(message.id)) brought.push(message.id);
-    }
-    dismiss();
-    setFaded((faded) => {
-      const next = new Set(faded);
-      for (const entry of brought) next.add(entry);
-      return next;
-    });
-    change(() => ({ leafId: leaf }));
-    void setChatLeaf(id, leaf);
-    const versions =
-      children.get(
-        saved.messages.find((message) => message.id === messageId)?.parentId ??
-          null,
-      ) ?? [];
-    const index = versions.findIndex((version) => version.id === messageId);
-    setAnnouncement(`Showing version ${index + 1} of ${versions.length}.`);
-  }
-
   function switchVersion(messageId: string, step: -1 | 1) {
     const index = shown.findIndex((message) => message.id === messageId);
-    const siblings = children.get(shown[index - 1]?.id ?? null) ?? [];
-    const known = siblings.findIndex((sibling) => sibling.id === messageId);
-    const target = siblings[(known === -1 ? siblings.length : known) + step];
-    if (target) switchTo(target.id);
+    const parentId = shown[index - 1]?.id ?? null;
+    const { siblings, version } = versionOf(children, parentId, messageId);
+    const target = siblings[version + step];
+    if (!target) return;
+    const leaf = latestLeaf(children, target.id);
+    const showing = new Set(shown.map((message) => message.id));
+    const brought = new Set(faded);
+    for (const message of pathTo(saved.messages, leaf)) {
+      if (!showing.has(message.id)) brought.add(message.id);
+    }
+    dismiss();
+    setFaded(brought);
+    change(() => ({ leafId: leaf }));
+    void setChatLeaf(id, leaf);
+    setAnnouncement(
+      `Showing version ${version + step + 1} of ${siblings.length}.`,
+    );
   }
 
-  /** Answers the last question again, after the message it follows. */
-  function answerAgain() {
-    const index = shown.findLastIndex((message) => message.role === "user");
+  function reask(index: number) {
     const question = shown[index];
     if (question) post(question, shown[index - 1]?.id ?? null);
+  }
+
+  function answerAgain() {
+    reask(shown.findLastIndex((message) => message.role === "user"));
   }
 
   function send(text: string) {
@@ -349,16 +343,16 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
         });
       }
       window.history.replaceState(null, "", `/c/${id}`);
-      chats.update(id, {
-        title: text.split("\n")[0].slice(0, 80),
-        updatedAt: new Date(),
-      });
+      changeChats((chats) => [
+        { id, title: text.split("\n")[0].slice(0, 80), updatedAt: new Date() },
+        ...chats,
+      ]);
     }
     post(userMessage(text), undefined, () => {
       composer.current?.restore(text);
       if (!empty) return;
       window.history.replaceState(null, "", "/");
-      chats.remove(new Set([id]));
+      changeChats((chats) => chats.filter((chat) => chat.id !== id));
     });
   }
 
@@ -371,9 +365,7 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
   }
 
   function retry(messageId: string) {
-    const index = shown.findIndex((message) => message.id === messageId);
-    const question = shown[index - 1];
-    if (question) post(question, shown[index - 2]?.id ?? null);
+    reask(shown.findIndex((message) => message.id === messageId) - 1);
     composer.current?.focus();
   }
 
@@ -392,7 +384,7 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
           !empty && (
             <ShareDialog
               chatId={id}
-              initialVisibility={saved.visibility}
+              visibility={saved.visibility}
               onChange={(visibility) => change(() => ({ visibility }))}
               stores={stores}
             />
@@ -404,10 +396,10 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
         <Conversation turn={turn} streaming={busy}>
           {rendered.map((message, index) => {
             const parentId = rendered[index - 1]?.id ?? null;
-            // A message sent this visit is the newest of its versions.
-            const siblings = children.get(parentId) ?? [];
-            const known = siblings.findIndex(
-              (sibling) => sibling.id === message.id,
+            const { siblings, version } = versionOf(
+              children,
+              parentId,
+              message.id,
             );
             const last = index === rendered.length - 1;
             return (
@@ -418,11 +410,9 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
                 citations={citations[index]}
                 appear={appearOf(message)}
                 live={message === writing}
-                stopped={endOf(message) === "stopped"}
-                version={known === -1 ? siblings.length : known}
-                versions={known === -1 ? siblings.length + 1 : siblings.length}
+                version={version}
+                versions={Math.max(siblings.length, version + 1)}
                 pinned={last && message.role === "assistant"}
-                retryLabel={retryLabel}
                 onEdit={idle ? edit : undefined}
                 onRetry={idle ? retry : undefined}
                 onSwitch={idle ? switchVersion : undefined}
@@ -472,24 +462,13 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
             )}
             <Composer
               ref={composer}
-              status={busy ? "streaming" : "ready"}
-              model={model}
-              onModelChange={setModel}
-              reasoning={effort}
-              efforts={current?.efforts}
-              onReasoningChange={setReasoning}
+              busy={busy}
               onSubmit={send}
               // After the sends before it, so it reaches what they started.
               onStop={() =>
                 void sending.current.then(() =>
                   fetch(`/api/chat/${id}/stream`, { method: "DELETE" }),
                 )
-              }
-              placeholder={empty ? placeholders[scope] : "Ask a follow-up"}
-              blocked={
-                current?.toast && scope === "none"
-                  ? "Pick a source for Toast to answer from"
-                  : undefined
               }
               fresh={empty}
             />
@@ -510,9 +489,15 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
   );
 }
 
-/** How an answer ended short of done, as kept. */
-function endOf(message: ChatMessage | undefined) {
-  return message?.parts.findLast((part) => part.type === "data-ended")?.data;
+/** Versions count oldest first; one sent this visit is the newest. */
+function versionOf(
+  children: Map<string | null, { id: string }[]>,
+  parentId: string | null,
+  messageId: string,
+) {
+  const siblings = children.get(parentId) ?? [];
+  const known = siblings.findIndex((sibling) => sibling.id === messageId);
+  return { siblings, version: known === -1 ? siblings.length : known };
 }
 
 function userMessage(text: string): ChatMessage {

@@ -1,5 +1,4 @@
-// Messages form a tree: an edit or retry adds a sibling under the same
-// parent, and a conversation is one path through it.
+// A message tree: edits and retries are siblings, and a conversation is one path.
 interface Branched {
   id: string;
   parentId: string | null;
@@ -21,7 +20,7 @@ export function pathTo<T extends Branched>(
   return path.reverse();
 }
 
-/** Each message's replies by its id, oldest first; the first messages are under `null`. */
+/** Replies by parent id, oldest first. */
 export function childrenOf<T extends Branched>(
   messages: T[],
 ): Map<string | null, T[]> {
@@ -34,7 +33,7 @@ export function childrenOf<T extends Branched>(
   return children;
 }
 
-/** The newest leaf below `id`, following the latest reply at each step. */
+/** Follows the latest reply down from `id`. */
 export function latestLeaf(
   children: Map<string | null, Branched[]>,
   id: string,
@@ -46,21 +45,4 @@ export function latestLeaf(
     replies = children.get(leaf);
   }
   return leaf;
-}
-
-/** `tree`, plus the messages on `path` it has not seen yet, each under the one before it. */
-export function withPath<T extends Branched>(
-  tree: T[],
-  path: Omit<T, "parentId">[],
-): T[] {
-  const known = new Set<string>();
-  for (const message of tree) known.add(message.id);
-
-  let merged = tree;
-  for (let i = 0; i < path.length; i++) {
-    if (known.has(path[i].id)) continue;
-    if (merged === tree) merged = [...tree];
-    merged.push({ ...path[i], parentId: path[i - 1]?.id ?? null } as T);
-  }
-  return merged;
 }

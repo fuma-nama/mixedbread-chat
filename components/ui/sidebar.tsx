@@ -26,13 +26,7 @@ interface SidebarContextValue {
   toggle: () => void;
 }
 
-const SidebarContext = createContext<SidebarContextValue | null>(null);
-
-function useSidebar() {
-  const context = use(SidebarContext);
-  if (!context) throw new Error("useSidebar needs a <SidebarProvider>");
-  return context;
-}
+const SidebarContext = createContext<SidebarContextValue>(null!);
 
 export function SidebarProvider({
   defaultOpen,
@@ -46,7 +40,7 @@ export function SidebarProvider({
   const [open, setOpen] = useState(defaultOpen);
   // The drawer belongs to the page it opened over, so opening a chat closes it.
   const [drawerPage, setDrawerPage] = useState<string>();
-  const openMobile = drawerPage === pathname;
+  const openMobile = mobile && drawerPage === pathname;
 
   function setOpenMobile(open: boolean) {
     setDrawerPage(open ? pathname : undefined);
@@ -80,9 +74,9 @@ export function SidebarProvider({
   );
 }
 
-/** Beside the panel on wide screens; a drawer that swipes away on phones. */
+/** Its content mounts in the aside or the drawer, never both. */
 export function Sidebar({ children }: { children: React.ReactNode }) {
-  const { open, openMobile, setOpenMobile } = useSidebar();
+  const { open, openMobile, setOpenMobile, mobile } = use(SidebarContext);
 
   return (
     <>
@@ -92,7 +86,7 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
         className="hidden w-0 shrink-0 overflow-hidden transition-[width] duration-300 ease-smooth group-data-[sidebar=expanded]/shell:w-64 motion-reduce:transition-none md:block"
       >
         <div className="flex h-full w-64 flex-col transition-[opacity,translate] duration-300 ease-smooth group-data-[sidebar=collapsed]/shell:-translate-x-3 group-data-[sidebar=collapsed]/shell:opacity-0 motion-reduce:transition-none">
-          {children}
+          {!mobile && children}
         </div>
       </aside>
       <Drawer.Root
@@ -125,7 +119,7 @@ export function SidebarInset({ children }: { children: React.ReactNode }) {
 }
 
 export function SidebarTrigger({ className }: { className?: string }) {
-  const { open, openMobile, mobile, toggle } = useSidebar();
+  const { open, openMobile, mobile, toggle } = use(SidebarContext);
   const label = (mobile ? openMobile : open) ? "Close sidebar" : "Open sidebar";
 
   return (

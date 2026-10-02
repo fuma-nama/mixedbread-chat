@@ -1,13 +1,17 @@
 "use client";
 
+import { Menu } from "@base-ui/react/menu";
 import { cn } from "cn";
 import {
   ArrowUpRightIcon,
   ChevronsUpDownIcon,
   LogInIcon,
   LogOutIcon,
+  MonitorIcon,
+  MoonIcon,
   PlusIcon,
   RotateCwIcon,
+  SunIcon,
   SunMoonIcon,
   UnplugIcon,
 } from "lucide-react";
@@ -15,12 +19,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
+  disconnect,
   storesOf,
   useAllStores,
   useConnect,
   useOrganizations,
-  useSources,
-} from "@/components/chat/sources-provider";
+} from "@/components/chat/picks";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -39,6 +43,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuLinkItem,
+  DropdownMenuRadioGroup,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -47,10 +52,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "@/components/ui/toast";
+import { setTheme, useTheme } from "@/hooks/use-theme";
 import { PLATFORM_URL } from "@/lib/mixedbread/platform";
 import { withNext } from "@/lib/safe-next";
 import type { Organization } from "@/lib/sources";
-import { ThemeSwitch } from "./theme-switch";
+import { type Theme, themes } from "@/lib/theme";
+
+// Outside the menu, so the dialog outlives the menu closing.
+const disconnectDialog = createAlertDialogHandle<Organization>();
 
 export interface User {
   name: string;
@@ -58,18 +67,12 @@ export interface User {
   image?: string | null;
 }
 
-/** Signed out, as on someone's shared chat, a way to sign in instead. */
-export function AccountMenu({ user }: { user?: User }) {
-  return user ? <SignedIn user={user} /> : <SignedOut />;
-}
-
-function SignedOut() {
+export function SignedOut() {
   const pathname = usePathname();
 
   return (
     <div className="flex gap-1.5">
       <Link
-        // Back to this page once signed in, say the shared chat being read.
         href={withNext("/login", pathname)}
         className={buttonVariants({ size: "sm", className: "flex-1" })}
       >
@@ -95,17 +98,14 @@ function SignedOut() {
   );
 }
 
-function SignedIn({ user }: { user: User }) {
-  const sources = useSources();
+export function AccountMenu({ user }: { user: User }) {
   const organizations = useOrganizations();
   const { pending, connect } = useConnect();
-  // Outside the menu, so the dialog outlives the menu closing.
-  const [dialog] = useState(() => createAlertDialogHandle<Organization>());
 
-  async function disconnect(organization: Organization) {
-    dialog.close();
+  async function leave(organization: Organization) {
+    disconnectDialog.close();
     try {
-      await sources.disconnect(organization.id);
+      await disconnect(organization.id);
       toast.add({ title: `${organization.name} disconnected` });
     } catch {
       toast.add({ title: "Couldn’t disconnect. Try again." });
@@ -153,7 +153,7 @@ function SignedIn({ user }: { user: User }) {
                 // The last one stays: it is how this account signs in.
                 onDisconnect={
                   organizations.length > 1
-                    ? () => dialog.openWithPayload(organization)
+                    ? () => disconnectDialog.openWithPayload(organization)
                     : undefined
                 }
               />
@@ -188,7 +188,7 @@ function SignedIn({ user }: { user: User }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AlertDialog handle={dialog}>
+      <AlertDialog handle={disconnectDialog}>
         {({ payload: organization }) => (
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -203,7 +203,7 @@ function SignedIn({ user }: { user: User }) {
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <Button
                 variant="destructive"
-                onClick={() => organization && void disconnect(organization)}
+                onClick={() => organization && void leave(organization)}
               >
                 Disconnect
               </Button>
@@ -216,13 +216,12 @@ function SignedIn({ user }: { user: User }) {
 }
 
 async function logOut() {
-  // Loaded on demand: chat pages have no other use for the auth client.
+  // Chat pages have no other use for the auth client.
   const { authClient } = await import("@/lib/auth-client");
   await authClient.signOut();
   window.location.href = "/login";
 }
 
-/** Manage it on Mixedbread, sign in to it again when its grant lapsed, or disconnect it. */
 function OrganizationRow({
   organization,
   onDisconnect,
@@ -284,7 +283,6 @@ function OrganizationRow({
   );
 }
 
-/** The profile picture, or the name's first letter until it loads, and if it never does. */
 function Avatar({ user, className }: { user: User; className: string }) {
   const [failed, setFailed] = useState(false);
 
@@ -313,5 +311,59 @@ function Avatar({ user, className }: { user: User; className: string }) {
         />
       )}
     </span>
+  );
+}
+
+const icons = { system: MonitorIcon, light: SunIcon, dark: MoonIcon };
+
+// Where each icon turns in from.
+const turns = { system: "0deg", light: "-90deg", dark: "40deg" };
+
+function ThemeSwitch() {
+  const theme = useTheme();
+  // Icons turn only when picked here, not each time the menu opens.
+  const [picked, setPicked] = useState(false);
+  const index = themes.findIndex((entry) => entry.id === theme);
+
+  return (
+    <DropdownMenuRadioGroup
+      value={theme}
+      onValueChange={(value: Theme) => {
+        setPicked(true);
+        setTheme(value);
+      }}
+      className="flex items-center justify-between gap-3 py-1 pr-1 pl-2"
+    >
+      <DropdownMenuLabel className="p-0 text-[13.5px] text-foreground/90">
+        Theme
+      </DropdownMenuLabel>
+      <div className="relative flex rounded-full bg-soft p-0.5">
+        <span
+          aria-hidden="true"
+          style={{ translate: `${index * 100}% 0` }}
+          className="absolute top-0.5 left-0.5 size-7 rounded-full bg-popover shadow-raised transition-[translate] duration-300 ease-smooth motion-reduce:transition-none"
+        />
+        {themes.map(({ id, name }) => {
+          const Icon = icons[id];
+          return (
+            <Menu.RadioItem
+              key={id}
+              value={id}
+              aria-label={name}
+              style={{ "--turn": turns[id] } as React.CSSProperties}
+              className="group/theme relative flex size-7 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 outline-none data-checked:text-foreground data-highlighted:text-foreground data-highlighted:not-data-checked:bg-soft"
+            >
+              <Icon
+                className={cn(
+                  "size-3.5",
+                  picked &&
+                    "group-data-checked/theme:motion-safe:animate-theme-turn",
+                )}
+              />
+            </Menu.RadioItem>
+          );
+        })}
+      </div>
+    </DropdownMenuRadioGroup>
   );
 }

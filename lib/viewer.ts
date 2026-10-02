@@ -5,7 +5,7 @@ import { getChat, getMessages } from "./db/queries";
 import { listConnections } from "./mixedbread/organizations";
 import type { Organization } from "./sources";
 
-/** The signed-in person; without a connected organization there is nothing to search. */
+/** The signed-in person, when they have an organization to search. */
 export const getViewer = cache(async () => {
   const session = await getSession();
   if (!session) return undefined;
@@ -19,7 +19,7 @@ export const getViewer = cache(async () => {
 
 export type ChatData = NonNullable<Awaited<ReturnType<typeof readChat>>>;
 
-/** A chat and its messages, when the reader may see it: they own it, or it is shared. */
+/** Only for its owner, or anyone once it is shared. */
 export const readChat = cache(async (id: string) => {
   const [chat, session, messages] = await Promise.all([
     getChat(id),
@@ -30,7 +30,7 @@ export const readChat = cache(async (id: string) => {
   const owner = chat.userId === session?.user.id;
   if (!owner && chat.visibility !== "public") return undefined;
   const { title, visibility, leafId } = chat;
-  // An answer runs or waits to; only the owner's tabs follow it.
+  // Running or about to; only the owner's tabs follow it.
   const running = owner && (await chatRuns(id));
   return { title, visibility, leafId, owner, running, messages };
 });

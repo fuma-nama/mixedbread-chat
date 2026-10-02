@@ -3,9 +3,11 @@
 import { useAtomValue } from "jotai";
 import Link from "next/link";
 import { redirect, usePathname } from "next/navigation";
+import { useEffect } from "react";
 import useSWR from "swr";
 import { SliceGlyph } from "@/components/brand/slice";
 import { buttonVariants } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
 import { Chat } from "./chat";
 import {
   type CachedChat,
@@ -15,7 +17,7 @@ import {
   openLink,
 } from "./chat-cache";
 import { ChatHeader } from "./chat-header";
-import { useOrganizations } from "./sources-provider";
+import { useOrganizations } from "./picks";
 
 const NEW_CHAT: CachedChat = {
   title: "",
@@ -26,12 +28,7 @@ const NEW_CHAT: CachedChat = {
   messages: [],
 };
 
-/**
- * The open chat. It follows the URL, which `navigate` changes in place, so
- * switching chats needs no server-rendered page. The page it was rendered
- * with seeds it: a chat, `null` for one that can't be read, or with none,
- * the id of a new one.
- */
+/** Follows the URL, which `navigate` changes in place; without `chat`, `id` is a new chat's. */
 export function ChatScreen({
   id: seedId,
   chat: seed,
@@ -42,6 +39,25 @@ export function ChatScreen({
   const draftId = useAtomValue(draftAtom) || (seed === undefined ? seedId : "");
   const id = usePathname().match(/^\/c\/([^/]+)/)?.[1] ?? draftId;
   const signedIn = useOrganizations().length > 0;
+
+  // Better Auth sends the tab back with why connecting didn't finish.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const error = url.searchParams.get("error");
+    if (!error) return;
+    url.searchParams.delete("error");
+    window.history.replaceState(null, "", url);
+    // The toaster above subscribes in its own effect, which runs after this one.
+    queueMicrotask(() =>
+      toast.add({
+        title:
+          error === "access_denied"
+            ? "Connecting was cancelled."
+            : "Connecting didn’t finish. Try again.",
+      }),
+    );
+  }, []);
+
   // As the page of a new chat does, for someone reading a shared one.
   if (id === draftId && !signedIn) redirect("/login");
   const fallback = id === draftId ? NEW_CHAT : id === seedId ? seed : undefined;
@@ -55,8 +71,7 @@ function OpenChat({
   id: string;
   fallback?: CachedChat | null;
 }) {
-  // Shown as the page brought it or as last left, then kept up with the server.
-  const { data: kept = fallback, error } = useSWR(chatKey(id), fetchChat, {
+  const { data: kept, error } = useSWR(chatKey(id), fetchChat, {
     fallbackData: fallback,
     // The page's chat is current; one kept from before may not be.
     revalidateOnMount: fallback === undefined,

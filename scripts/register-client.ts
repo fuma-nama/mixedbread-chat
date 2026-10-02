@@ -1,12 +1,7 @@
 /**
- * Registers the app with Mixedbread as a public OAuth client:
- *
- *   pnpm mixedbread:register https://chat.example.com http://localhost:3000
- *
- * prints one `MXBAI_CLIENT_ID` for all the URLs. The build runs it without
- * URLs: unless `MXBAI_CLIENT_ID` is set, it registers the deployment once and
- * keeps the client in the database, since tokens only refresh with the client
- * that issued them.
+ * Registers the app with Mixedbread as a public OAuth client for the given URLs.
+ * Without URLs, as in the build, the deployment's client is kept in the database,
+ * since tokens only refresh with the client that issued them.
  */
 import { appendFileSync } from "node:fs";
 import postgres from "postgres";
@@ -31,7 +26,6 @@ if (urls.length > 0) {
   }
 }
 
-// From Vercel's system variables.
 function deploymentOrigins(): string[] {
   const env = process.env;
   if (env.BETTER_AUTH_URL) return [env.BETTER_AUTH_URL];

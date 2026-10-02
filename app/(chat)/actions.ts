@@ -22,21 +22,11 @@ async function currentUserId() {
   return session.user.id;
 }
 
-async function listStores(
-  userId: string,
-  connection: Connection,
-): Promise<StoresResult> {
-  try {
-    return {
-      status: "ok",
-      stores: await fetchStores(await clientFor(userId, connection)),
-    };
-  } catch (error) {
-    if (needsReconnect(error)) return { status: "reconnect" };
-    return { status: "error", message: "Couldn’t load the stores." };
-  }
+export async function listChats() {
+  return queries.getChats(await currentUserId());
 }
 
+/** Keyed by organization ID. */
 export async function listAllStores(): Promise<Record<string, StoresResult>> {
   const userId = await currentUserId();
   const connections = await listConnections(userId);
@@ -44,10 +34,22 @@ export async function listAllStores(): Promise<Record<string, StoresResult>> {
     await Promise.all(
       connections.map(async (connection) => [
         connection.organizationId,
-        await listStores(userId, connection),
+        await storesOf(userId, connection),
       ]),
     ),
   );
+}
+
+async function storesOf(
+  userId: string,
+  connection: Connection,
+): Promise<StoresResult> {
+  try {
+    const client = await clientFor(userId, connection);
+    return { status: "ok", stores: await fetchStores(client) };
+  } catch (error) {
+    return { status: needsReconnect(error) ? "reconnect" : "error" };
+  }
 }
 
 export type PageResult =
@@ -57,7 +59,7 @@ export type PageResult =
   | { status: "missing" }
   | { status: "error" };
 
-const citedPageSchema = z.object({
+const citedSchema = z.object({
   organizationId: z.string(),
   storeId: z.string(),
   chunkId: z.string(),
@@ -66,11 +68,10 @@ const citedPageSchema = z.object({
 
 /** A cited page, with the viewer's own access, and the blocks its claim stands for. */
 export async function openPage(
-  cited: z.input<typeof citedPageSchema>,
+  cited: z.input<typeof citedSchema>,
 ): Promise<PageResult> {
   const userId = await currentUserId();
-  const { organizationId, storeId, chunkId, claim } =
-    citedPageSchema.parse(cited);
+  const { organizationId, storeId, chunkId, claim } = citedSchema.parse(cited);
   const connection = (await listConnections(userId)).find(
     (entry) => entry.organizationId === organizationId,
   );
@@ -88,15 +89,6 @@ export async function openPage(
 
 export async function disconnectOrganization(organizationId: string) {
   await disconnect(await currentUserId(), organizationId);
-}
-
-export async function listChats() {
-  return queries.getChats(await currentUserId());
-}
-
-export async function searchChats(query: string) {
-  const userId = await currentUserId();
-  return queries.searchChats(userId, z.string().max(200).parse(query));
 }
 
 export async function renameChat(id: string, title: string) {

@@ -9,7 +9,6 @@ import { organizationOfKey, PROVIDER_ID } from "./platform";
 
 class ReconnectError extends Error {}
 
-/** Whether signing in to the organization again would fix `error`. */
 export function needsReconnect(error: unknown): boolean {
   return (
     error instanceof ReconnectError ||
@@ -40,7 +39,7 @@ export async function listConnections(userId: string) {
 /** A grant to one organization, stored as a Better Auth account. */
 export type Connection = Awaited<ReturnType<typeof listConnections>>[number];
 
-/** Forgets one grant. The last stays: it is how the user signs in. */
+/** Keeps the last grant, which the user signs in with. */
 export async function disconnect(userId: string, organizationId: string) {
   const connections = await listConnections(userId);
   const connection = connections.find(
@@ -61,13 +60,12 @@ function fresh(expiresAt: Date | null): boolean {
   return (expiresAt?.getTime() ?? 0) - Date.now() > REFRESH_MARGIN;
 }
 
-// Refresh tokens are single-use and reusing one revokes the grant, so
-// refreshes take a lock per account.
+// Reusing a single-use refresh token revokes the grant, so refreshes lock the account.
 export async function clientFor(
   userId: string,
   { accountId, expiresAt }: Connection,
 ): Promise<Mixedbread> {
-  // Better Auth resolves its base URL, which varies by host, from the request.
+  // Better Auth resolves its per-host base URL from the request.
   const call = { body: { accountId, userId }, headers: await headers() };
   // An expiry listed earlier can only be too early: refreshing moves it later.
   const token = fresh(expiresAt)

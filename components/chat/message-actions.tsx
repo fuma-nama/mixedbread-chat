@@ -25,7 +25,6 @@ export function Versions({
   versions: number;
   onSwitch: (step: -1 | 1) => void;
 }) {
-  // Which way the count slides: towards the version just picked.
   const [step, setStep] = useState<-1 | 1>();
 
   function go(next: -1 | 1) {

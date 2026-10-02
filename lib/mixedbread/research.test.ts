@@ -7,7 +7,6 @@ import {
   research,
 } from "./research.ts";
 
-/** A client that streams `chunks`, keeping each request in `requests`. */
 function streaming(chunks: unknown[], requests: unknown[] = []): Mixedbread {
   let body = "";
   for (const chunk of chunks) body += `data: ${JSON.stringify(chunk)}\n\n`;

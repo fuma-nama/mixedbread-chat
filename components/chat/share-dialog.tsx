@@ -18,17 +18,17 @@ import { toast } from "@/components/ui/toast";
 
 export function ShareDialog({
   chatId,
-  initialVisibility,
+  visibility,
   onChange,
   stores,
 }: {
   chatId: string;
-  initialVisibility: "private" | "public";
+  visibility: "private" | "public";
   onChange: (visibility: "private" | "public") => void;
-  /** Its searches found files in the user's stores, which a shared chat quotes. */
+  /** It quotes files from the user's stores. */
   stores: boolean;
 }) {
-  const [shared, setShared] = useState(initialVisibility === "public");
+  const shared = visibility === "public";
   const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -49,7 +49,6 @@ export function ShareDialog({
     startTransition(async () => {
       try {
         await setChatVisibility(chatId, next);
-        setShared(next === "public");
         onChange(next);
         if (next === "private") toast.add({ title: "Link turned off" });
       } catch {

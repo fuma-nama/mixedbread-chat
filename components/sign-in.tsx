@@ -31,8 +31,7 @@ export function SignIn({
         ? "Sign-in was cancelled. Try again when you’re ready."
         : error && "Sign-in didn’t finish. Try again.";
 
-  // Back from Mixedbread through the back button, the page can return just
-  // as it was left: pending, with nothing on its way.
+  // Back from Mixedbread via the bfcache, the page would still be pending.
   useWindowEvent("pageshow", (event) => {
     if (event.persisted) setStatus("idle");
   });
@@ -43,12 +42,10 @@ export function SignIn({
       .social({
         provider: PROVIDER_ID,
         callbackURL: next,
-        // A failed attempt comes back here, still headed where it was going.
         errorCallbackURL: withNext("/login", next),
       })
       .catch(() => ({ error: true }));
-    // On success the browser is already on its way to Mixedbread, so the
-    // button stays pending until the page goes.
+    // On success the page is already leaving, so the button stays pending.
     if (result.error) setStatus("failed");
   }
 

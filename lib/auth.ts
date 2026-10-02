@@ -23,8 +23,7 @@ export const auth = betterAuth({
   },
   database: drizzleAdapter(db, { provider: "pg" }),
   advanced: { database: { joins: true } },
-  // An error with no page of its own, like a lost sign-in state, lands home:
-  // signed in, it's a toast there; signed out, the sign-in page says it.
+  // Home shows errors with no page of their own: as a toast, or on the sign-in page.
   onAPIError: { errorURL: "/" },
   account: {
     encryptOAuthTokens: true,

@@ -1,7 +1,7 @@
 import { type Source, sourceTitle } from "./mixedbread/citations.ts";
 import type { ChatMessage } from "./search-tool.ts";
 
-/** The sources a message cites, by label, numbered in order of first citation. */
+/** Cited sources by label, numbered by first citation. */
 export type Citations = Map<string, { number: number; source: Source }>;
 
 const CITATION = /\]\(#(S\d+)\)/g;
@@ -28,7 +28,7 @@ export function searchedStores(messages: ChatMessage[]): boolean {
   return false;
 }
 
-/** Source labels stay unique across a conversation, so a later answer can cite an earlier search. */
+/** Labels stay unique across a chat, so an answer can cite an earlier search. */
 export function nextLabel(messages: ChatMessage[]): number {
   let last = 0;
   for (const message of messages) {
@@ -69,18 +69,16 @@ export function citationsAlong(messages: ChatMessage[]): Citations[] {
 
 function joinedText(message: ChatMessage): string {
   let text = "";
-  for (const part of message.parts) {
-    if (part.type === "text") text += part.text;
-  }
+  for (const part of message.parts) if (part.type === "text") text += part.text;
   return text;
 }
 
-/** The message's text as the reader sees it, without citation links. */
+/** The text without citation links. */
 export function textOf(message: ChatMessage): string {
   return joinedText(message).replace(CITATION_LINK, "");
 }
 
-/** The text with citations as [n] markers and a list of sources, for pasting elsewhere. */
+/** The text with [n] citation markers and a list of sources. */
 export function copyTextOf(message: ChatMessage, citations: Citations): string {
   const text = joinedText(message).replace(
     CITATION_LINK,

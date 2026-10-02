@@ -1,15 +1,14 @@
 import type { Mixedbread } from "@mixedbread/sdk";
 import { z } from "zod";
 
-/** A cited page, as the file's visual parsing saw it. */
 export interface Page {
-  /** The page as an image; the link expires within the hour. */
+  /** A link that expires within the hour. */
   image: string;
   /** The whole file, opened at the page; it expires too. */
   original: string;
   /** Width over height, when the layout is known. */
   aspect?: number;
-  /** Its blocks of text, placed in fractions of the page. */
+  /** Placed in fractions of the page. */
   blocks: {
     x: number;
     y: number;

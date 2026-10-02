@@ -9,8 +9,7 @@ export function callbackURL(origin: string): string {
   return new URL(`/api/auth/callback/${PROVIDER_ID}`, origin).href;
 }
 
-// A token reaches only the organization picked while signing in, so each
-// organization is its own account.
+// A token reaches only the organization picked at sign-in, so each is its own account.
 export function accountKey(subject: string, organizationId: string): string {
   return `${subject}:${organizationId}`;
 }

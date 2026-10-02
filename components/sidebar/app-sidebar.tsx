@@ -6,7 +6,7 @@ import { Logo } from "@/components/brand/logo";
 import { openLink } from "@/components/chat/chat-cache";
 import { Shortcut } from "@/components/ui/kbd";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { AccountMenu, type User } from "./account-menu";
+import { AccountMenu, SignedOut, type User } from "./account-menu";
 import { Chats } from "./chats";
 import { HoverArea } from "./hover-area";
 import { openSearch } from "./search-chats";
@@ -21,7 +21,7 @@ export function AppSidebar({
   now,
   timeZone,
 }: {
-  /** Undefined when signed out, as on someone else's shared chat. */
+  /** Undefined when signed out, as on a shared chat. */
   user?: User;
   /** When the server rendered, so both sides group chats by the same day. */
   now: number;
@@ -67,7 +67,7 @@ export function AppSidebar({
       </nav>
 
       <Chats now={now} timeZone={timeZone}>
-        <AccountMenu user={user} />
+        {user ? <AccountMenu user={user} /> : <SignedOut />}
       </Chats>
     </>
   );

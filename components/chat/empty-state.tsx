@@ -5,7 +5,7 @@ import { useState } from "react";
 import { HalftoneMark } from "@/components/brand/halftone-mark";
 import type { SearchScope } from "@/lib/sources";
 import { suggestionsFor } from "@/lib/suggestions";
-import { usePickedStores } from "./sources-provider";
+import { usePickedStores } from "./picks";
 
 export function EmptyState({ ref }: { ref?: React.Ref<HTMLDivElement> }) {
   return (
@@ -20,7 +20,7 @@ export function EmptyState({ ref }: { ref?: React.Ref<HTMLDivElement> }) {
   );
 }
 
-/** Questions true to the sources picked; after a pick, those that still fit stay put. */
+/** After a pick, questions that still fit stay put. */
 export function Suggestions({
   scope,
   onPick,

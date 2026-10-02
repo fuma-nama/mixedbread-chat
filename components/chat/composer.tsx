@@ -1,11 +1,9 @@
 "use client";
 
-import type { ChatStatus } from "ai";
 import { cn } from "cn";
 import { ArrowUpIcon, SquareIcon } from "lucide-react";
 import {
   memo,
-  useEffect,
   useImperativeHandle,
   useRef,
   useState,
@@ -13,23 +11,31 @@ import {
 } from "react";
 import { IconSwap } from "@/components/ui/icon-swap";
 import { useWindowEvent } from "@/hooks/use-window-event";
-import type { Effort, Reasoning } from "@/lib/reasoning";
+import type { SearchScope } from "@/lib/sources";
 import { ModelPicker } from "./model-picker";
+import { useModel, useSearchScope } from "./picks";
 import { ReasoningPicker } from "./reasoning-picker";
 import { SourcesPicker } from "./sources-picker";
 
-/** The server takes up to this many characters in one message. */
+const placeholders: Record<SearchScope, string> = {
+  web: "Ask anything",
+  docs: "Ask about your stores",
+  both: "Ask your stores or the web",
+  none: "Ask anything",
+};
+
+/** The server's limit for one message. */
 const MAX_LENGTH = 20_000;
 const WARN_LENGTH = 18_000;
 
 export interface ComposerHandle {
   focus: () => void;
-  /** Puts text back before any typed since, as after a send that did not go through. */
+  /** Puts text back ahead of any typed since. */
   restore: (text: string) => void;
   element: () => HTMLElement | null;
 }
 
-/** A finger rather than a mouse: focus opens the keyboard, and Enter makes a new line. */
+/** On touch, focus opens the keyboard and Enter makes a new line. */
 function coarse() {
   return window.matchMedia("(pointer: coarse)").matches;
 }
@@ -37,33 +43,20 @@ function coarse() {
 /** Memoized: its props hold still while an answer streams. */
 export const Composer = memo(function Composer({
   ref,
-  status,
-  model,
-  onModelChange,
-  reasoning,
-  efforts,
-  onReasoningChange,
+  busy,
   onSubmit,
   onStop,
-  placeholder,
-  blocked,
-  fresh = false,
+  fresh,
 }: {
   ref?: React.Ref<ComposerHandle>;
-  status: ChatStatus;
-  model: string;
-  onModelChange: (model: string) => void;
-  reasoning: Reasoning;
-  efforts?: Effort[];
-  onReasoningChange: (reasoning: Reasoning) => void;
+  /** An answer runs; a message sent meanwhile goes to it. */
+  busy: boolean;
   onSubmit: (text: string) => void;
   onStop: () => void;
-  placeholder: string;
-  /** Why sending is off for now, shown in place of the placeholder. */
-  blocked?: string;
-  /** A new chat: it glows warm on focus, and ⌘⇧O lands here. */
-  fresh?: boolean;
+  fresh: boolean;
 }) {
+  const scope = useSearchScope();
+  const toast = useModel().current?.toast;
   const [text, setText] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -72,11 +65,11 @@ export const Composer = memo(function Composer({
     () => navigator.onLine,
     () => true,
   );
-  const busy = status === "submitted" || status === "streaming";
-  const reason = blocked ?? (online ? undefined : "You’re offline");
+  let reason = online ? undefined : "You’re offline";
+  if (toast && scope === "none")
+    reason = "Pick a source for Toast to answer from";
   const tooLong = text.length > MAX_LENGTH;
   const ready = text.trim() !== "" && !tooLong && !reason;
-  // While an answer runs, a message goes to it; the button stops it otherwise.
   const stop = busy && !ready;
 
   useImperativeHandle(
@@ -92,15 +85,12 @@ export const Composer = memo(function Composer({
     [],
   );
 
-  useEffect(() => {
-    if (!coarse()) textareaRef.current?.focus();
-  }, []);
-
   useWindowEvent("keydown", (event) => {
     const loose =
       document.activeElement === document.body &&
       !document.querySelector("[role=dialog]");
-    if (event.key === "Escape" && busy && loose) {
+    const here = loose || event.target === textareaRef.current;
+    if (event.key === "Escape" && busy && here) {
       onStop();
       return;
     }
@@ -110,12 +100,7 @@ export const Composer = memo(function Composer({
       !event.metaKey &&
       !event.ctrlKey &&
       !event.altKey;
-    const opened =
-      fresh &&
-      event.key.toLowerCase() === "o" &&
-      event.shiftKey &&
-      (event.metaKey || event.ctrlKey);
-    if (typed || opened) textareaRef.current?.focus();
+    if (typed) textareaRef.current?.focus();
   });
 
   function submit() {
@@ -152,18 +137,18 @@ export const Composer = memo(function Composer({
       </label>
       <textarea
         id="composer"
-        ref={textareaRef}
+        ref={(textarea) => {
+          textareaRef.current = textarea;
+          if (textarea && !coarse()) textarea.focus();
+        }}
         value={text}
         disabled={Boolean(reason)}
-        placeholder={reason ?? placeholder}
+        placeholder={
+          reason ?? (fresh ? placeholders[scope] : "Ask a follow-up")
+        }
         rows={1}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={(event) => {
-          if (event.key === "Escape" && busy) {
-            event.preventDefault();
-            onStop();
-            return;
-          }
           if (
             event.key === "Enter" &&
             !event.shiftKey &&
@@ -181,12 +166,8 @@ export const Composer = memo(function Composer({
         className="flex cursor-text items-center gap-0.5 px-2.5 pb-2.5 whitespace-nowrap"
       >
         <SourcesPicker />
-        <ModelPicker value={model} onChange={onModelChange} />
-        <ReasoningPicker
-          value={reasoning}
-          efforts={efforts}
-          onChange={onReasoningChange}
-        />
+        <ModelPicker />
+        <ReasoningPicker />
         <div className="ml-auto flex shrink-0 items-center gap-3 pl-1.5">
           {text.length > WARN_LENGTH && (
             <span

@@ -12,26 +12,24 @@ type Cited = { excerpt?: string } & (
       storeName?: string;
       /** Whose store it is, for showing its page. */
       organizationId?: string;
-      /** An image, such as a page of a visually parsed PDF. */
       image?: true;
       /** The sentence that cited it first, to find on its page. */
       claim?: string;
     }
 );
 
-/** A marker at a code point offset in Toast's answer. */
+/** `at` is a code point offset into Toast's answer. */
 export type Citation = Cited & { at: number };
 
-/** A cited page or chunk, labelled for the conversation. */
 export type Source = Cited & { label: string };
 
-/** Marks each citation `[label]` in the text, so another model can cite the same evidence. */
+/** Marks citations as `[label]`, so another model can cite the same evidence. */
 export function labelCitations(
   text: string,
   citations: Citation[],
   nextLabel: () => string,
 ): { text: string; sources: Source[] } {
-  // Offsets count code points, as the server does; JS strings index UTF-16 units.
+  // Offsets count code points; JS strings index UTF-16 units.
   const chars = Array.from(text);
   const sources = new Map<string, Source>();
   const markers = new Map<number, string>();
@@ -62,7 +60,6 @@ export function labelCitations(
   return { text: labelled, sources: Array.from(sources.values()) };
 }
 
-/** The sentence ending where a citation stands, at most a paragraph long. */
 function claimAt(chars: string[], at: number): string {
   let end = at;
   while (end > 0 && /[\s.!?]/.test(chars[end - 1])) end--;
@@ -77,7 +74,6 @@ export function sourceTitle(source: Source): string {
   return source.type === "url" ? source.title || source.url : source.filename;
 }
 
-/** Where a source is from: the store it was found in, or its site. */
 export function originOf(source: Source): string {
   if (source.type === "file") return source.storeName ?? "Your files";
   return URL.parse(source.url)?.hostname.replace(/^www\./, "") ?? source.url;

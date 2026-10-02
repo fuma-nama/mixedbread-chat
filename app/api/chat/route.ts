@@ -6,6 +6,7 @@ import {
   JsonToSseTransformStream,
   streamText,
   toUIMessageStream,
+  UI_MESSAGE_STREAM_HEADERS,
 } from "ai";
 import { after } from "next/server";
 import { z } from "zod";
@@ -16,6 +17,7 @@ import {
   countAnswers,
   createChat,
   getChat,
+  getLeafRole,
   getMessages,
   saveParts,
   updateChat,
@@ -38,11 +40,9 @@ export const maxDuration = 300;
 
 const id = z.string().max(100);
 
-/** How to answer: as the latest message asks. */
 const settingsSchema = z.object({
   model: z.string(),
   reasoning: z.custom<Reasoning>(isReasoning),
-  /** What the picker says to search. */
   sources: sourceSelectionSchema,
 });
 
@@ -59,16 +59,14 @@ const requestSchema = settingsSchema.extend({
       }),
     ]),
   }),
-  /** The message it follows, for an edit or retry; without, the chat's latest. */
+  /** For an edit or retry; without, it follows the chat's latest. */
   parentId: id.nullable().optional(),
 });
 
 type Settings = z.infer<typeof settingsSchema>;
 type Viewer = NonNullable<Awaited<ReturnType<typeof getViewer>>>;
-type Hold = Awaited<ReturnType<typeof holdChat>>;
 
-// Without being told, models answer questions about the user's documents from
-// memory, or say they can't see them.
+// Untold, models answer about the user's documents from memory, or say they can't see them.
 const documents =
   "The search tool is your only way to read the user's documents, which live in their Mixedbread stores. Search before answering anything about their documents, work or organization, and never say you can't see them.";
 const recent =
@@ -80,7 +78,6 @@ const guidance: Record<SearchScope, string> = {
   none: "The user turned search off for this question, so answer from what you know and say when you are unsure.",
 };
 
-/** Saves a message, which the chat's runner answers. */
 export async function POST(request: Request) {
   const viewer = await getViewer();
   if (!viewer) return new Response("Please reload the page.", { status: 401 });
@@ -103,7 +100,7 @@ export async function POST(request: Request) {
   if (chat && chat.userId !== user.id) {
     return new Response("Chat not found.", { status: 404 });
   }
-  // An edit or retry branches off, which waits until the chat rests.
+  // Edits and retries wait until the chat rests.
   if (parentId !== undefined && chat && (await chatRuns(id))) {
     return new Response("This chat is answering already.", { status: 409 });
   }
@@ -120,41 +117,59 @@ export async function POST(request: Request) {
     after(() => naming);
   }
   await appendMessage(id, message, parentId);
-  if (await claimChat(id, JSON.stringify({ model, reasoning, sources }))) {
-    after(() => run(id, viewer, naming).catch(console.error));
+  if (!(await claimChat(id, JSON.stringify({ model, reasoning, sources })))) {
+    return new Response(null, { status: 202 });
   }
-  return new Response(null, { status: 202 });
+  // The sending tab reads the first answer here; all else goes through Redis.
+  const first = Promise.withResolvers<ReadableStream<string> | null>();
+  const running = run(id, viewer, naming, first.resolve)
+    .catch(console.error)
+    .finally(() => first.resolve(null));
+  after(() => running);
+  const stream = await first.promise;
+  if (!stream) return new Response(null, { status: 202 });
+  return new Response(stream.pipeThrough(new TextEncoderStream()), {
+    status: 201,
+    headers: UI_MESSAGE_STREAM_HEADERS,
+  });
 }
 
-/**
- * Answers the chat while its latest message is the user's and was sent since
- * the last look, one answer at a time. `naming` is a new chat's title.
- */
-async function run(chatId: string, viewer: Viewer, naming?: Promise<void>) {
+/** Answers one at a time while the latest message is the user's and sent since the last look. */
+async function run(
+  chatId: string,
+  viewer: Viewer,
+  naming?: Promise<void>,
+  reply?: (stream: ReadableStream<string> | null) => void,
+) {
   // Leaving the tab doesn't stop answers; Stop and the time limit do.
   const limit = AbortSignal.timeout((maxDuration - 20) * 1000);
   let stop = new AbortController();
   const hold = await holdChat(chatId, () => stop.abort());
   try {
     while (!limit.aborted) {
-      // Stop ends the answer it reaches, and drops what was sent before it.
+      // Stop ends only the answer it reaches.
       stop = new AbortController();
       const sent = await hold.next();
-      const [chat, messages] = await Promise.all([
-        getChat(chatId),
-        getMessages(chatId),
-      ]);
-      const leaf = messages.find((message) => message.id === chat?.leafId);
-      if (leaf?.role === "user" && sent) {
-        await answer(
+      if (sent && (await getLeafRole(chatId)) === "user") {
+        const answering = await answer(
           chatId,
           viewer,
           settingsSchema.parse(JSON.parse(sent)),
-          hold,
           AbortSignal.any([stop.signal, limit]),
           naming,
         );
         naming = undefined;
+        // Without Redis, it still runs and is kept; tabs catch up once it ends.
+        const copy = await hold
+          .show(answering.id, answering.stream)
+          .catch((error) => {
+            console.error(error);
+            return null;
+          });
+        if (reply) reply(copy);
+        else void copy?.cancel();
+        reply = undefined;
+        await answering.finished;
       } else if (await hold.release()) {
         return;
       }
@@ -164,12 +179,10 @@ async function run(chatId: string, viewer: Viewer, naming?: Promise<void>) {
   }
 }
 
-/** Answers the chat's latest message, as a message and stream of its own. */
 async function answer(
   chatId: string,
   viewer: Viewer,
   { model, reasoning, sources }: Settings,
-  hold: Hold,
   signal: AbortSignal,
   naming?: Promise<void>,
 ) {
@@ -193,9 +206,7 @@ async function answer(
     }),
   };
   const scope = scopeOf(sources, viewer.organizations);
-  // Earlier searches in the history still need the tool, even when it is off.
   const searching = scope !== "none";
-  // A chat's first answer starts from a search, whatever the model.
   const first = !history.some((message) => message.role === "assistant");
 
   const finished = Promise.withResolvers<void>();
@@ -204,7 +215,6 @@ async function answer(
       try {
         const result = streamText({
           model: toast ? toastModel : model,
-          // Auto, or an effort the model doesn't take, is left to its provider.
           reasoning:
             reasoning !== "auto" && chosen?.efforts.includes(reasoning)
               ? reasoning
@@ -224,12 +234,14 @@ The user can send messages while you answer. Finish what came before unless a ne
 Write math between double dollar signs, inline like $$E = mc^2$$ or on lines of their own for a display equation. A single dollar sign is always read as a dollar, as in prices.
 
 Today is ${new Date().toISOString().slice(0, 10)}.`,
-          // A search Stop cut short has no result to send.
+          // A search cut short by Stop has no result.
           messages: await convertToModelMessages(history, {
             tools,
             ignoreIncompleteToolCalls: true,
           }),
           tools,
+          // Earlier searches in the history need the tool even when search is off.
+          // History with searches needs the tool even when search is off.
           activeTools: searching ? ["search"] : [],
           // A message sent meanwhile ends it at the next step, and the next
           // answer takes it up. Toast searches and writes up in one go.
@@ -257,7 +269,6 @@ Today is ${new Date().toISOString().slice(0, 10)}.`,
           if (chunk.type === "error") ended = "failed";
           else writer.write(chunk);
         }
-        // Only Stop stops an answer; running out of time fails it.
         if (signal.aborted) {
           ended = signal.reason?.name === "TimeoutError" ? "failed" : "stopped";
         }
@@ -265,8 +276,7 @@ Today is ${new Date().toISOString().slice(0, 10)}.`,
           writer.write({ type: "data-ended", data: ended });
           parts = [...parts, { type: "data-ended", data: ended }];
         }
-        // Kept before tabs hear it ended, so the chat they load next has it,
-        // with a new chat's title.
+        // Saved and named before tabs hear it ended, so the chat they load has both.
         await saveParts(messageId, parts);
         await naming;
         writer.write({
@@ -278,19 +288,13 @@ Today is ${new Date().toISOString().slice(0, 10)}.`,
       }
     },
   });
-  // Without Redis, it still runs and is kept; tabs catch up once it ends.
-  const showing = hold
-    .show(
-      `${chatId}:${messageId}`,
-      stream.pipeThrough(new JsonToSseTransformStream()),
-    )
-    .catch(console.error);
-  await finished.promise;
-  // The next answer shows only after this one has.
-  await showing;
+  return {
+    id: `${chatId}:${messageId}`,
+    stream: stream.pipeThrough(new JsonToSseTransformStream()),
+    finished: finished.promise,
+  };
 }
 
-/** Replaces the placeholder title; the first line stays if naming fails. */
 async function nameChat(id: string, userId: string, text: string) {
   const { text: generated } = await generateText({
     model: titleModel,

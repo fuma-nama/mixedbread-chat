@@ -16,7 +16,6 @@ export const metadata: Metadata = {
     "A chat app that searches your data and the web, powered by Mixedbread.",
 };
 
-/** The theme picked last, remembered in a cookie by the theme menu. */
 async function selectedTheme() {
   const theme = (await cookies()).get("theme")?.value;
   return isTheme(theme) ? theme : "system";
@@ -27,7 +26,7 @@ export async function generateViewport(): Promise<Viewport> {
   return {
     viewportFit: "cover",
     interactiveWidget: "resizes-content",
-    // One color per device scheme; a picked theme sets both.
+    // Both schemes even for a picked theme, as setTheme recolors these in place.
     themeColor: (["light", "dark"] as const).map((scheme) => ({
       media: `(prefers-color-scheme: ${scheme})`,
       color: themeColors[theme === "system" ? scheme : theme],
