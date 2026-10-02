@@ -78,7 +78,11 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
     useChatList().find((chat) => chat.id === id)?.title ??
     (saved.title || undefined);
   const { model, effort } = useModel();
-  const [refusal, setRefusal] = useState<Failure>();
+  // Shows while the chat still ends where it was refused.
+  const [refusal, setRefusal] = useState<{
+    failure: Failure;
+    leafId: string | null;
+  }>();
   const [opened] = useState(
     () => new Set(saved.messages.map((message) => message.id)),
   );
@@ -127,7 +131,9 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
     },
     onError(error) {
       failed.current = true;
-      if (failureOf(error) === "session") setRefusal("session");
+      if (failureOf(error) === "session") {
+        setRefusal({ failure: "session", leafId: saved.leafId });
+      }
     },
   });
 
@@ -153,7 +159,9 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
     idle &&
     last?.role === "assistant" &&
     (endOf(last) === "failed" || last.parts.length === 0);
-  const failure = refusal ?? (broken ? "other" : undefined);
+  const refused =
+    refusal?.leafId === saved.leafId ? refusal.failure : undefined;
+  const failure = refused ?? (broken ? "other" : undefined);
   // Screen readers hear where a search is, not every token of it.
   const spoken = (answering && searchStatus(running)) || announcement;
   const stores = searchedStores(shown);
@@ -232,16 +240,11 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
     setAnnouncement("");
   }
 
-  function dismiss() {
-    setRefusal(undefined);
-  }
-
   function post(
     message: ChatMessage,
     parentId?: string | null,
     undo?: () => void,
   ) {
-    dismiss();
     // The view pins a question as its answer comes in.
     if (!busy) answer(message.id);
     preloadMarkdown();
@@ -288,14 +291,17 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
       populateCache: false,
       revalidate: false,
     }).catch((error: Error) => {
-      const refused = error instanceof Refusal;
-      setRefusal(failureOfStatus(refused ? error.status : 0));
-      if (refused) undo?.();
+      const rejected = error instanceof Refusal;
+      setRefusal({
+        failure: failureOfStatus(rejected ? error.status : 0),
+        // Rejected, it is rolled back; lost on the way, it still shows.
+        leafId: rejected ? saved.leafId : message.id,
+      });
+      if (rejected) undo?.();
     });
   }
 
   function focusComposer() {
-    dismiss();
     composer.current?.focus();
   }
 
@@ -311,7 +317,6 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
     for (const message of pathTo(saved.messages, leaf)) {
       if (!showing.has(message.id)) brought.add(message.id);
     }
-    dismiss();
     setFaded(brought);
     change(() => ({ leafId: leaf }));
     void setChatLeaf(id, leaf);
@@ -422,7 +427,7 @@ export function Chat({ id, saved }: { id: string; saved: CachedChat }) {
           {failure && (
             <ErrorNotice
               failure={failure}
-              onRetry={refusal ? focusComposer : answerAgain}
+              onRetry={refused ? focusComposer : answerAgain}
             />
           )}
           {idle && !failure && rendered.at(-1)?.role === "user" && (

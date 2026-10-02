@@ -105,8 +105,14 @@ export async function POST(request: Request) {
   if (chat && chat.userId !== user.id) {
     return new Response("Chat not found.", { status: 404 });
   }
-  // Edits and retries wait until the chat rests.
-  if (parentId !== undefined && chat && (await chatRuns(id))) {
+  // Edits and retries wait until the chat rests; its latest question is
+  // answered either way.
+  if (
+    parentId !== undefined &&
+    chat &&
+    chat.leafId !== message.id &&
+    (await chatRuns(id))
+  ) {
     return new Response("This chat is answering already.", { status: 409 });
   }
 
